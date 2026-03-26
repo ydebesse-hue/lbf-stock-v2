@@ -5,8 +5,8 @@
 // =============================================================
 
 // Récupérer ces valeurs dans : Supabase Dashboard → Settings → API
-const SUPABASE_URL     = 'https://VOTRE_PROJET.supabase.co';
-const SUPABASE_ANON_KEY = 'VOTRE_CLE_ANON_ICI';
+const SUPABASE_URL      = 'https://ihpwdcndytxdnqjdcrsn.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_wCdk0fL4oUHDGBGxKS0wJg_PfWI6Kwb';
 
 // Paramètres de l'application
 const APP_CONFIG = {
