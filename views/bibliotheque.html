@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LBF Stock — Bibliothèque des sections</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/bibliotheque.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <a href="stock.html" class="nav-brand">⚙ LBF Stock</a>
+    <div class="nav-links">
+      <a href="stock.html"        class="nav-link"><span>Inventaire</span></a>
+      <a href="demandes.html"     class="nav-link"><span>Demandes</span></a>
+      <a href="bibliotheque.html" class="nav-link active"><span>Bibliothèque</span></a>
+      <a href="comptes.html"
+         class="nav-link"
+         data-require-role="administration"><span>Comptes</span></a>
+    </div>
+    <div class="nav-user">
+      <span class="nav-user-name" id="userDisplay"></span>
+      <span id="roleDisplay" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-ghost btn-sm">Déconnexion</button>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <div class="container">
+
+      <!-- En-tête -->
+      <div class="page-header">
+        <h1 class="page-title">
+          Bibliothèque des sections
+          <small id="sectionsCountLabel"></small>
+        </h1>
+        <div class="d-flex gap-sm align-center">
+          <!-- Toggle vue -->
+          <div class="view-toggle">
+            <button class="view-toggle-btn active" id="viewGrid" title="Vue grille">▦</button>
+            <button class="view-toggle-btn"        id="viewTable" title="Vue tableau">☰</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtres -->
+      <div class="filters-bar">
+        <input type="search" id="searchInput" class="form-control search-input"
+               placeholder="Rechercher une section…">
+        <!-- Boutons famille -->
+        <div id="familleNav" class="famille-nav">
+          <button class="famille-btn active" data-famille="">Toutes</button>
+        </div>
+      </div>
+
+      <!-- Vue grille -->
+      <div id="viewGridContent">
+        <div id="sectionsGrid" class="sections-grid">
+          <div class="loader">
+            <div class="spinner"></div>
+            Chargement…
+          </div>
+        </div>
+      </div>
+
+      <!-- Vue tableau -->
+      <div id="viewTableContent" style="display:none">
+        <div class="table-wrapper">
+          <table class="data-table sections-table">
+            <thead>
+              <tr>
+                <th class="col-famille">Famille</th>
+                <th class="col-desi">Désignation</th>
+                <th class="col-h">h (mm)</th>
+                <th class="col-b">b (mm)</th>
+                <th class="col-tw">t<sub>w</sub> (mm)</th>
+                <th class="col-tf">t<sub>f</sub> (mm)</th>
+                <th class="col-poids">kg/m</th>
+              </tr>
+            </thead>
+            <tbody id="sectionsTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../auth/auth.js"></script>
+  <script src="../js/bibliotheque.js"></script>
+</body>
+</html>

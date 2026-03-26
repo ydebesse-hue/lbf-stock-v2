@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LBF Stock — Connexion</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="login-card">
+
+      <!-- En-tête -->
+      <div class="login-header">
+        <div class="login-logo">
+          <span class="login-logo-icon">⚙</span>
+        </div>
+        <h1 class="login-title">LBF Stock</h1>
+        <p class="login-subtitle">Gestion d'inventaire acier — Le Bras Frères</p>
+      </div>
+
+      <!-- Formulaire -->
+      <form id="loginForm" class="login-form" novalidate>
+        <div class="form-group">
+          <label for="username" class="form-label">Identifiant</label>
+          <input
+            type="text"
+            id="username"
+            class="form-control"
+            placeholder="votre.identifiant"
+            autocomplete="username"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Mot de passe</label>
+          <input
+            type="password"
+            id="password"
+            class="form-control"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+          >
+        </div>
+
+        <div id="loginError" class="login-error" hidden></div>
+
+        <button type="submit" id="submitBtn" class="btn-login">
+          Se connecter
+        </button>
+      </form>
+
+      <!-- Pied -->
+      <div class="login-footer">
+        <strong>Le Bras Frères</strong> — Usage interne uniquement
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="auth/auth.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

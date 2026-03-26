@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LBF Stock — Demandes</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/demandes.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <a href="stock.html" class="nav-brand">⚙ LBF Stock</a>
+    <div class="nav-links">
+      <a href="stock.html"        class="nav-link"><span>Inventaire</span></a>
+      <a href="demandes.html"     class="nav-link active"><span>Demandes</span></a>
+      <a href="bibliotheque.html" class="nav-link"><span>Bibliothèque</span></a>
+      <a href="comptes.html"
+         class="nav-link"
+         data-require-role="administration"><span>Comptes</span></a>
+    </div>
+    <div class="nav-user">
+      <span class="nav-user-name" id="userDisplay"></span>
+      <span id="roleDisplay" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-ghost btn-sm">Déconnexion</button>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <div class="container">
+
+      <!-- En-tête -->
+      <div class="page-header">
+        <h1 class="page-title">Demandes d'affectation</h1>
+      </div>
+
+      <!-- Onglets de statut -->
+      <div class="statut-tabs" id="statutTabs">
+        <button class="statut-tab active" data-statut="">
+          Toutes <span class="statut-tab-count" id="cnt-all">—</span>
+        </button>
+        <button class="statut-tab" data-statut="en_attente">
+          En attente <span class="statut-tab-count" id="cnt-en_attente">—</span>
+        </button>
+        <button class="statut-tab" data-statut="approuvee">
+          Approuvées <span class="statut-tab-count" id="cnt-approuvee">—</span>
+        </button>
+        <button class="statut-tab" data-statut="refusee">
+          Refusées <span class="statut-tab-count" id="cnt-refusee">—</span>
+        </button>
+        <button class="statut-tab" data-statut="annulee">
+          Annulées <span class="statut-tab-count" id="cnt-annulee">—</span>
+        </button>
+      </div>
+
+      <!-- Filtre recherche -->
+      <div class="filters-bar">
+        <input type="search" id="searchInput" class="form-control search-input"
+               placeholder="Demandeur, chantier, référence…">
+      </div>
+
+      <!-- Tableau des demandes -->
+      <div class="table-wrapper">
+        <table class="data-table demandes-table">
+          <thead>
+            <tr>
+              <th class="col-date">Date</th>
+              <th class="col-demandeur">Demandeur</th>
+              <th class="col-item">Article</th>
+              <th class="col-chantier">Chantier</th>
+              <th class="col-quantite">Quantité</th>
+              <th class="col-statut">Statut</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="demandesTableBody">
+            <tr>
+              <td colspan="7">
+                <div class="loader">
+                  <div class="spinner"></div>
+                  Chargement…
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Modal : Détail / Traitement ───────────────────────── -->
+  <div id="demandeModal" class="modal-overlay" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Détail de la demande</h2>
+        <button class="modal-close" id="modalClose">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="demande-detail" id="demandeDetail"></div>
+
+        <!-- Zone de traitement (admins) -->
+        <div id="traitementZone" style="display:none; margin-top:1.25rem; padding-top:1.25rem; border-top:1px solid var(--color-border)">
+          <div class="form-group">
+            <label class="form-label">Motif (optionnel pour approbation, requis pour refus)</label>
+            <textarea id="motifRefus" class="form-control" rows="2"
+                      placeholder="Expliquer la décision…"></textarea>
+          </div>
+          <div class="d-flex gap-sm" style="justify-content:flex-end; margin-top:0.75rem">
+            <button class="btn btn-danger"   id="btnRefuser">Refuser</button>
+            <button class="btn btn-success"  id="btnApprouver">Approuver</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnAnnulerDemande" style="margin-right:auto">
+          Annuler la demande
+        </button>
+        <button class="btn btn-secondary" id="modalCloseBtn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../auth/auth.js"></script>
+  <script src="../js/demandes.js"></script>
+</body>
+</html>
