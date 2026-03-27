@@ -10,8 +10,8 @@
 //  CONFIGURATION
 // ═══════════════════════════════════════════════════════
 
-const SUPABASE_URL    = 'https://lynyevfmrvqboqhsfwig.supabase.co';
-const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5bnlldmZtcnZxYm9xaHNmd2lnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNTMxNDMsImV4cCI6MjA4ODkyOTE0M30.JvdtzkwyFS2M-8Dec5yilKcSDAS0PTAYcQYE8OMbgOs';
+const SUPABASE_URL    = 'https://ihpwdcndytxdnqjdcrsn.supabase.co';
+const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlocHdkY25keXR4ZG5xamRjcnNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjExMDksImV4cCI6MjA5MDEzNzEwOX0.19WoAzpF59KeKfEXD8kYrzQtVOET594ajSTD9NwtEcs';
 
 // En-têtes communs à toutes les requêtes
 const _headers = {
