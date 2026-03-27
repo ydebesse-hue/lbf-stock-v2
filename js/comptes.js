@@ -16,21 +16,12 @@ async function loadUsers() {
   const tbody = document.getElementById('usersTableBody');
   tbody.innerHTML = '<tr><td colspan="6"><div class="loader"><div class="spinner"></div>Chargement…</div></td></tr>';
 
-  // La clé service_role est requise pour lire la table users
-  // En prod, utiliser un edge function ou la service_role key
-  // Ici on appelle le RPC list_users (à créer en SQL) ou on utilise
-  // la service_role key via une variable d'environnement côté serveur.
-  // Pour l'instant, on utilise une requête directe (nécessite service_role
-  // ou une policy SELECT pour administration — à configurer dans Supabase).
-  const { data, error } = await db
-    .from('users_public')  // vue sans password_hash
-    .select('*')
-    .order('created_at', false)
-    .get();
+  // Utilise le RPC list_users (SECURITY DEFINER) — bypasse RLS sans exposer password_hash
+  const { data, error } = await db.rpc('list_users');
 
   if (error) {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Accès refusé ou erreur.</td></tr>';
-    utils.flash('Impossible de charger les comptes. Vérifiez les permissions Supabase.', 'error');
+    utils.flash('Impossible de charger les comptes.', 'error');
     return;
   }
 
@@ -148,14 +139,14 @@ async function saveUser() {
     payload.password_hash = await utils.hashPassword(password);
   }
 
-  let error;
+  // Utilise le RPC upsert_user (SECURITY DEFINER)
+  const rpcParams = editingUser
+    ? { p_id: editingUser.id, p_prenom: prenom, p_nom: nom, p_role: role,
+        p_password_hash: payload.password_hash || null }
+    : { p_username: username, p_prenom: prenom, p_nom: nom, p_role: role,
+        p_password_hash: payload.password_hash };
 
-  if (editingUser) {
-    ({ error } = await db.from('users').eq('id', editingUser.id).update(payload));
-  } else {
-    payload.username = username;
-    ({ error } = await db.from('users').insert(payload));
-  }
+  const { error } = await db.rpc('upsert_user', rpcParams);
 
   utils.btnLoading(btn, false);
 
@@ -178,7 +169,7 @@ async function toggleActif(id, currentActif) {
   const verb = currentActif ? 'désactiver' : 'réactiver';
   if (!confirm(`${verb.charAt(0).toUpperCase() + verb.slice(1)} le compte « ${u?.username} » ?`)) return;
 
-  const { error } = await db.from('users').eq('id', id).update({ actif: !currentActif });
+  const { error } = await db.rpc('upsert_user', { p_id: id, p_actif: !currentActif });
 
   if (error) {
     utils.flash('Erreur lors de la modification.', 'error');
