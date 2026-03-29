@@ -68,7 +68,7 @@ async function biblioInit(profil) {
  * @returns {{ standard: Array }}
  */
 function _rowsToStandard(rows) {
-  const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Plat'];
+  const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Tube carré', 'Plat'];
   const map = {};
   rows.forEach(r => {
     if (!map[r.famille]) {
@@ -142,6 +142,24 @@ function biblioRendreGrille() {
       series: [
         { serie:'L égale',   photo:'../assets/profils/Le.png' },
         { serie:'L inégale', photo:'../assets/profils/Li.png' }
+      ]
+    },
+    {
+      id:     'Tube carré',
+      titre:  'SHS — Tubes carrés',
+      norme:  'EN 10210 / EN 10219',
+      famJson:'Tube carré',
+      series: [
+        { serie:'SHS', photo:'../assets/profils/SHS.png' }
+      ]
+    },
+    {
+      id:     'Plat',
+      titre:  'Plat',
+      norme:  'EN 10058',
+      famJson:'Plat',
+      series: [
+        { serie:'Plat', photo:'../assets/profils/Plat.png' }
       ]
     }
   ];
