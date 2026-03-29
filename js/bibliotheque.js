@@ -150,9 +150,9 @@ function biblioRendreGrille() {
       norme:  'EN 10210 / EN 10219',
       famJson:'Profilés creux',
       series: [
-        { serie:'SHS', photo:'../assets/profils/SHS.png' },
-        { serie:'RHS', photo:'../assets/profils/RHS.png' },
-        { serie:'CHS', photo:'../assets/profils/CHS.png' }
+        { serie:'SHS', photo:'../assets/profils/SHS chaud.png', photo2:'../assets/profils/SHS froid.png' },
+        { serie:'RHS', photo:'../assets/profils/RHS chaud.png', photo2:'../assets/profils/RHS froid.png' },
+        { serie:'CHS', photo:'../assets/profils/CHS chaud.png', photo2:'../assets/profils/CHS froid.png' }
       ]
     },
     {
@@ -236,13 +236,27 @@ function biblioCreerCarteSerie(sr, fam) {
   carte.id = carteId;
   carte.onclick = () => biblioOuvrirModaleSerie(sr.serie, fam.id);
 
-  // Zone visuelle : image PNG si dispo, SVG sinon
+  // Zone visuelle : image(s) PNG si dispo, SVG sinon
+  const imgPrincipale = sr.photo2
+    ? `<div class="cs-visuel-double">
+         <div class="cs-visuel-item">
+           <img class="cs-photo" src="${sr.photo}" alt="${sr.serie} chaud"
+                onerror="this.style.display='none'">
+           <span class="cs-photo-label">Chaud</span>
+         </div>
+         <div class="cs-visuel-item">
+           <img class="cs-photo" src="${sr.photo2}" alt="${sr.serie} froid"
+                onerror="this.style.display='none'">
+           <span class="cs-photo-label">Froid</span>
+         </div>
+       </div>`
+    : `<img class="cs-photo" id="${carteId}-img"
+            src="${sr.photo}" alt="${sr.serie}"
+            onerror="carteSeriePhotoErreur('${carteId}','${fam.id}')">`;
+
   const visuelHtml = `
     <div class="cs-visuel">
-      <img class="cs-photo" id="${carteId}-img"
-           src="${sr.photo}"
-           alt="${sr.serie}"
-           onerror="carteSeriePhotoErreur('${carteId}','${fam.id}')">
+      ${imgPrincipale}
       <div class="cs-svg-fallback" id="${carteId}-svg" style="display:none">
         ${biblioSchemasFamille(fam.id).split('</div>')[0] + '</div>'}
       </div>
@@ -692,7 +706,10 @@ const MF_PHOTOS = {
   'UPN':       '../assets/profils/UPN.png',
   'UPE':       '../assets/profils/UPE.png',
   'L égale':   '../assets/profils/Le.png',
-  'L inégale': '../assets/profils/Li.png'
+  'L inégale': '../assets/profils/Li.png',
+  'SHS':       '../assets/profils/SHS chaud.png',
+  'RHS':       '../assets/profils/RHS chaud.png',
+  'CHS':       '../assets/profils/CHS chaud.png'
 };
 
 /**
