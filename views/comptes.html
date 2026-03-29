@@ -232,6 +232,26 @@
       font-size: 13px;
     }
 
+    /* ── FILTRES ─────────────────────────────────────────────── */
+    .filtres-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .filtres-bar input[type="search"],
+    .filtres-bar select {
+      padding: 7px 10px;
+      border: 1px solid var(--gris-clair);
+      border-radius: 3px;
+      font-family: Tahoma, sans-serif;
+      font-size: 13px;
+      background: white;
+      color: var(--noir);
+    }
+    .filtres-bar input[type="search"] { flex: 1; min-width: 180px; }
+    .filtres-bar select { min-width: 150px; }
+
     /* ── NOTIFICATION ────────────────────────────────────────── */
     #notif {
       position: fixed;
@@ -422,6 +442,21 @@
   <div class="page-header">
     <h1 class="page-titre">Gestion des comptes</h1>
     <button class="btn btn-rouge" onclick="ouvrirCreation()">+ Ajouter un compte</button>
+  </div>
+
+  <div class="filtres-bar">
+    <input type="search" id="filtre-texte" placeholder="Rechercher par identifiant ou nom…" oninput="_rendreTableau()">
+    <select id="filtre-profil" onchange="_rendreTableau()">
+      <option value="">Tous les profils</option>
+      <option value="consultation">Consultation</option>
+      <option value="gestion">Gestion</option>
+      <option value="administration">Administration</option>
+    </select>
+    <select id="filtre-statut" onchange="_rendreTableau()">
+      <option value="">Tous les statuts</option>
+      <option value="actif">Actif</option>
+      <option value="inactif">Désactivé</option>
+    </select>
   </div>
 
   <div class="table-wrap">
@@ -646,9 +681,26 @@ function _rendreTableau() {
     return;
   }
 
+  const texte   = (document.getElementById('filtre-texte')?.value  || '').toLowerCase().trim();
+  const profil  =  document.getElementById('filtre-profil')?.value || '';
+  const statut  =  document.getElementById('filtre-statut')?.value || '';
+
+  const usersAffiches = _users.filter(u => {
+    if (texte  && !u.identifiant.toLowerCase().includes(texte) && !u.nomComplet.toLowerCase().includes(texte)) return false;
+    if (profil && u.profil !== profil) return false;
+    if (statut === 'actif'   && !u.actif) return false;
+    if (statut === 'inactif' &&  u.actif) return false;
+    return true;
+  });
+
+  if (!usersAffiches.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="zone-vide">Aucun compte ne correspond aux filtres.</td></tr>';
+    return;
+  }
+
   const sessionCourante = Auth.getSession();
 
-  tbody.innerHTML = _users.map(u => {
+  tbody.innerHTML = usersAffiches.map(u => {
     const estMoi   = (u.id === sessionCourante?.id);
     const estAdmin = (u.profil === 'administration');
 
@@ -765,10 +817,8 @@ async function sauvegarderCompte() {
         afficherErreurModale('mc-erreur', 'Les mots de passe ne correspondent pas.');
         return;
       }
-      if (mdp1.length < 6) {
-        afficherErreurModale('mc-erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
-        return;
-      }
+      const errMdp = _validerMdp(mdp1);
+      if (errMdp) { afficherErreurModale('mc-erreur', errMdp); return; }
     }
   } else {
     // Création — MDP obligatoire + unicité identifiant
@@ -785,6 +835,8 @@ async function sauvegarderCompte() {
       afficherErreurModale('mc-erreur', 'Les mots de passe ne correspondent pas.');
       return;
     }
+    const errMdp = _validerMdp(mdp1);
+    if (errMdp) { afficherErreurModale('mc-erreur', errMdp); return; }
   }
 
   // Construire l'objet
@@ -848,6 +900,23 @@ async function confirmerSuppression() {
   _rendreTableau();
   fermerM('m-supprimer');
   afficherNotif('Compte supprimé.', 'succes');
+}
+
+/* ============================================================
+   VALIDATION MOT DE PASSE
+   ============================================================ */
+
+/**
+ * Vérifie les règles de complexité du mot de passe.
+ * @param {string} mdp
+ * @returns {string|null} message d'erreur ou null si valide
+ */
+function _validerMdp(mdp) {
+  if (mdp.length < 6)            return 'Le mot de passe doit contenir au moins 6 caractères.';
+  if (!/[a-zA-Z]/.test(mdp))    return 'Le mot de passe doit contenir au moins une lettre.';
+  if (!/[0-9]/.test(mdp))       return 'Le mot de passe doit contenir au moins un chiffre.';
+  if (!/[^a-zA-Z0-9]/.test(mdp)) return 'Le mot de passe doit contenir au moins un symbole (ex : @, !, #…).';
+  return null;
 }
 
 /* ============================================================
