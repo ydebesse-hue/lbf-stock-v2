@@ -68,7 +68,7 @@ async function biblioInit(profil) {
  * @returns {{ standard: Array }}
  */
 function _rowsToStandard(rows) {
-  const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Tube carré', 'Plat'];
+  const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat'];
   const map = {};
   rows.forEach(r => {
     if (!map[r.famille]) {
@@ -145,12 +145,14 @@ function biblioRendreGrille() {
       ]
     },
     {
-      id:     'Tube carré',
-      titre:  'SHS — Tubes carrés',
+      id:     'Profilés creux',
+      titre:  'Profilés creux — SHS · RHS · CHS',
       norme:  'EN 10210 / EN 10219',
-      famJson:'Tube carré',
+      famJson:'Profilés creux',
       series: [
-        { serie:'SHS', photo:'../assets/profils/SHS.png' }
+        { serie:'SHS', photo:'../assets/profils/SHS.png' },
+        { serie:'RHS', photo:'../assets/profils/RHS.png' },
+        { serie:'CHS', photo:'../assets/profils/CHS.png' }
       ]
     },
     {
