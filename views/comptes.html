@@ -430,13 +430,14 @@
         <tr>
           <th>Identifiant</th>
           <th>Nom complet</th>
+          <th>Email</th>
           <th>Profil</th>
           <th>Statut</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody id="comptes-tbody">
-        <tr><td colspan="5" class="zone-vide">Chargement…</td></tr>
+        <tr><td colspan="6" class="zone-vide">Chargement…</td></tr>
       </tbody>
     </table>
   </div>
@@ -469,6 +470,11 @@
     </div>
 
     <div class="champ">
+      <label for="mc-email">Adresse email</label>
+      <input type="email" id="mc-email" placeholder="ex : p.dupont@entreprise.fr">
+    </div>
+
+    <div class="champ">
       <label for="mc-profil">Profil *</label>
       <select id="mc-profil">
         <option value="consultation">Consultation — lecture seule</option>
@@ -478,7 +484,7 @@
     </div>
 
     <div class="champ" id="mc-mdp-zone">
-      <label for="mc-mdp">Mot de passe *</label>
+      <label for="mc-mdp" id="mc-mdp-label">Mot de passe *</label>
       <div class="champ-mdp-wrap">
         <input type="password" id="mc-mdp" placeholder="Mot de passe">
         <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp','mc-oeil')" id="mc-oeil">👁</button>
@@ -486,7 +492,7 @@
     </div>
 
     <div class="champ" id="mc-mdp2-zone">
-      <label for="mc-mdp2">Confirmer le mot de passe *</label>
+      <label for="mc-mdp2">Confirmer le mot de passe</label>
       <div class="champ-mdp-wrap">
         <input type="password" id="mc-mdp2" placeholder="Confirmation">
         <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp2','mc-oeil2')" id="mc-oeil2">👁</button>
@@ -506,41 +512,6 @@
     <div class="modale-footer">
       <button class="btn btn-gris" onclick="fermerM('m-compte')">Annuler</button>
       <button class="btn btn-rouge" onclick="sauvegarderCompte()">Enregistrer</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════
-     MODALE — CHANGER MOT DE PASSE
-══════════════════════════════════════ -->
-<div id="m-mdp" class="modale-bg" onclick="bgClose(event,'m-mdp')">
-  <div class="modale" onclick="event.stopPropagation()">
-    <div class="modale-titre">Changer le mot de passe</div>
-    <p style="font-size:13px; color:#555; margin-bottom:14px">
-      Compte : <strong id="mdp-nom-compte"></strong>
-    </p>
-
-    <div class="champ">
-      <label for="mdp-nouveau">Nouveau mot de passe *</label>
-      <div class="champ-mdp-wrap">
-        <input type="password" id="mdp-nouveau" placeholder="Nouveau mot de passe">
-        <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-nouveau','mdp-oeil1')" id="mdp-oeil1">👁</button>
-      </div>
-    </div>
-
-    <div class="champ">
-      <label for="mdp-confirme">Confirmer *</label>
-      <div class="champ-mdp-wrap">
-        <input type="password" id="mdp-confirme" placeholder="Confirmation">
-        <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-confirme','mdp-oeil2')" id="mdp-oeil2">👁</button>
-      </div>
-    </div>
-
-    <div class="msg-erreur-modale" id="mdp-erreur"></div>
-
-    <div class="modale-footer">
-      <button class="btn btn-gris" onclick="fermerM('m-mdp')">Annuler</button>
-      <button class="btn btn-rouge" onclick="sauvegarderMdp()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -671,7 +642,7 @@ function _rendreTableau() {
   if (!tbody) return;
 
   if (!_users.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="zone-vide">Aucun compte trouvé.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="zone-vide">Aucun compte trouvé.</td></tr>';
     return;
   }
 
@@ -703,11 +674,11 @@ function _rendreTableau() {
     return `<tr>
       <td><strong>${_esc(u.identifiant)}</strong>${estMoi ? ' <span style="color:#aaa;font-size:10px">(vous)</span>' : ''}</td>
       <td>${_esc(u.nomComplet)}</td>
+      <td>${u.email ? _esc(u.email) : '<span style="color:#bbb">—</span>'}</td>
       <td>${profilHtml}</td>
       <td>${statutHtml}</td>
       <td>
         <button class="btn-ligne bl-modifier" onclick="ouvrirModification('${_esc(u.id)}')">Modifier</button>
-        <button class="btn-ligne bl-mdp" onclick="ouvrirChangeMdp('${_esc(u.id)}','${_esc(u.nomComplet)}')">🔑 MDP</button>
         ${btnSup}
       </td>
     </tr>`;
@@ -723,12 +694,14 @@ function ouvrirCreation() {
   document.getElementById('m-compte-titre').textContent = 'Nouveau compte';
   document.getElementById('mc-identifiant').value = '';
   document.getElementById('mc-nom').value         = '';
+  document.getElementById('mc-email').value       = '';
   document.getElementById('mc-profil').value      = 'consultation';
   document.getElementById('mc-mdp').value         = '';
   document.getElementById('mc-mdp2').value        = '';
   document.getElementById('mc-actif').value       = 'true';
   document.getElementById('mc-mdp-zone').style.display  = '';
   document.getElementById('mc-mdp2-zone').style.display = '';
+  document.getElementById('mc-mdp-label').textContent   = 'Mot de passe *';
   document.getElementById('m-compte-info').style.display = 'none';
   _cacherErreur('mc-erreur');
   ouvrirM('m-compte');
@@ -747,15 +720,19 @@ function ouvrirModification(id) {
   document.getElementById('m-compte-titre').textContent = 'Modifier le compte';
   document.getElementById('mc-identifiant').value = u.identifiant;
   document.getElementById('mc-nom').value         = u.nomComplet;
+  document.getElementById('mc-email').value       = u.email || '';
   document.getElementById('mc-profil').value      = u.profil;
   document.getElementById('mc-actif').value       = String(u.actif);
 
-  // Pas de champs MDP en modification (utiliser modale dédiée)
-  document.getElementById('mc-mdp-zone').style.display  = 'none';
-  document.getElementById('mc-mdp2-zone').style.display = 'none';
+  // MDP optionnel en modification
+  document.getElementById('mc-mdp').value         = '';
+  document.getElementById('mc-mdp2').value        = '';
+  document.getElementById('mc-mdp-zone').style.display  = '';
+  document.getElementById('mc-mdp2-zone').style.display = '';
+  document.getElementById('mc-mdp-label').textContent   = 'Nouveau mot de passe (laisser vide pour ne pas modifier)';
 
   const info = document.getElementById('m-compte-info');
-  info.textContent = 'Pour changer le mot de passe, utilisez le bouton 🔑 MDP dans la liste.';
+  info.textContent = 'Laissez les champs mot de passe vides pour le conserver.';
   info.style.display = 'block';
 
   _cacherErreur('mc-erreur');
@@ -769,19 +746,32 @@ function ouvrirModification(id) {
 async function sauvegarderCompte() {
   const identifiant = document.getElementById('mc-identifiant').value.trim();
   const nomComplet  = document.getElementById('mc-nom').value.trim();
+  const email       = document.getElementById('mc-email').value.trim() || null;
   const profil      = document.getElementById('mc-profil').value;
   const actif       = document.getElementById('mc-actif').value === 'true';
   const mdp1        = document.getElementById('mc-mdp').value;
   const mdp2        = document.getElementById('mc-mdp2').value;
 
-  // Validations
+  // Validations communes
   if (!identifiant || !nomComplet) {
     afficherErreurModale('mc-erreur', 'Identifiant et nom complet sont obligatoires.');
     return;
   }
 
-  // En création, vérifier unicité identifiant
-  if (!_editId) {
+  if (_editId) {
+    // Modification — MDP optionnel
+    if (mdp1 || mdp2) {
+      if (mdp1 !== mdp2) {
+        afficherErreurModale('mc-erreur', 'Les mots de passe ne correspondent pas.');
+        return;
+      }
+      if (mdp1.length < 6) {
+        afficherErreurModale('mc-erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
+        return;
+      }
+    }
+  } else {
+    // Création — MDP obligatoire + unicité identifiant
     const doublon = _users.find(u => u.identifiant.toLowerCase() === identifiant.toLowerCase());
     if (doublon) {
       afficherErreurModale('mc-erreur', 'Cet identifiant est déjà utilisé.');
@@ -800,21 +790,23 @@ async function sauvegarderCompte() {
   // Construire l'objet
   let user;
   if (_editId) {
-    // Modification — conserver le MDP existant
     user = { ..._users.find(u => u.id === _editId) };
     user.identifiant = identifiant;
     user.nomComplet  = nomComplet;
+    user.email       = email;
     user.profil      = profil;
     user.actif       = actif;
+    if (mdp1) {
+      user.motDePasse = await sha256(mdp1);
+    }
   } else {
-    // Création — hacher le mot de passe
-    const hashMdp = await sha256(mdp1);
     user = {
       id:          _genIdUser(),
       identifiant: identifiant,
       nomComplet:  nomComplet,
+      email:       email,
       profil:      profil,
-      motDePasse:  hashMdp,
+      motDePasse:  await sha256(mdp1),
       actif:       actif,
     };
   }
@@ -823,48 +815,6 @@ async function sauvegarderCompte() {
   _rendreTableau();
   fermerM('m-compte');
   afficherNotif(_editId ? 'Compte modifié.' : 'Compte créé avec succès.', 'succes');
-}
-
-/* ============================================================
-   MODALE CHANGEMENT MOT DE PASSE
-   ============================================================ */
-
-function ouvrirChangeMdp(id, nom) {
-  _editId = id;
-  document.getElementById('mdp-nom-compte').textContent = nom;
-  document.getElementById('mdp-nouveau').value  = '';
-  document.getElementById('mdp-confirme').value = '';
-  _cacherErreur('mdp-erreur');
-  ouvrirM('m-mdp');
-  document.getElementById('mdp-nouveau').focus();
-}
-
-async function sauvegarderMdp() {
-  const mdp1 = document.getElementById('mdp-nouveau').value;
-  const mdp2 = document.getElementById('mdp-confirme').value;
-
-  if (!mdp1) {
-    afficherErreurModale('mdp-erreur', 'Le nouveau mot de passe est obligatoire.');
-    return;
-  }
-  if (mdp1 !== mdp2) {
-    afficherErreurModale('mdp-erreur', 'Les mots de passe ne correspondent pas.');
-    return;
-  }
-  if (mdp1.length < 6) {
-    afficherErreurModale('mdp-erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
-    return;
-  }
-
-  const user = _users.find(u => u.id === _editId);
-  if (!user) return;
-
-  const hashMdp = await sha256(mdp1);
-  const userMaj = { ...user, motDePasse: hashMdp };
-  await _persisterUser(userMaj);
-
-  fermerM('m-mdp');
-  afficherNotif('Mot de passe mis à jour.', 'succes');
 }
 
 /* ============================================================
