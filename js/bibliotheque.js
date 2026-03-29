@@ -1008,15 +1008,32 @@ function _dimsSection(s, famille) {
       ];
     case 'Cornière':
       return [
-        ['a — Grand côté',  (s.h  ||'—')+' mm'],
+        ['a — Grand côté',  (s.a  ||'—')+' mm'],
         ['b — Petit côté',  (s.b  ||'—')+' mm'],
-        ['e — Épaisseur',   (s.tw ||'—')+' mm'],
+        ['t — Épaisseur',   (s.t  ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
     case 'Plat':
       return [
         ['b — Largeur',     (s.b  ||'—')+' mm'],
-        ['e — Épaisseur',   (s.tw ||'—')+' mm'],
+        ['e — Épaisseur',   (s.e  ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+      ];
+    case 'Profilés creux':
+      if (s.serie === 'CHS') return [
+        ['d — Diamètre ext.', (s.d  ||'—')+' mm'],
+        ['e — Épaisseur',     (s.e  ||'—')+' mm'],
+        ['Poids/ml',          (s.pml||'—')+' kg/m'],
+      ];
+      if (s.serie === 'RHS') return [
+        ['a — Hauteur',     (s.a  ||'—')+' mm'],
+        ['b — Largeur',     (s.b  ||'—')+' mm'],
+        ['e — Épaisseur',   (s.e  ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+      ];
+      return [
+        ['a — Côté',        (s.a  ||'—')+' mm'],
+        ['e — Épaisseur',   (s.e  ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
     default:
@@ -1080,13 +1097,23 @@ function biblioDimsTableau(s) {
 
   // Dimensions selon le type de section
   if (s.h  !== undefined) lignes.push(['h — Hauteur',          `${s.h} mm`]);
-  if (s.b  !== undefined) lignes.push(['b — Largeur aile',     `${s.b} mm`]);
+  if (s.b  !== undefined) {
+    const lblB = (s.famille === 'Profilés creux' && s.serie === 'RHS') ? 'b — Largeur'
+               : (s.famille === 'Cornière')                             ? 'b — Petit côté'
+               : 'b — Largeur aile';
+    lignes.push([lblB, `${s.b} mm`]);
+  }
   if (s.tw !== undefined) lignes.push(['tw — Épaisseur âme',   `${s.tw} mm`]);
   if (s.tf !== undefined) lignes.push(['tf — Épaisseur aile',  `${s.tf} mm`]);
   if (s.r  !== undefined) lignes.push(['r — Congé',            `${s.r} mm`]);
-  if (s.a  !== undefined) lignes.push(['a — Côté',             `${s.a} mm`]);
+  if (s.d  !== undefined) lignes.push(['d — Diamètre ext.',    `${s.d} mm`]);
+  if (s.a  !== undefined) {
+    const lblA = (s.serie === 'RHS') ? 'a — Hauteur'
+               : (s.famille === 'Cornière') ? 'a — Grand côté'
+               : 'a — Côté';
+    lignes.push([lblA, `${s.a} mm`]);
+  }
   if (s.t  !== undefined) lignes.push(['t — Épaisseur',        `${s.t} mm`]);
-  if (s.b_plat !== undefined) lignes.push(['b — Largeur',      `${s.b_plat} mm`]);
   if (s.e  !== undefined) lignes.push(['e — Épaisseur',        `${s.e} mm`]);
   if (s.pml!== undefined) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
   if (s.A  !== undefined) lignes.push(['Section',              `${s.A} cm²`]);
