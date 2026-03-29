@@ -33,26 +33,52 @@ const Biblio = {
 ══════════════════════════════════════════════ */
 
 /**
- * Charge sections.json et initialise l'affichage
+ * Charge les sections depuis Supabase (fallback : sections.json) et initialise l'affichage.
  * @param {string} profil - profil utilisateur courant
  */
 async function biblioInit(profil) {
   Biblio.profil = profil || 'consultation';
 
   try {
-    // Tentative de chargement du fichier JSON
-    const rep = await fetch('../data/sections.json');
-    if (!rep.ok) throw new Error('Impossible de charger sections.json');
-    Biblio.data = await rep.json();
+    // Chargement depuis Supabase
+    const rows = await window.SB.lire('sections', { order: 'sort_order' });
+    Biblio.data = _rowsToStandard(rows);
   } catch (e) {
-    console.warn('sections.json non accessible — données de démo utilisées');
-    Biblio.data = SECTIONS_DEMO;
+    console.warn('Supabase indisponible — fallback sections.json :', e);
+    try {
+      const rep = await fetch('../data/sections.json');
+      if (!rep.ok) throw new Error('sections.json introuvable');
+      Biblio.data = await rep.json();
+    } catch (e2) {
+      console.warn('sections.json non accessible — données de démo utilisées');
+      Biblio.data = SECTIONS_DEMO;
+    }
   }
 
   // Initialisation de l'interface selon le profil
   biblioRendreBoutonAjout();
   biblioRendreGrille();
   biblioBindFiltres();
+}
+
+/**
+ * Convertit le tableau plat de lignes Supabase en structure { standard: [...] }
+ * compatible avec le reste du code.
+ * @param {Array} rows
+ * @returns {{ standard: Array }}
+ */
+function _rowsToStandard(rows) {
+  const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Plat'];
+  const map = {};
+  rows.forEach(r => {
+    if (!map[r.famille]) {
+      map[r.famille] = { famille: r.famille, type: r.type, norme: r.norme, sections: [] };
+    }
+    const dims = typeof r.dims === 'string' ? JSON.parse(r.dims) : (r.dims || {});
+    map[r.famille].sections.push({ serie: r.serie, desig: r.desig, pml: r.pml, ...dims });
+  });
+  const standard = ORDRE.map(f => map[f]).filter(Boolean);
+  return { standard, custom: [] };
 }
 
 /* ══════════════════════════════════════════════

@@ -28,10 +28,13 @@ const _headers = {
 /**
  * Lit tous les enregistrements d'une table.
  * @param {string} table
+ * @param {Object} [opts] - options : { order: 'colonne' }
  * @returns {Promise<Array>}
  */
-async function sbLire(table) {
-  const rep = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*`, {
+async function sbLire(table, opts = {}) {
+  let qs = 'select=*';
+  if (opts.order) qs += `&order=${encodeURIComponent(opts.order)}`;
+  const rep = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${qs}`, {
     headers: _headers,
   });
   if (!rep.ok) throw new Error(`Erreur lecture ${table} : ${rep.status}`);
