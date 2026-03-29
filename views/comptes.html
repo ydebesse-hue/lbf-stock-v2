@@ -168,6 +168,14 @@
       padding: 10px 12px;
       text-align: left;
     }
+    thead th[data-col] {
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th[data-col]:hover { background: #333; }
+    thead th[data-col]::after { content: ' ⇅'; opacity: .4; font-size: 10px; }
+    thead th[data-col][data-tri="asc"]::after  { content: ' ▲'; opacity: 1; }
+    thead th[data-col][data-tri="desc"]::after { content: ' ▼'; opacity: 1; }
 
     tbody tr { border-bottom: 1px solid #eee; }
     tbody tr:last-child { border-bottom: none; }
@@ -388,6 +396,23 @@
       margin-bottom: 12px;
     }
 
+    /* ── Indicateur force mot de passe ──────────────────────── */
+    .mdp-hint {
+      list-style: none;
+      margin: 6px 0 0;
+      padding: 0;
+      display: none;
+    }
+    .mdp-hint.visible { display: block; }
+    .hint-item {
+      font-size: 11px;
+      padding: 1px 0;
+      color: #aaa;
+    }
+    .hint-item::before { content: '✗ '; }
+    .hint-item.ok { color: var(--vert); }
+    .hint-item.ok::before { content: '✓ '; }
+
     /* ── Erreur champ ────────────────────────────────────────── */
     .msg-erreur-modale {
       display: none;
@@ -463,11 +488,11 @@
     <table id="tableau-comptes">
       <thead>
         <tr>
-          <th>Identifiant</th>
-          <th>Nom complet</th>
+          <th data-col="identifiant" onclick="_trierPar('identifiant')">Identifiant</th>
+          <th data-col="nomComplet"  onclick="_trierPar('nomComplet')">Nom complet</th>
           <th>Email</th>
-          <th>Profil</th>
-          <th>Statut</th>
+          <th data-col="profil"      onclick="_trierPar('profil')">Profil</th>
+          <th data-col="actif"       onclick="_trierPar('actif')">Statut</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -521,9 +546,15 @@
     <div class="champ" id="mc-mdp-zone">
       <label for="mc-mdp" id="mc-mdp-label">Mot de passe *</label>
       <div class="champ-mdp-wrap">
-        <input type="password" id="mc-mdp" placeholder="Mot de passe">
+        <input type="password" id="mc-mdp" placeholder="Mot de passe" oninput="_majHintMdp(this.value)">
         <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp','mc-oeil')" id="mc-oeil">👁</button>
       </div>
+      <ul class="mdp-hint" id="mc-mdp-hint">
+        <li id="hint-len"    class="hint-item">Au moins 6 caractères</li>
+        <li id="hint-lettre" class="hint-item">Au moins une lettre</li>
+        <li id="hint-chiffre" class="hint-item">Au moins un chiffre</li>
+        <li id="hint-symbole" class="hint-item">Au moins un symbole (@, !, #…)</li>
+      </ul>
     </div>
 
     <div class="champ" id="mc-mdp2-zone">
@@ -589,9 +620,11 @@ const _session = Auth.requireAuth('administration');
 Auth.afficherInfosSession('#header-user', '#header-badge');
 
 // ── État local ───────────────────────────────────────────────
-let _users   = [];   // Tableau complet des comptes
-let _editId  = null; // ID du compte en cours de modification
-let _supId   = null; // ID du compte à supprimer
+let _users      = [];           // Tableau complet des comptes
+let _editId     = null;         // ID du compte en cours de modification
+let _supId      = null;         // ID du compte à supprimer
+let _triColonne = 'identifiant'; // Colonne de tri active
+let _triAsc     = true;          // true = A→Z / actif en premier
 
 // ── Clé localStorage ────────────────────────────────────────
 const CLE_USERS = 'lbf_users_modifs';
@@ -670,6 +703,19 @@ function _genIdUser() {
    ============================================================ */
 
 /**
+ * Change la colonne de tri (inverse si déjà active).
+ */
+function _trierPar(colonne) {
+  if (_triColonne === colonne) {
+    _triAsc = !_triAsc;
+  } else {
+    _triColonne = colonne;
+    _triAsc = true;
+  }
+  _rendreTableau();
+}
+
+/**
  * Rendu du tableau des comptes.
  */
 function _rendreTableau() {
@@ -691,6 +737,24 @@ function _rendreTableau() {
     if (statut === 'actif'   && !u.actif) return false;
     if (statut === 'inactif' &&  u.actif) return false;
     return true;
+  }).sort((a, b) => {
+    let va, vb;
+    if (_triColonne === 'actif') {
+      va = a.actif ? 0 : 1;
+      vb = b.actif ? 0 : 1;
+    } else {
+      va = (a[_triColonne] || '').toString().toLowerCase();
+      vb = (b[_triColonne] || '').toString().toLowerCase();
+    }
+    if (va < vb) return _triAsc ? -1 : 1;
+    if (va > vb) return _triAsc ?  1 : -1;
+    return 0;
+  });
+
+  // Mettre à jour les indicateurs dans les en-têtes
+  document.querySelectorAll('thead th[data-col]').forEach(th => {
+    const col = th.dataset.col;
+    th.dataset.tri = col === _triColonne ? (_triAsc ? 'asc' : 'desc') : '';
   });
 
   if (!usersAffiches.length) {
@@ -753,6 +817,7 @@ function ouvrirCreation() {
   document.getElementById('mc-actif').value       = 'true';
   document.getElementById('mc-mdp-zone').style.display  = '';
   document.getElementById('mc-mdp2-zone').style.display = '';
+  _majHintMdp('');
   document.getElementById('mc-mdp-label').textContent   = 'Mot de passe *';
   document.getElementById('m-compte-info').style.display = 'none';
   _cacherErreur('mc-erreur');
@@ -782,6 +847,7 @@ function ouvrirModification(id) {
   document.getElementById('mc-mdp-zone').style.display  = '';
   document.getElementById('mc-mdp2-zone').style.display = '';
   document.getElementById('mc-mdp-label').textContent   = 'Nouveau mot de passe (laisser vide pour ne pas modifier)';
+  _majHintMdp('');
 
   const info = document.getElementById('m-compte-info');
   info.textContent = 'Laissez les champs mot de passe vides pour le conserver.';
@@ -917,6 +983,19 @@ function _validerMdp(mdp) {
   if (!/[0-9]/.test(mdp))       return 'Le mot de passe doit contenir au moins un chiffre.';
   if (!/[^a-zA-Z0-9]/.test(mdp)) return 'Le mot de passe doit contenir au moins un symbole (ex : @, !, #…).';
   return null;
+}
+
+/**
+ * Met à jour les indicateurs de complexité en temps réel.
+ */
+function _majHintMdp(val) {
+  const hint = document.getElementById('mc-mdp-hint');
+  if (!hint) return;
+  hint.classList.toggle('visible', val.length > 0);
+  document.getElementById('hint-len')    .classList.toggle('ok', val.length >= 6);
+  document.getElementById('hint-lettre') .classList.toggle('ok', /[a-zA-Z]/.test(val));
+  document.getElementById('hint-chiffre').classList.toggle('ok', /[0-9]/.test(val));
+  document.getElementById('hint-symbole').classList.toggle('ok', /[^a-zA-Z0-9]/.test(val));
 }
 
 /* ============================================================
