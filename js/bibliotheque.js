@@ -75,7 +75,7 @@ function _rowsToStandard(rows) {
       map[r.famille] = { famille: r.famille, type: r.type, norme: r.norme, sections: [] };
     }
     const dims = typeof r.dims === 'string' ? JSON.parse(r.dims) : (r.dims || {});
-    map[r.famille].sections.push({ serie: r.serie, desig: r.desig, pml: r.pml, ...dims });
+    map[r.famille].sections.push({ serie: r.serie, desig: r.desig, pml: r.pml, fabrication: r.fabrication || null, ...dims });
   });
   const standard = ORDRE.map(f => map[f]).filter(Boolean);
   return { standard, custom: [] };
@@ -707,9 +707,15 @@ const MF_PHOTOS = {
   'UPE':       '../assets/profils/UPE.png',
   'L égale':   '../assets/profils/Le.png',
   'L inégale': '../assets/profils/Li.png',
-  'SHS':       '../assets/profils/SHS chaud.png',
-  'RHS':       '../assets/profils/RHS chaud.png',
-  'CHS':       '../assets/profils/CHS chaud.png'
+  'SHS':          '../assets/profils/SHS chaud.png',
+  'SHS chaud':    '../assets/profils/SHS chaud.png',
+  'SHS froid':    '../assets/profils/SHS froid.png',
+  'RHS':          '../assets/profils/RHS chaud.png',
+  'RHS chaud':    '../assets/profils/RHS chaud.png',
+  'RHS froid':    '../assets/profils/RHS froid.png',
+  'CHS':          '../assets/profils/CHS chaud.png',
+  'CHS chaud':    '../assets/profils/CHS chaud.png',
+  'CHS froid':    '../assets/profils/CHS froid.png'
 };
 
 /**
@@ -927,7 +933,7 @@ function biblioSelectionnerDesig(idxGlobal) {
 
   // Afficher l'image PNG selon la série (ne pas recharger si déjà affichée)
   const serie   = s.serie || MfEtat.famId;
-  const imgSrc  = MF_PHOTOS[serie] || null;
+  const imgSrc  = (s.fabrication ? MF_PHOTOS[`${serie} ${s.fabrication}`] : null) || MF_PHOTOS[serie] || null;
   const imgZone = m.querySelector('#mf-img-zone');
   const imgCur  = imgZone ? imgZone.querySelector('img') : null;
   if (imgZone && (!imgCur || imgCur.dataset.serie !== serie)) {
@@ -1038,19 +1044,26 @@ function _dimsSection(s, famille) {
       ];
     case 'Profilés creux':
       if (s.serie === 'CHS') return [
+        ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
         ['d — Diamètre ext.', (s.d  ||'—')+' mm'],
         ['e — Épaisseur',     (s.e  ||'—')+' mm'],
         ['Poids/ml',          (s.pml||'—')+' kg/m'],
       ];
       if (s.serie === 'RHS') return [
+        ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
         ['a — Hauteur',     (s.a  ||'—')+' mm'],
         ['b — Largeur',     (s.b  ||'—')+' mm'],
         ['e — Épaisseur',   (s.e  ||'—')+' mm'],
+        ['re — Rayon ext.', (s.re ||'—')+' mm'],
+        ['ri — Rayon int.', (s.ri ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
-      return [
+      return [ // SHS
+        ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
         ['a — Côté',        (s.a  ||'—')+' mm'],
         ['e — Épaisseur',   (s.e  ||'—')+' mm'],
+        ['re — Rayon ext.', (s.re ||'—')+' mm'],
+        ['ri — Rayon int.', (s.ri ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
     default:
@@ -1132,9 +1145,12 @@ function biblioDimsTableau(s) {
   }
   if (s.t  !== undefined) lignes.push(['t — Épaisseur',        `${s.t} mm`]);
   if (s.e  !== undefined) lignes.push(['e — Épaisseur',        `${s.e} mm`]);
+  if (s.re !== undefined) lignes.push(['re — Rayon ext.',      `${s.re} mm`]);
+  if (s.ri !== undefined) lignes.push(['ri — Rayon int.',      `${s.ri} mm`]);
   if (s.pml!== undefined) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
   if (s.A  !== undefined) lignes.push(['Section',              `${s.A} cm²`]);
   if (s.norme) lignes.push(['Norme', s.norme]);
+  if (s.fabrication) lignes.push(['Façonnage', s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
 
   return lignes.map(([label, val]) => `
     <div class="dim-row">
