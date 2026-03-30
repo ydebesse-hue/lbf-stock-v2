@@ -337,6 +337,22 @@ m.querySelector('#mf-desig-label').style.color  = 'var(--noir)';
     }
   }
 
+  // Toggle chaud/froid pour Profilés creux
+  const fabFiltre = m.querySelector('#mf-fab-filtre');
+  if (famJson === 'Profilés creux') {
+    MfEtat.fabrication = 'chaud';
+    MfEtat.serieActive = serie;
+    MfEtat.mode        = 'simple';
+    if (fabFiltre) { fabFiltre.innerHTML = _mfHtmlToggleFab('chaud'); fabFiltre.style.display = ''; }
+    // Image chaud par défaut
+    const imgZone = m.querySelector('#mf-img-zone');
+    const imgSrcChaud = MF_PHOTOS[`${serie} chaud`] || MF_PHOTOS[serie] || null;
+    if (imgZone && imgSrcChaud) imgZone.innerHTML = mfImageHtml(imgSrcChaud, `${serie} chaud`);
+  } else {
+    MfEtat.fabrication = null; MfEtat.serieActive = null; MfEtat.mode = 'simple';
+    if (fabFiltre) { fabFiltre.innerHTML = ''; fabFiltre.style.display = 'none'; }
+  }
+
   // Construire le tableau simple (sans accordéon, une seule série)
   mfRendreTableauSimple(m, sections, famJson, serie);
   m.classList.add('open');
@@ -424,8 +440,11 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
   thHtml += '</tr></thead>';
 
   // Corps tableau
+  const secsFiltrees = MfEtat.fabrication
+    ? sections.filter(s => !s.fabrication || s.fabrication === MfEtat.fabrication)
+    : sections;
   let tbHtml = '<tbody>';
-  sections.forEach((s, i) => {
+  secsFiltrees.forEach((s, i) => {
     const idxGlobal = MfEtat.sections.indexOf(s);
     tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
     tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
@@ -685,12 +704,62 @@ function biblioGetSectionsFiltrees() {
    MODALE FAMILLE — TABLEAU + SVG
 ══════════════════════════════════════════════ */
 
+/* ── Toggle Chaud / Froid ────────────────────────────────────────────── */
+
+function _mfHtmlToggleFab(actif) {
+  const btn = (fab, label) => {
+    const on = fab === actif;
+    const bg    = on ? (fab === 'chaud' ? '#c0392b' : '#2473a8') : '#eee';
+    const color = on ? 'white' : '#555';
+    const fw    = on ? 'bold' : 'normal';
+    return `<button class="mf-fab-btn" data-fab="${fab}" onclick="mfFiltrerFabrication('${fab}')"
+      style="background:${bg};color:${color};font-weight:${fw};border:none;padding:5px 14px;
+             border-radius:3px;font-size:12px;cursor:pointer;font-family:inherit;">${label}</button>`;
+  };
+  return `<div style="display:flex;gap:6px;align-items:center;">
+    <span style="font-size:11px;color:#888;margin-right:2px;">Façonnage :</span>
+    ${btn('chaud', 'À chaud (EN 10210)')}
+    ${btn('froid', 'À froid (EN 10219)')}
+  </div>`;
+}
+
+function mfFiltrerFabrication(fab) {
+  MfEtat.fabrication = fab;
+  const m = document.getElementById('m-famille');
+  if (!m) return;
+
+  // Mettre à jour les boutons
+  m.querySelector('#mf-fab-filtre').innerHTML = _mfHtmlToggleFab(fab);
+
+  // Mettre à jour l'image
+  if (MfEtat.serieActive) {
+    const imgSrc = MF_PHOTOS[`${MfEtat.serieActive} ${fab}`] || MF_PHOTOS[MfEtat.serieActive] || null;
+    const imgZone = m.querySelector('#mf-img-zone');
+    if (imgZone && imgSrc) imgZone.innerHTML = mfImageHtml(imgSrc, `${MfEtat.serieActive} ${fab}`);
+  }
+
+  // Reconstruire la liste filtrée
+  if (MfEtat.mode === 'simple') {
+    mfRendreTableauSimple(m, MfEtat.sections, MfEtat.famJson, MfEtat.serieActive);
+  } else {
+    mfRendreAccordeon(m, MfEtat.groupes, MfEtat.famJson);
+  }
+
+  // Réinitialiser le panneau de dimensions
+  m.querySelector('#mf-dims').innerHTML = '';
+  m.querySelector('#mf-desig-label').textContent = '← Sélectionnez une ligne';
+  m.querySelector('#mf-desig-label').style.color  = 'var(--rouge)';
+}
+
 /* État modale famille */
 const MfEtat = {
-  famId:    '',
-  famJson:  '',
-  sections: [],
-  groupes:  []   // [ { serie, sections[] } ]
+  famId:       '',
+  famJson:     '',
+  sections:    [],
+  groupes:     [],
+  fabrication: null,   // 'chaud' | 'froid' | null
+  serieActive: null,   // serie courante (mode simple uniquement)
+  mode:        'accordeon' // 'simple' | 'accordeon'
 };
 
 /* ── Mapping famId + série → chemin image PNG ────────────────────────── */
@@ -781,6 +850,18 @@ m.querySelector('#mf-norme').innerHTML =
   m.querySelector('#mf-desig-label').textContent = '← Sélectionnez une ligne';
   m.querySelector('#mf-img-zone').innerHTML      = '<span style="color:#ccc;font-size:12px;">—</span>';
 
+  // Toggle chaud/froid pour Profilés creux
+  const fabFiltreFam = m.querySelector('#mf-fab-filtre');
+  if (famJson === 'Profilés creux') {
+    MfEtat.fabrication = 'chaud';
+    MfEtat.serieActive = null;
+    MfEtat.mode        = 'accordeon';
+    if (fabFiltreFam) { fabFiltreFam.innerHTML = _mfHtmlToggleFab('chaud'); fabFiltreFam.style.display = ''; }
+  } else {
+    MfEtat.fabrication = null; MfEtat.serieActive = null; MfEtat.mode = 'accordeon';
+    if (fabFiltreFam) { fabFiltreFam.innerHTML = ''; fabFiltreFam.style.display = 'none'; }
+  }
+
   // Construire l'accordéon
   mfRendreAccordeon(m, groupes, famJson);
   m.classList.add('open');
@@ -826,7 +907,10 @@ function mfRendreAccordeon(m, groupes, famJson) {
     thHtml += '</tr></thead>';
 
     let tbHtml = '<tbody>';
-    grp.secs.forEach((s, si) => {
+    const secsFiltered = MfEtat.fabrication
+      ? grp.secs.filter(s => !s.fabrication || s.fabrication === MfEtat.fabrication)
+      : grp.secs;
+    secsFiltered.forEach((s, si) => {
       // Indice global dans toutes les sections
       const idxGlobal = MfEtat.sections.indexOf(s);
       tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
@@ -932,14 +1016,15 @@ function biblioSelectionnerDesig(idxGlobal) {
   m.querySelector('#mf-desig-label').textContent = 'Dimensions normalisées';
   m.querySelector('#mf-desig-label').style.color = 'var(--noir)';
 
-  // Afficher l'image PNG selon la série (ne pas recharger si déjà affichée)
+  // Afficher l'image PNG selon la série + fabrication
   const serie   = s.serie || MfEtat.famId;
-  const imgSrc  = (s.fabrication ? MF_PHOTOS[`${serie} ${s.fabrication}`] : null) || MF_PHOTOS[serie] || null;
+  const imgKey  = s.fabrication ? `${serie} ${s.fabrication}` : serie;
+  const imgSrc  = MF_PHOTOS[imgKey] || MF_PHOTOS[serie] || null;
   const imgZone = m.querySelector('#mf-img-zone');
   const imgCur  = imgZone ? imgZone.querySelector('img') : null;
-  if (imgZone && (!imgCur || imgCur.dataset.serie !== serie)) {
+  if (imgZone && (!imgCur || imgCur.dataset.serie !== imgKey)) {
     if (imgSrc) {
-      imgZone.innerHTML = mfImageHtml(imgSrc, serie);
+      imgZone.innerHTML = mfImageHtml(imgSrc, imgKey);
     } else {
       imgZone.innerHTML = `<div style="padding:10px;">${biblioSvgCote({ famille: MfEtat.famJson, ...s }, 180, 160)}</div>`;
     }
