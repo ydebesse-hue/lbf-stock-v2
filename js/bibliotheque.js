@@ -415,7 +415,7 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
   const accordeon = m.querySelector('#mf-accordeon');
   if (!accordeon) return;
 
-  const colonnes = _colonnesFamille(famJson);
+  const colonnes = _colonnesFamille(famJson, serie);
 
   // En-tête tableau
   let thHtml = '<thead><tr>';
@@ -430,7 +430,8 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
     tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
     tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
     colonnes.forEach(c => {
-      tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${s[c.key] !== undefined ? s[c.key] : '—'}</td>`;
+      const val = c.fmt ? c.fmt(s[c.key]) : (s[c.key] !== undefined ? s[c.key] : '—');
+      tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val}</td>`;
     });
     tbHtml += '</tr>';
   });
@@ -797,9 +798,8 @@ function mfRendreAccordeon(m, groupes, famJson) {
   if (!conteneur) return;
   conteneur.innerHTML = '';
 
-  const colonnes = _colonnesFamille(famJson);
-
   groupes.forEach((grp, gi) => {
+    const colonnes = _colonnesFamille(famJson, grp.serie);
     const groupeId = `mfg-${gi}`;
 
     // En-tête groupe
@@ -832,7 +832,8 @@ function mfRendreAccordeon(m, groupes, famJson) {
       tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
       tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
       colonnes.forEach(c => {
-        tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${s[c.key] !== undefined ? s[c.key] : '—'}</td>`;
+        const val = c.fmt ? c.fmt(s[c.key]) : (s[c.key] !== undefined ? s[c.key] : '—');
+        tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val}</td>`;
       });
       tbHtml += '</tr>';
     });
@@ -955,9 +956,37 @@ function biblioSelectionnerDesig(idxGlobal) {
 }
 
 /**
- * Retourne les colonnes à afficher selon la famille
+ * Retourne les colonnes à afficher selon la famille (et la série pour Profilés creux)
  */
-function _colonnesFamille(famille) {
+function _colonnesFamille(famille, serie) {
+  if (famille === 'Profilés creux') {
+    const fab = { key:'fabrication', label:'Façonnage',
+      fmt: v => v === 'chaud' ? '<span style="color:#c0392b;font-size:11px;">⬛ Chaud</span>'
+               : v === 'froid' ? '<span style="color:#2980b9;font-size:11px;">⬜ Froid</span>' : '—' };
+    if (serie === 'CHS') return [
+      { key:'d',   label:'d mm'  },
+      { key:'e',   label:'e mm'  },
+      { key:'pml', label:'kg/m'  },
+    ];
+    if (serie === 'RHS') return [
+      fab,
+      { key:'a',   label:'h mm'  },
+      { key:'b',   label:'b mm'  },
+      { key:'e',   label:'e mm'  },
+      { key:'re',  label:'re mm' },
+      { key:'ri',  label:'ri mm' },
+      { key:'pml', label:'kg/m'  },
+    ];
+    // SHS (et fallback)
+    return [
+      fab,
+      { key:'a',   label:'a mm'  },
+      { key:'e',   label:'e mm'  },
+      { key:'re',  label:'re mm' },
+      { key:'ri',  label:'ri mm' },
+      { key:'pml', label:'kg/m'  },
+    ];
+  }
   switch (famille) {
     case 'Profilés I':
       return [
