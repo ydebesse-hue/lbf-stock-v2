@@ -423,59 +423,52 @@ const Stock = (() => {
     const modif = Auth.hasRight('can_edit');
 
     const cols = [
-      { col: 'id',          label: 'ID'               },
-      { col: null,          label: 'Code'             },
-      { col: 'type',        label: 'Type'             },
-      { col: 'designation', label: 'Désignation'      },
-      { col: 'longueur',    label: 'Longueur (m)'     },
-      { col: 'poids',       label: 'Poids (kg)'       },
-      { col: 'lieu',        label: 'Stockage'         },
-      { col: 'date',        label: 'Date ajout'       },
-      { col: 'chantier',    label: 'Chantier origine' },
-      { col: 'dispo',       label: 'Statut'           },
+      { col: 'id',          label: 'ID'                 },
+      { col: 'type',        label: 'Type'               },
+      { col: 'designation', label: 'Désignation'        },
+      { col: 'longueur',    label: 'Longueur restante (m)' },
+      { col: 'poids',       label: 'Poids (kg)'         },
+      { col: 'dispo',       label: 'Statut'             },
+      { col: 'chantier',    label: 'Chantier'           },
+      { col: 'lieu',        label: 'Stockage'           },
     ];
 
     let h = '<table><thead><tr>';
     cols.forEach(c => {
-      if (!c.col) { h += `<th>${c.label}</th>`; return; }
       const actif = _tri.col === c.col;
       const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
       h += `<th data-col="${c.col}" class="${actif ? 'tri-actif' : ''}">${c.label} <span class="tri-ind">${ind}</span></th>`;
     });
-    h += '<th>Action</th></tr></thead><tbody>';
+    h += '<th>Historique</th><th>Actions</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="11" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
+      h += `<tr><td colspan="10" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
     } else {
       data.forEach(b => {
         const attente = b.statut === 'en_attente';
         const poids   = b.poids_barre_kg
           ? b.poids_barre_kg.toFixed(1)
-          : (b.poids_ml * b.longueur_m).toFixed(1);
-        const dateAjout = b.date_ajout
-          ? new Date(b.date_ajout).toLocaleDateString('fr-FR')
+          : (b.poids_ml && b.longueur_m ? (b.poids_ml * b.longueur_m).toFixed(1) : '—');
+
+        // Chantier : affectation si affecté, sinon —
+        const chantierAff = b.disponibilite === 'affecte' && b.chantier_affectation
+          ? _e(b.chantier_affectation)
           : '—';
-        const codeAff = b.code_barre
-          ? `<span class="chip-code">BAR-${_e(b.code_barre)}</span>`
-          : '<span style="color:#bbb;font-size:11px">—</span>';
 
         h += `<tr${attente ? ' class="ligne-attente"' : ''}>`;
         h += `<td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>`;
-        h += `<td>${codeAff}</td>`;
         h += `<td><strong>${_e(b.section_type)}</strong></td>`;
         h += `<td>${_e(b.designation)}
           <button class="btn-inline" onclick="Stock.ouvrirFicheSection('${_e(b.section_type)}','${_e(b.designation)}')" title="Fiche section">🔍</button>
         </td>`;
         h += `<td>${b.longueur_m.toFixed(2)}</td>`;
         h += `<td>${poids}</td>`;
+        h += `<td>${_badgeDispo(b)}</td>`;
+        h += `<td>${chantierAff}</td>`;
         h += `<td>${_e(b.lieu_stockage)}
           <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(b.lieu_stockage)}')" title="Voir sur le plan">📍</button>
         </td>`;
-        h += `<td>${dateAjout}</td>`;
-        h += `<td>${_e(b.chantier_origine)}${b.chantier_affectation
-          ? ` <span class="chip-chantier" title="Affecté à : ${_e(b.chantier_affectation)}">→ ${_e(b.chantier_affectation)}</span>`
-          : ''}</td>`;
-        h += `<td>${_badgeDispo(b)}</td>`;
+        h += `<td class="td-actions"><button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button></td>`;
         h += `<td class="td-actions">${_actionsLigneProfil(b, modif, admin)}</td>`;
         h += `</tr>`;
       });
@@ -641,9 +634,6 @@ const Stock = (() => {
       const dis = b.disponibilite !== 'disponible' ? ' disabled' : '';
       h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirDemande('${b.id}')" title="Demander l'attribution">Demander</button>`;
     }
-
-    // Bouton historique — accessible à tous les profils
-    h += ` <button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button>`;
 
     return h;
   }
