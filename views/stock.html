@@ -662,6 +662,73 @@
     .zone-motif {
       margin-top: 10px;
     }
+    /* ── HISTORIQUE BARRE ─────────────────────────────────────── */
+
+    .hist-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .hist-table th {
+      background: var(--noir);
+      color: white;
+      padding: 7px 10px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      white-space: nowrap;
+    }
+    .hist-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--gris-clair);
+      vertical-align: middle;
+    }
+    .hist-table tr:last-child td { border-bottom: none; }
+    .hist-table tr:hover td { background: #f7f7f7; }
+
+    /* Badges type d'opération */
+    .badge-operation {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .badge-op-entree     { background: #e8f5e9; color: #2e7d32; }
+    .badge-op-affectation{ background: #fff3e0; color: #e65100; }
+    .badge-op-retour     { background: #e3f2fd; color: #1565c0; }
+    .badge-op-archivage  { background: #f3e5f5; color: #6a1b9a; }
+    .badge-op-validation { background: #f1f8e9; color: #558b2f; }
+
+    /* Chip code barre physique */
+    .chip-code {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 11px;
+      font-family: monospace;
+      letter-spacing: 1px;
+      font-weight: 700;
+    }
+    .chip-code-arc { background: #6a1b9a; }
+
+    /* Bouton historique dans les lignes du tableau */
+    .btn-historique {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      padding: 2px 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-historique:hover { background: #e0e0e0; }
+
     /* ── RESPONSIVE ───────────────────────────────────────────── */
     @media (max-width: 900px) { .input-recherche { width: 150px; } }
 
@@ -725,6 +792,7 @@
   <div class="sous-onglets">
     <button class="sous-onglet actif" data-onglet="profils">Profilés</button>
     <button class="sous-onglet"       data-onglet="toles">Tôles</button>
+    <button class="sous-onglet"       data-onglet="archivees">Archivées</button>
   </div>
 
   <!-- ── TOOLBAR PROFILÉS ─────────────────────────────────────── -->
@@ -781,6 +849,22 @@
     <div class="toolbar-sep"></div>
     <button id="btn-reset-toles" class="btn-action btn-gris" title="Réinitialiser">✕ Réinitialiser</button>
     <input id="t-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
+  </div>
+
+  <!-- ── TOOLBAR ARCHIVÉES ────────────────────────────────────── -->
+  <div class="toolbar" id="toolbar-archivees" style="display:none">
+    <span class="toolbar-label" style="margin-left:4px">Filtrer :</span>
+
+    <select id="a-type"  class="sel-filtre" title="Type de section">
+      <option value="">Tous types</option>
+    </select>
+    <select id="a-desig" class="sel-filtre" title="Désignation">
+      <option value="">Toutes désignations</option>
+    </select>
+
+    <div class="toolbar-sep"></div>
+    <button id="btn-reset-archivees" class="btn-action btn-gris" title="Réinitialiser">✕ Réinitialiser</button>
+    <input id="a-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
   </div>
 
   <!-- ── TABLEAU PRINCIPAL ─────────────────────────────────────── -->
@@ -1475,6 +1559,26 @@
     .zone-active + text { fill: white !important; }
     .zone-inactive { opacity: 0.35; }
   </style>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE — HISTORIQUE BARRE
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-historique-barre" class="modale-bg" role="dialog" aria-modal="true"
+       aria-label="Historique de la barre">
+    <div class="modale modale-lg">
+      <div class="modale-titre" id="hist-titre">Historique — …</div>
+
+      <div id="hist-contenu" style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+        <div style="padding:24px; text-align:center; color:#aaa; font-style:italic">
+          Chargement…
+        </div>
+      </div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris btn-fermer-hist">Fermer</button>
+      </div>
+    </div>
+  </div>
 
   <script src="../js/supabase.js"></script>
   <script src="../auth/auth.js"></script>

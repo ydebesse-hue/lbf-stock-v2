@@ -117,13 +117,88 @@ async function sbUpsert(table, data) {
 }
 
 // ═══════════════════════════════════════════════════════
+//  HISTORIQUE DES BARRES
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Lit l'historique d'une barre identifiée par son id (ex. "BAR-0001"),
+ * trié par date d'opération croissante.
+ * @param {string} barreId
+ * @returns {Promise<Array>}
+ */
+async function sbLireHistoriqueParBarre(barreId) {
+  const rep = await fetch(
+    `${SUPABASE_URL}/rest/v1/lbf_barres_historique?barre_id=eq.${encodeURIComponent(barreId)}&order=date_operation.asc`,
+    { headers: _headers }
+  );
+  if (!rep.ok) throw new Error(`Erreur lecture historique ${barreId} : ${rep.status}`);
+  return rep.json();
+}
+
+/**
+ * Insère une entrée dans la table lbf_barres_historique.
+ * @param {Object} data — { barre_id, type_operation, longueur_avant_m, longueur_apres_m,
+ *                          chantier, operateur, valide_par, commentaire }
+ * @returns {Promise<Object>}
+ */
+async function sbInsererHistorique(data) {
+  const rep = await fetch(`${SUPABASE_URL}/rest/v1/lbf_barres_historique`, {
+    method:  'POST',
+    headers: _headers,
+    body:    JSON.stringify(data),
+  });
+  if (!rep.ok) {
+    const err = await rep.text();
+    throw new Error(`Erreur insertion historique : ${err}`);
+  }
+  const result = await rep.json();
+  return Array.isArray(result) ? result[0] : result;
+}
+
+/**
+ * Génère le prochain code barre disponible.
+ * Format alphanumérique base 36, 4 caractères majuscules :
+ *   "0001" → "0002" → … → "0009" → "000A" → … → "000Z" → "0010" → …
+ * @returns {Promise<string>}
+ */
+async function genererCodeBarre() {
+  let codes = [];
+  try {
+    // Récupérer tous les codes existants depuis la table stock
+    const rep = await fetch(
+      `${SUPABASE_URL}/rest/v1/stock?select=code_barre&code_barre=not.is.null`,
+      { headers: _headers }
+    );
+    if (rep.ok) {
+      const items = await rep.json();
+      codes = items.map(i => i.code_barre).filter(Boolean);
+    }
+  } catch (e) {
+    console.warn('[genererCodeBarre] Impossible de lire les codes existants :', e);
+  }
+
+  // Trouver la valeur maximale en base 36
+  let max = 0;
+  codes.forEach(code => {
+    const val = parseInt(code, 36);
+    if (!isNaN(val) && val > max) max = val;
+  });
+
+  // Incrémenter et formater sur 4 caractères base 36 en majuscules
+  return (max + 1).toString(36).toUpperCase().padStart(4, '0');
+}
+
+// ═══════════════════════════════════════════════════════
 //  EXPORT
 // ═══════════════════════════════════════════════════════
 
 window.SB = {
-  lire:        sbLire,
-  inserer:     sbInserer,
-  mettreAJour: sbMettreAJour,
-  supprimer:   sbSupprimer,
-  upsert:      sbUpsert,
+  lire:                   sbLire,
+  inserer:                sbInserer,
+  mettreAJour:            sbMettreAJour,
+  supprimer:              sbSupprimer,
+  upsert:                 sbUpsert,
+  lireHistoriqueParBarre: sbLireHistoriqueParBarre,
+  insererHistorique:      sbInsererHistorique,
+  genererCodeBarre:       genererCodeBarre,
 };

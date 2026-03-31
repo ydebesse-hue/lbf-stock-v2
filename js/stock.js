@@ -262,22 +262,35 @@ const Stock = (() => {
     const profil  = session ? session.profil : 'consultation';
     const voirRefus = (profil === 'administration');
 
-    const source = _data.barres.filter(b => {
-      // Masquer les refusés pour Consultation et Gestion
-      if (!voirRefus && b.statut === 'refuse') return false;
-      return _onglet === 'profils' ? b.categorie === 'profil' : b.categorie === 'tole';
-    });
+    let source;
+    if (_onglet === 'archivees') {
+      // Onglet archivées : uniquement les profilés avec statut archivee
+      source = _data.barres.filter(b => b.categorie === 'profil' && b.statut === 'archivee');
+    } else {
+      // Onglets actifs : exclure les archivées et masquer les refusés selon le profil
+      source = _data.barres.filter(b => {
+        if (b.statut === 'archivee') return false;
+        if (!voirRefus && b.statut === 'refuse') return false;
+        return _onglet === 'profils' ? b.categorie === 'profil' : b.categorie === 'tole';
+      });
+    }
 
-    let resultats = _onglet === 'profils'
-      ? _filtrerProfils(source)
-      : _filtrerToles(source);
+    let resultats;
+    if (_onglet === 'profils') {
+      resultats = _filtrerProfils(source);
+    } else if (_onglet === 'toles') {
+      resultats = _filtrerToles(source);
+    } else {
+      resultats = _filtrerArchivees(source);
+    }
 
     if (_tri.col) resultats = _trier(resultats);
 
     _rendrTableau(resultats);
     _majCompteur(resultats.length, source.length);
 
-    if (_onglet === 'profils') _peuplerDesignations(_val('p-type'));
+    if (_onglet === 'profils')   _peuplerDesignations(_val('p-type'));
+    if (_onglet === 'archivees') _peuplerDesignationsArchivees(_val('a-type'));
   }
 
   function _filtrerProfils(source) {
@@ -318,6 +331,28 @@ const Stock = (() => {
       if (texte) {
         const h = [b.epaisseur_mm, b.largeur_mm, b.longueur_mm,
           b.chantier_origine, b.lieu_stockage, b.commentaire, b.id].join(' ').toLowerCase();
+        if (!h.includes(texte)) return false;
+      }
+      return true;
+    });
+  }
+
+  /**
+   * Filtre les barres archivées selon les filtres de l'onglet "Archivées"
+   * @param {Array} source — barres avec statut archivee
+   * @returns {Array}
+   */
+  function _filtrerArchivees(source) {
+    const type  = _val('a-type');
+    const desig = _val('a-desig');
+    const texte = _val('a-recherche').toLowerCase().trim();
+
+    return source.filter(b => {
+      if (type  && b.section_type !== type)  return false;
+      if (desig && b.designation  !== desig) return false;
+      if (texte) {
+        const h = [b.section_type, b.designation, b.code_barre,
+          b.id, b.chantier_origine, b.commentaire].join(' ').toLowerCase();
         if (!h.includes(texte)) return false;
       }
       return true;
@@ -371,9 +406,12 @@ const Stock = (() => {
     const zone = document.getElementById('tableau-stock');
     if (!zone) return;
 
-    zone.innerHTML = _onglet === 'profils'
-      ? _htmlProfils(data)
-      : _htmlToles(data);
+    let html;
+    if (_onglet === 'profils')        html = _htmlProfils(data);
+    else if (_onglet === 'toles')     html = _htmlToles(data);
+    else                              html = _htmlArchivees(data);
+
+    zone.innerHTML = html;
 
     zone.querySelectorAll('thead th[data-col]').forEach(th => {
       th.addEventListener('click', () => _clicTri(th.dataset.col));
@@ -386,6 +424,7 @@ const Stock = (() => {
 
     const cols = [
       { col: 'id',          label: 'ID'               },
+      { col: null,          label: 'Code'             },
       { col: 'type',        label: 'Type'             },
       { col: 'designation', label: 'Désignation'      },
       { col: 'longueur',    label: 'Longueur (m)'     },
@@ -398,6 +437,7 @@ const Stock = (() => {
 
     let h = '<table><thead><tr>';
     cols.forEach(c => {
+      if (!c.col) { h += `<th>${c.label}</th>`; return; }
       const actif = _tri.col === c.col;
       const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
       h += `<th data-col="${c.col}" class="${actif ? 'tri-actif' : ''}">${c.label} <span class="tri-ind">${ind}</span></th>`;
@@ -405,7 +445,7 @@ const Stock = (() => {
     h += '<th>Action</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="10" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
+      h += `<tr><td colspan="11" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
     } else {
       data.forEach(b => {
         const attente = b.statut === 'en_attente';
@@ -415,9 +455,13 @@ const Stock = (() => {
         const dateAjout = b.date_ajout
           ? new Date(b.date_ajout).toLocaleDateString('fr-FR')
           : '—';
+        const codeAff = b.code_barre
+          ? `<span class="chip-code">BAR-${_e(b.code_barre)}</span>`
+          : '<span style="color:#bbb;font-size:11px">—</span>';
 
         h += `<tr${attente ? ' class="ligne-attente"' : ''}>`;
         h += `<td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>`;
+        h += `<td>${codeAff}</td>`;
         h += `<td><strong>${_e(b.section_type)}</strong></td>`;
         h += `<td>${_e(b.designation)}
           <button class="btn-inline" onclick="Stock.ouvrirFicheSection('${_e(b.section_type)}','${_e(b.designation)}')" title="Fiche section">🔍</button>
@@ -433,6 +477,67 @@ const Stock = (() => {
           : ''}</td>`;
         h += `<td>${_badgeDispo(b)}</td>`;
         h += `<td class="td-actions">${_actionsLigneProfil(b, modif, admin)}</td>`;
+        h += `</tr>`;
+      });
+    }
+
+    return h + '</tbody></table>';
+  }
+
+  /**
+   * Génère le HTML du tableau des barres archivées (lecture seule)
+   * @param {Array} data
+   * @returns {string}
+   */
+  function _htmlArchivees(data) {
+    const cols = [
+      { col: 'id',          label: 'ID'               },
+      { col: null,          label: 'Code'             },
+      { col: 'type',        label: 'Type'             },
+      { col: 'designation', label: 'Désignation'      },
+      { col: 'longueur',    label: 'Longueur (m)'     },
+      { col: 'poids',       label: 'Poids (kg)'       },
+      { col: 'lieu',        label: 'Stockage'         },
+      { col: 'date',        label: 'Date ajout'       },
+      { col: 'chantier',    label: 'Chantier origine' },
+    ];
+
+    let h = '<table><thead><tr>';
+    cols.forEach(c => {
+      if (!c.col) { h += `<th>${c.label}</th>`; return; }
+      const actif = _tri.col === c.col;
+      const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
+      h += `<th data-col="${c.col}" class="${actif ? 'tri-actif' : ''}">${c.label} <span class="tri-ind">${ind}</span></th>`;
+    });
+    h += '<th>Historique</th></tr></thead><tbody>';
+
+    if (!data.length) {
+      h += `<tr><td colspan="10" class="vide">Aucune barre archivée.</td></tr>`;
+    } else {
+      data.forEach(b => {
+        const poids = b.poids_barre_kg
+          ? b.poids_barre_kg.toFixed(1)
+          : (b.poids_ml && b.longueur_m ? (b.poids_ml * b.longueur_m).toFixed(1) : '—');
+        const dateAjout = b.date_ajout
+          ? new Date(b.date_ajout).toLocaleDateString('fr-FR')
+          : '—';
+        const codeAff = b.code_barre
+          ? `<span class="chip-code chip-code-arc">ARC-${_e(b.code_barre)}</span>`
+          : '<span style="color:#bbb;font-size:11px">—</span>';
+
+        h += `<tr>`;
+        h += `<td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>`;
+        h += `<td>${codeAff}</td>`;
+        h += `<td><strong>${_e(b.section_type)}</strong></td>`;
+        h += `<td>${_e(b.designation)}</td>`;
+        h += `<td>${typeof b.longueur_m === 'number' ? b.longueur_m.toFixed(2) : '—'}</td>`;
+        h += `<td>${poids}</td>`;
+        h += `<td>${_e(b.lieu_stockage || '—')}</td>`;
+        h += `<td>${dateAjout}</td>`;
+        h += `<td>${_e(b.chantier_origine || '—')}</td>`;
+        h += `<td class="td-actions">
+          <button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button>
+        </td>`;
         h += `</tr>`;
       });
     }
@@ -537,6 +642,9 @@ const Stock = (() => {
       h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirDemande('${b.id}')" title="Demander l'attribution">Demander</button>`;
     }
 
+    // Bouton historique — accessible à tous les profils
+    h += ` <button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button>`;
+
     return h;
   }
 
@@ -571,8 +679,10 @@ const Stock = (() => {
      ────────────────────────────────────────────────────────────── */
 
   function _peuplerFiltres() {
-    const profils = _data.barres.filter(b => b.categorie === 'profil');
-    const toles   = _data.barres.filter(b => b.categorie === 'tole');
+    // Exclure les archivées des onglets actifs
+    const profils   = _data.barres.filter(b => b.categorie === 'profil' && b.statut !== 'archivee');
+    const toles     = _data.barres.filter(b => b.categorie === 'tole'   && b.statut !== 'archivee');
+    const archivees = _data.barres.filter(b => b.categorie === 'profil' && b.statut === 'archivee');
 
     _remplirSelect('p-type',
       [...new Set(profils.map(b => b.section_type))].sort()
@@ -593,6 +703,10 @@ const Stock = (() => {
     _remplirSelect('t-lieu',
       [...new Set(toles.map(b => b.lieu_stockage))].sort()
     );
+    // Filtre type pour l'onglet archivées
+    _remplirSelect('a-type',
+      [...new Set(archivees.map(b => b.section_type))].sort()
+    );
   }
 
   function _peuplerDesignations(type) {
@@ -604,7 +718,35 @@ const Stock = (() => {
 
     const desigs = [...new Set(
       _data.barres
-        .filter(b => b.categorie === 'profil' && b.section_type === type)
+        .filter(b => b.categorie === 'profil' && b.statut !== 'archivee' && b.section_type === type)
+        .map(b => b.designation)
+    )].sort((a, b) => {
+      const na = parseFloat(a), nb = parseFloat(b);
+      return isNaN(na) ? a.localeCompare(b) : na - nb;
+    });
+
+    desigs.forEach(d => {
+      const o = document.createElement('option');
+      o.value = d; o.textContent = d;
+      if (d === valAct) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  /**
+   * Peuple la cascade désignation de l'onglet Archivées selon le type sélectionné
+   * @param {string} type — valeur du select a-type
+   */
+  function _peuplerDesignationsArchivees(type) {
+    const sel = document.getElementById('a-desig');
+    if (!sel) return;
+    const valAct = sel.value;
+    sel.innerHTML = '<option value="">Toutes désignations</option>';
+    if (!type) return;
+
+    const desigs = [...new Set(
+      _data.barres
+        .filter(b => b.categorie === 'profil' && b.statut === 'archivee' && b.section_type === type)
         .map(b => b.designation)
     )].sort((a, b) => {
       const na = parseFloat(a), nb = parseFloat(b);
@@ -639,6 +781,7 @@ const Stock = (() => {
      ────────────────────────────────────────────────────────────── */
 
   function _basculerOnglet(onglet) {
+    const precedent = _onglet;
     _onglet = onglet;
     _tri    = { col: null, ordre: 'asc' };
 
@@ -648,23 +791,27 @@ const Stock = (() => {
 
     const tpro = document.getElementById('toolbar-profils');
     const ttol = document.getElementById('toolbar-toles');
-    if (tpro) tpro.style.display = onglet === 'profils' ? '' : 'none';
-    if (ttol) ttol.style.display = onglet === 'toles'   ? '' : 'none';
+    const tarc = document.getElementById('toolbar-archivees');
+    if (tpro) tpro.style.display = onglet === 'profils'   ? '' : 'none';
+    if (ttol) ttol.style.display = onglet === 'toles'     ? '' : 'none';
+    if (tarc) tarc.style.display = onglet === 'archivees' ? '' : 'none';
 
     // Titre dynamique selon l'onglet
-    document.title = onglet === 'profils'
-      ? 'Stock Profilés — LBF'
-      : 'Stock Tôles — LBF';
+    const titres = { profils: 'Stock Profilés — LBF', toles: 'Stock Tôles — LBF', archivees: 'Stock Archivées — LBF' };
+    document.title = titres[onglet] || 'Stock — LBF';
 
-    _resetFiltres(onglet === 'profils' ? 'toles' : 'profils');
+    // Réinitialiser les filtres de l'onglet quitté
+    if (precedent !== onglet) _resetFiltres(precedent);
     _filtrer();
   }
 
   function _resetFiltres(onglet) {
-    const ids = onglet === 'profils'
-      ? ['p-type','p-desig','p-chantier','p-lieu','p-dispo','p-recherche']
-      : ['t-epaisseur','t-chantier','t-lieu','t-dispo','t-recherche'];
-    ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const map = {
+      profils:   ['p-type','p-desig','p-chantier','p-lieu','p-dispo','p-recherche'],
+      toles:     ['t-epaisseur','t-chantier','t-lieu','t-dispo','t-recherche'],
+      archivees: ['a-type','a-desig','a-recherche'],
+    };
+    (map[onglet] || []).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   }
 
 
@@ -675,10 +822,13 @@ const Stock = (() => {
   function _majCompteur(nb, total) {
     const z = document.getElementById('stock-compteur');
     if (!z) return;
-    const s = _onglet === 'profils' ? ['profilé','profilés'] : ['tôle','tôles'];
+    let s;
+    if (_onglet === 'profils')        s = ['profilé', 'profilés'];
+    else if (_onglet === 'toles')     s = ['tôle', 'tôles'];
+    else                              s = ['barre archivée', 'barres archivées'];
     z.textContent = nb === total
       ? `${nb} ${nb > 1 ? s[1] : s[0]}`
-      : `${nb} ${nb > 1 ? s[1] : s[0]} affichés sur ${total}`;
+      : `${nb} ${nb > 1 ? s[1] : s[0]} affichées sur ${total}`;
   }
 
   function _majAlerteAttente() {
@@ -724,11 +874,24 @@ const Stock = (() => {
     const trech = document.getElementById('t-recherche');
     if (trech) trech.addEventListener('input', _filtrer);
 
+    // Filtres archivées — cascade type → désignation
+    const selAType = document.getElementById('a-type');
+    if (selAType) selAType.addEventListener('change', () => {
+      _peuplerDesignationsArchivees(selAType.value);
+      _filtrer();
+    });
+    const selADesig = document.getElementById('a-desig');
+    if (selADesig) selADesig.addEventListener('change', _filtrer);
+    const arech = document.getElementById('a-recherche');
+    if (arech) arech.addEventListener('input', _filtrer);
+
     // Reset filtres
     const rp = document.getElementById('btn-reset-profils');
     if (rp) rp.addEventListener('click', () => { _resetFiltres('profils'); _filtrer(); });
     const rt = document.getElementById('btn-reset-toles');
     if (rt) rt.addEventListener('click', () => { _resetFiltres('toles'); _filtrer(); });
+    const ra = document.getElementById('btn-reset-archivees');
+    if (ra) ra.addEventListener('click', () => { _resetFiltres('archivees'); _filtrer(); });
 
     // Boutons ajout → ouvrir modales
     const btnProfil = document.getElementById('btn-ajout-profil');
@@ -855,6 +1018,13 @@ const Stock = (() => {
       const btnAnnuler   = mSup.querySelector('.btn-annuler-sup');
       if (btnConfirmer) btnConfirmer.addEventListener('click', _confirmerSuppression);
       if (btnAnnuler)   btnAnnuler.addEventListener('click',   () => _fermerModale('m-supprimer'));
+    }
+
+    // ── Modale historique barre ───────────────────────────────
+    const mHist = document.getElementById('m-historique-barre');
+    if (mHist) {
+      const btnFermer = mHist.querySelector('.btn-fermer-hist');
+      if (btnFermer) btnFermer.addEventListener('click', () => _fermerModale('m-historique-barre'));
     }
   }
 
@@ -1086,6 +1256,14 @@ const Stock = (() => {
     // Utiliser l'ID déjà affiché à l'opérateur — sinon en générer un nouveau
     const nouvelleId = m.dataset.idPrevu || _genererIdBarre();
 
+    // Générer le code barre alphanumérique (non-bloquant)
+    let codeBarre = null;
+    try {
+      codeBarre = await window.SB.genererCodeBarre();
+    } catch(e) {
+      console.warn('[Stock] Impossible de générer le code barre :', e);
+    }
+
     /** @type {Object} Structure identique à stock.json */
     const barre = {
       id: nouvelleId,
@@ -1104,10 +1282,21 @@ const Stock = (() => {
       ajoute_par: session?.identifiant || 'inconnu',
       valide_par: isAdmin ? session?.identifiant : null,
       date_validation: isAdmin ? _dateAujourdhui() : null,
-      commentaire
+      commentaire,
+      code_barre: codeBarre,
     };
 
     await _persisterElement(barre);
+
+    // Enregistrer l'entrée dans l'historique
+    await _enregistrerHistorique(
+      nouvelleId, 'ENTREE',
+      null, longueur,
+      chantier || null,
+      session?.identifiant || null,
+      null, commentaire || null
+    );
+
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
     _filtrer();
@@ -1349,14 +1538,18 @@ const Stock = (() => {
       const affectation = m.querySelector('#mod-affectation')?.value?.trim() || null;
       const commentaire = m.querySelector('#mod-commentaire')?.value?.trim() || '';
 
-      if (!type)   return _signalerErreur(m, '#mod-type',    'Le type est obligatoire');
-      if (!desig)  return _signalerErreur(m, '#mod-desig',   'La désignation est obligatoire');
-      if (!longueur || longueur <= 0) return _signalerErreur(m, '#mod-longueur', 'La longueur est obligatoire');
+      if (!type)  return _signalerErreur(m, '#mod-type',  'Le type est obligatoire');
+      if (!desig) return _signalerErreur(m, '#mod-desig', 'La désignation est obligatoire');
+      // La longueur 0 est autorisée (déclenchera un archivage)
+      if (isNaN(longueur) || longueur < 0) return _signalerErreur(m, '#mod-longueur', 'La longueur est obligatoire');
 
       const poidsml   = parseFloat(m.dataset.poidsml) || original.poids_ml || 0;
       const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : original.poids_barre_kg;
 
-      /** @type {Object} Barre modifiée — Gestion repasse en en_attente */
+      // Si longueur = 0 → archivage direct (bypass du workflow en_attente)
+      const estArchivage = longueur === 0;
+
+      /** @type {Object} Barre modifiée — Gestion repasse en en_attente sauf archivage */
       const modif = {
         ...original,
         section_type: type,
@@ -1369,8 +1562,8 @@ const Stock = (() => {
         disponibilite: dispo,
         chantier_affectation: affectation,
         commentaire,
-        // Gestion → en_attente / Admin → valide direct
-        statut: isAdmin ? 'valide' : 'en_attente',
+        // Archivage direct / Gestion → en_attente / Admin → valide
+        statut: estArchivage ? 'archivee' : (isAdmin ? 'valide' : 'en_attente'),
         valide_par: isAdmin ? session?.identifiant : null,
         date_validation: isAdmin ? _dateAujourdhui() : null,
         date_modif: _dateAujourdhui(),
@@ -1378,6 +1571,19 @@ const Stock = (() => {
       };
 
       await _persisterElement(modif);
+
+      // Enregistrer dans l'historique selon la nature de la modification
+      const longAvant = original.longueur_m;
+      if (estArchivage) {
+        await _enregistrerHistorique(original.id, 'ARCHIVAGE', longAvant, 0,
+          affectation || chantier || null, session?.identifiant || null, null, commentaire || null);
+      } else if (longueur < longAvant) {
+        await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
+          chantier || original.chantier_origine || null, session?.identifiant || null, null, commentaire || null);
+      } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
+        await _enregistrerHistorique(original.id, 'AFFECTATION', longAvant, longueur,
+          affectation || null, session?.identifiant || null, null, commentaire || null);
+      }
 
     } else {
       // Modification tôle
@@ -1426,11 +1632,16 @@ const Stock = (() => {
     if (zoneTole)   zoneTole.style.display   = 'none';
 
     _fermerModale('m-modification');
+    _peuplerFiltres();
     _filtrer();
     _majAlerteAttente();
 
-    const msg = isAdmin ? 'Modification enregistrée' : 'Modification soumise pour validation';
-    _notif(msg, isAdmin ? 'succes' : 'info');
+    // Message adapté selon le type d'opération
+    const estArch = categorie === 'profil' && parseFloat(m.querySelector('#mod-longueur')?.value) === 0;
+    const msg = estArch
+      ? 'Barre archivée'
+      : (isAdmin ? 'Modification enregistrée' : 'Modification soumise pour validation');
+    _notif(msg, 'succes');
   }
 
 
@@ -1868,6 +2079,19 @@ const Stock = (() => {
     };
 
     await _persisterElement(valide);
+
+    // Enregistrer la validation dans l'historique (profilés uniquement)
+    if (el.categorie === 'profil') {
+      await _enregistrerHistorique(
+        el.id, 'VALIDATION',
+        null, el.longueur_m,
+        el.chantier_origine || null,
+        null,
+        session?.identifiant || null,
+        null
+      );
+    }
+
     _fermerModale('m-valider-stock');
     _filtrer();
     _majAlerteAttente();
@@ -1919,6 +2143,18 @@ const Stock = (() => {
         modifie_par: session?.identifiant || 'admin'
       };
       await _persisterElement(barreMAJ);
+
+      // Enregistrer l'affectation dans l'historique (profilés uniquement)
+      if (barre.categorie === 'profil') {
+        await _enregistrerHistorique(
+          barre.id, 'AFFECTATION',
+          barre.longueur_m, barre.longueur_m,
+          dem.chantier_demande,
+          dem.demandeur,
+          session?.identifiant || null,
+          dem.commentaire || null
+        );
+      }
     }
 
     // Rafraîchir la liste des demandes en mémoire
@@ -1996,6 +2232,130 @@ const Stock = (() => {
 
   /** Retourne l'élément sélectionné */
   function getSelection() { return _selection; }
+
+
+  /* ──────────────────────────────────────────────────────────────
+     HISTORIQUE DES BARRES
+     ────────────────────────────────────────────────────────────── */
+
+  /**
+   * Enregistre une entrée dans lbf_barres_historique (non-bloquant).
+   * En cas d'erreur Supabase, l'opération est ignorée silencieusement.
+   * @param {string} barreId
+   * @param {string} typeOperation — ENTREE | AFFECTATION | RETOUR | ARCHIVAGE | VALIDATION
+   * @param {number|null} longueurAvant
+   * @param {number|null} longueurApres
+   * @param {string|null} chantier
+   * @param {string|null} operateur
+   * @param {string|null} validePar
+   * @param {string|null} commentaire
+   */
+  async function _enregistrerHistorique(barreId, typeOperation, longueurAvant, longueurApres, chantier, operateur, validePar, commentaire) {
+    if (!barreId || !typeOperation) return;
+    try {
+      await window.SB.insererHistorique({
+        barre_id:         barreId,
+        type_operation:   typeOperation,
+        longueur_avant_m: longueurAvant  ?? null,
+        longueur_apres_m: longueurApres  ?? null,
+        chantier:         chantier       || null,
+        operateur:        operateur      || null,
+        valide_par:       validePar      || null,
+        commentaire:      commentaire    || null,
+      });
+    } catch(e) {
+      console.warn('[Stock] Impossible d\'enregistrer l\'historique :', e);
+    }
+  }
+
+  /**
+   * Ouvre la modale d'historique pour une barre donnée et charge les données.
+   * Accessible depuis le tableau (bouton 📋) et l'onglet Archivées.
+   * @param {string} id — ex. "BAR-0001"
+   */
+  async function ouvrirHistoriqueBarre(id) {
+    const barre = _parId(id);
+
+    // Construire le titre de la modale
+    const titreEl = document.getElementById('hist-titre');
+    if (titreEl) {
+      if (barre) {
+        const prefix = barre.statut === 'archivee' ? 'ARC' : 'BAR';
+        const code   = barre.code_barre ? `${prefix}-${barre.code_barre}` : barre.id;
+        titreEl.textContent = `Historique — ${code} · ${barre.section_type} ${barre.designation}`;
+      } else {
+        titreEl.textContent = `Historique — ${id}`;
+      }
+    }
+
+    // Afficher le loader et ouvrir la modale
+    const contenu = document.getElementById('hist-contenu');
+    if (contenu) {
+      contenu.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Chargement de l\'historique…</div>';
+    }
+    _ouvrirModale('m-historique-barre');
+
+    // Charger l'historique depuis Supabase
+    try {
+      const lignes = await window.SB.lireHistoriqueParBarre(id);
+      if (contenu) contenu.innerHTML = _htmlTableauHistorique(lignes);
+    } catch(e) {
+      console.error('[Stock] Erreur chargement historique :', e);
+      if (contenu) {
+        contenu.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rouge)">Impossible de charger l\'historique.</div>';
+      }
+    }
+  }
+
+  /**
+   * Génère le HTML du tableau historique d'une barre.
+   * @param {Array} lignes — entrées de lbf_barres_historique
+   * @returns {string}
+   */
+  function _htmlTableauHistorique(lignes) {
+    if (!lignes || !lignes.length) {
+      return '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Aucune entrée dans l\'historique.</div>';
+    }
+
+    // Correspondance type d'opération → classe CSS du badge
+    const BADGES = {
+      ENTREE:      'badge-op-entree',
+      AFFECTATION: 'badge-op-affectation',
+      RETOUR:      'badge-op-retour',
+      ARCHIVAGE:   'badge-op-archivage',
+      VALIDATION:  'badge-op-validation',
+    };
+
+    let h = `<table class="hist-table">
+      <thead><tr>
+        <th>Date</th>
+        <th>Opération</th>
+        <th>Long. avant</th>
+        <th>Long. après</th>
+        <th>Chantier</th>
+        <th>Opérateur</th>
+      </tr></thead><tbody>`;
+
+    lignes.forEach(l => {
+      const date = l.date_operation
+        ? new Date(l.date_operation).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+        : '—';
+      const cls   = BADGES[l.type_operation] || '';
+      const avant = l.longueur_avant_m != null ? `${parseFloat(l.longueur_avant_m).toFixed(2)} m` : '—';
+      const apres = l.longueur_apres_m != null ? `${parseFloat(l.longueur_apres_m).toFixed(2)} m` : '—';
+
+      h += `<tr>
+        <td style="white-space:nowrap">${_e(date)}</td>
+        <td><span class="badge-operation ${cls}">${_e(l.type_operation)}</span></td>
+        <td>${avant}</td>
+        <td>${apres}</td>
+        <td>${_e(l.chantier  || '—')}</td>
+        <td>${_e(l.operateur || '—')}</td>
+      </tr>`;
+    });
+
+    return h + '</tbody></table>';
+  }
 
 
   /* ──────────────────────────────────────────────────────────────
@@ -2409,6 +2769,7 @@ const Stock = (() => {
     validerElement,
     refuserElement,
     getSelection,
+    ouvrirHistoriqueBarre,
   };
 
 })();
