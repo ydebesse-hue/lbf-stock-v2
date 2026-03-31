@@ -686,6 +686,86 @@
     /* Troncature texte long dans les cellules */
     .table-profils td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+    /* ── MODE TABS AJOUT PROFILÉ ─────────────────────────────── */
+    .mode-ajout-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--gris-clair);
+      margin-bottom: 16px;
+    }
+    .mode-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      padding: 7px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #666;
+      transition: color .15s;
+    }
+    .mode-tab.active {
+      color: var(--rouge);
+      border-bottom-color: var(--rouge);
+      font-weight: 600;
+    }
+    .mode-tab:hover:not(.active) { color: #333; }
+
+    /* ── TABLE LIGNES COMMANDE ───────────────────────────────── */
+    .table-lignes-cmd-wrap { overflow-x: auto; margin: 8px 0 6px; }
+    .table-lignes-cmd {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 600px;
+    }
+    .table-lignes-cmd th {
+      background: var(--gris-clair);
+      padding: 6px 7px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .table-lignes-cmd td { padding: 4px 4px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .table-lignes-cmd select,
+    .table-lignes-cmd input[type=number],
+    .table-lignes-cmd input[type=text] {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 12px;
+      box-sizing: border-box;
+    }
+    .col-cmd-type  { width: 120px; }
+    .col-cmd-desig { width: 100px; }
+    .col-cmd-classe{ width: 95px;  }
+    .col-cmd-long  { width: 90px;  }
+    .col-cmd-qte   { width: 48px;  }
+    .col-cmd-del   { width: 30px;  }
+    .btn-ajouter-ligne {
+      background: none;
+      border: 1px dashed var(--rouge);
+      color: var(--rouge);
+      padding: 5px 14px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 2px;
+    }
+    .btn-ajouter-ligne:hover { background: #fff5f5; }
+    .btn-suppr-ligne {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .btn-suppr-ligne:hover { color: var(--rouge); }
+
     /* ── HISTORIQUE BARRE ─────────────────────────────────────── */
 
     .hist-table {
@@ -910,93 +990,123 @@
     <div class="modale modale-lg">
       <div class="modale-titre">Ajouter un profilé au stock</div>
 
-      <div class="form-cols2">
-        <div class="fr">
-          <label>Type de section <span style="color:var(--rouge)">*</span></label>
-          <select id="ap-type">
-            <option value="">— Choisir —</option>
-          </select>
-        </div>
-        <div class="fr">
-          <label>Désignation <span style="color:var(--rouge)">*</span></label>
-          <select id="ap-desig">
-            <option value="">— Choisir le type d'abord —</option>
-          </select>
-        </div>
+      <!-- Toggle mode -->
+      <div class="mode-ajout-tabs">
+        <button type="button" class="mode-tab active" data-mode="inventaire">Inventaire</button>
+        <button type="button" class="mode-tab" data-mode="commande">Réception commande</button>
       </div>
 
-      <!-- ID généré — affiché dès la sélection de la désignation -->
-      <div id="ap-zone-id" style="display:none; margin-bottom:10px;">
-        <div style="background:var(--noir); color:white; border-radius:3px;
-                    padding:10px 14px; display:flex; align-items:center; gap:12px;">
-          <span style="font-size:11px; color:#aaa; text-transform:uppercase;
-                       letter-spacing:.5px; white-space:nowrap;">ID barre</span>
-          <span id="ap-id-genere"
-                style="font-family:Impact,sans-serif; font-size:22px;
-                       letter-spacing:2px; color:var(--rouge);">—</span>
-          <span style="font-size:11px; color:#888; margin-left:auto;">
-            📋 Notez cet ID sur l'étiquette de la barre
-          </span>
-        </div>
-      </div>
-
-      <!-- Schéma SVG + dimensions (affiché après sélection désignation) -->
-      <div id="ap-schema" class="schema-zone" style="display:none">
-        <div class="schema-svg-zone" id="ap-visuel">
-          <div class="schema-titre" id="ap-schema-label">—</div>
-          <!-- Image réelle — affichée si disponible dans assets/profils/ -->
-          <img id="ap-img" src="" alt=""
-               style="display:none; width:160px; height:160px; object-fit:contain;
-                      border:1px solid var(--gris-clair); border-radius:3px;
-                      background:#f7f7f7; cursor:zoom-in;">
-          <!-- SVG généré — fallback si pas d'image -->
-          <svg id="ap-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
-        </div>
-        <div class="schema-dims">
-          <h4>Caractéristiques</h4>
-          <div id="ap-dims-list">
-            <div style="color:#aaa;font-size:12px">Sélectionnez une désignation</div>
+      <!-- ── PANEL INVENTAIRE ────────────────────────────────── -->
+      <div id="ap-panel-inventaire" class="ap-panel">
+        <div class="form-cols2">
+          <div class="fr">
+            <label>Type de section <span style="color:var(--rouge)">*</span></label>
+            <select id="ap-type">
+              <option value="">— Choisir —</option>
+            </select>
+          </div>
+          <div class="fr">
+            <label>Désignation <span style="color:var(--rouge)">*</span></label>
+            <select id="ap-desig">
+              <option value="">— Choisir le type d'abord —</option>
+            </select>
           </div>
         </div>
-      </div>
 
-      <div class="form-cols2">
-        <div class="fr">
-          <label>Longueur (m) <span style="color:var(--rouge)">*</span></label>
-          <input type="number" id="ap-longueur" placeholder="ex : 6.00" step="0.01" min="0.1">
-          <div class="poids-calc-zone">
-            Poids estimé :&nbsp;<span class="poids-calc-val" id="ap-poids-calc">—</span>
+        <!-- ID généré — affiché dès la sélection de la désignation -->
+        <div id="ap-zone-id" style="display:none; margin-bottom:10px;">
+          <div style="background:var(--noir); color:white; border-radius:3px;
+                      padding:10px 14px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:11px; color:#aaa; text-transform:uppercase;
+                         letter-spacing:.5px; white-space:nowrap;">ID barre</span>
+            <span id="ap-id-genere"
+                  style="font-family:Impact,sans-serif; font-size:22px;
+                         letter-spacing:2px; color:var(--rouge);">—</span>
+            <span style="font-size:11px; color:#888; margin-left:auto;">
+              📋 Notez cet ID sur l'étiquette de la barre
+            </span>
           </div>
         </div>
-        <div class="fr">
-          <label>Chantier d'origine</label>
-          <input type="text" id="ap-chantier" placeholder="Nom ou référence du chantier">
+
+        <!-- Schéma SVG + dimensions -->
+        <div id="ap-schema" class="schema-zone" style="display:none">
+          <div class="schema-svg-zone" id="ap-visuel">
+            <div class="schema-titre" id="ap-schema-label">—</div>
+            <img id="ap-img" src="" alt=""
+                 style="display:none; width:160px; height:160px; object-fit:contain;
+                        border:1px solid var(--gris-clair); border-radius:3px;
+                        background:#f7f7f7; cursor:zoom-in;">
+            <svg id="ap-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
+          </div>
+          <div class="schema-dims">
+            <h4>Caractéristiques</h4>
+            <div id="ap-dims-list">
+              <div style="color:#aaa;font-size:12px">Sélectionnez une désignation</div>
+            </div>
+          </div>
         </div>
+
+        <div class="form-cols2">
+          <div class="fr">
+            <label>Longueur (m) <span style="color:var(--rouge)">*</span></label>
+            <input type="number" id="ap-longueur" placeholder="ex : 6.00" step="0.01" min="0.1">
+            <div class="poids-calc-zone">
+              Poids estimé :&nbsp;<span class="poids-calc-val" id="ap-poids-calc">—</span>
+            </div>
+          </div>
+          <div class="fr">
+            <label>Lieu de stockage</label>
+            <select id="ap-lieu">
+              <option value="">— Choisir —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fr">
+          <label>Commentaire</label>
+          <textarea id="ap-commentaire" placeholder="Informations complémentaires (état, provenance…)"></textarea>
+        </div>
+
+        <div class="ap-note-statut note-statut note-statut-attente"></div>
       </div>
 
-      <div class="form-cols2">
-        <div class="fr">
-          <label>Lieu de stockage</label>
-          <select id="ap-lieu">
-            <option value="">— Choisir —</option>
-          </select>
+      <!-- ── PANEL RÉCEPTION COMMANDE ────────────────────────── -->
+      <div id="ap-panel-commande" class="ap-panel" style="display:none">
+        <div class="form-cols3">
+          <div class="fr">
+            <label>Chantier destinataire</label>
+            <input type="text" id="ap-cmd-chantier" placeholder="Nom ou référence">
+          </div>
+          <div class="fr">
+            <label>Réf. commande / BL</label>
+            <input type="text" id="ap-cmd-ref" placeholder="N° bon de commande">
+          </div>
+          <div class="fr">
+            <label>Fournisseur</label>
+            <input type="text" id="ap-cmd-fournisseur" placeholder="Nom du fournisseur">
+          </div>
         </div>
-        <div class="fr">
-          <label>Disponibilité</label>
-          <select id="ap-dispo">
-            <option value="disponible">Disponible</option>
-            <option value="affecte">Affecté à un chantier</option>
-          </select>
+
+        <div class="table-lignes-cmd-wrap">
+          <table class="table-lignes-cmd">
+            <thead>
+              <tr>
+                <th class="col-cmd-type">Type</th>
+                <th class="col-cmd-desig">Désignation</th>
+                <th class="col-cmd-classe">Classe acier</th>
+                <th class="col-cmd-long">Longueur (m)</th>
+                <th class="col-cmd-qte">Qté</th>
+                <th class="col-cmd-lieu">Lieu stockage</th>
+                <th class="col-cmd-del"></th>
+              </tr>
+            </thead>
+            <tbody id="ap-cmd-tbody"></tbody>
+          </table>
         </div>
-      </div>
+        <button type="button" id="ap-cmd-ajouter-ligne" class="btn-ajouter-ligne">+ Ajouter une référence</button>
 
-      <div class="fr">
-        <label>Commentaire</label>
-        <textarea id="ap-commentaire" placeholder="Informations complémentaires (état, provenance…)"></textarea>
+        <div class="ap-note-statut ap-note-statut-cmd note-statut note-statut-attente" style="margin-top:10px"></div>
       </div>
-
-      <!-- Note : statut selon profil (injecté par JS) -->
-      <div class="ap-note-statut note-statut note-statut-attente"></div>
 
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-ajout-profil').classList.remove('open')">Annuler</button>

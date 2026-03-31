@@ -928,6 +928,36 @@ const Stock = (() => {
       if (selDesig) selDesig.addEventListener('change', () => _apMajSchema(mAP));
       if (inpLong)  inpLong.addEventListener('input',   () => _apMajPoids(mAP));
 
+      // Tabs inventaire / commande
+      mAP.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          mAP.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const mode = tab.dataset.mode;
+          mAP.dataset.modeAjout = mode;
+          document.getElementById('ap-panel-inventaire').style.display = mode === 'inventaire' ? '' : 'none';
+          document.getElementById('ap-panel-commande').style.display   = mode === 'commande'   ? '' : 'none';
+          // Note de statut sur les deux panels
+          _majNoteStatut(mAP, '.ap-note-statut');
+          _majNoteStatut(mAP, '.ap-note-statut-cmd');
+        });
+      });
+
+      // Bouton "+ Ajouter une référence"
+      const btnAjLigne = mAP.querySelector('#ap-cmd-ajouter-ligne');
+      if (btnAjLigne) btnAjLigne.addEventListener('click', () => {
+        _ajouterLigneCommande(mAP.querySelector('#ap-cmd-tbody'));
+      });
+
+      // Délégation type → désig sur les lignes commande
+      const tbody = mAP.querySelector('#ap-cmd-tbody');
+      if (tbody) tbody.addEventListener('change', e => {
+        if (e.target.classList.contains('cmd-type')) {
+          const tr = e.target.closest('tr');
+          if (tr) _apMajDesigLigne(tr);
+        }
+      });
+
       const btnSoumettre = mAP.querySelector('.btn-soumettre');
       if (btnSoumettre) btnSoumettre.addEventListener('click', () => _soumettreAjoutProfil(mAP));
     }
@@ -1038,16 +1068,20 @@ const Stock = (() => {
     const m = document.getElementById('m-ajout-profil');
     if (!m) return;
 
-    // Réinitialiser le formulaire
-    m.querySelectorAll('input:not([type=hidden]), select, textarea').forEach(el => {
+    // Revenir au mode inventaire
+    m.dataset.modeAjout = 'inventaire';
+    m.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'inventaire'));
+    document.getElementById('ap-panel-inventaire').style.display = '';
+    document.getElementById('ap-panel-commande').style.display   = 'none';
+
+    // Réinitialiser le formulaire inventaire
+    m.querySelectorAll('#ap-panel-inventaire input:not([type=hidden]), #ap-panel-inventaire select, #ap-panel-inventaire textarea').forEach(el => {
       if (el.tagName === 'SELECT') el.selectedIndex = 0;
       else el.value = '';
     });
 
-    // Remplir le select type depuis sections.json ou stock.json
+    // Remplir les selects
     _remplirSelectType(m.querySelector('#ap-type'));
-
-    // Pré-remplir les lieux
     _remplirSelectLieux(m.querySelector('#ap-lieu'));
 
     // Cacher le schéma et la zone ID
@@ -1059,12 +1093,19 @@ const Stock = (() => {
 
     // Reset désignations
     const selDesig = m.querySelector('#ap-desig');
-    if (selDesig) {
-      selDesig.innerHTML = '<option value="">— Choisir le type d\'abord —</option>';
+    if (selDesig) selDesig.innerHTML = '<option value="">— Choisir le type d\'abord —</option>';
+
+    // Réinitialiser le panel commande
+    m.querySelectorAll('#ap-panel-commande input').forEach(el => { el.value = ''; });
+    const tbody = m.querySelector('#ap-cmd-tbody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      _ajouterLigneCommande(tbody); // une ligne vide par défaut
     }
 
-    // Note selon profil
+    // Note de statut
     _majNoteStatut(m, '.ap-note-statut');
+    _majNoteStatut(m, '.ap-note-statut-cmd');
 
     _ouvrirModale('m-ajout-profil');
   }
@@ -1231,38 +1272,31 @@ const Stock = (() => {
    * @param {HTMLElement} m — modale
    */
   async function _soumettreAjoutProfil(m) {
+    if ((m.dataset.modeAjout || 'inventaire') === 'commande') {
+      return _soumettreAjoutCommande(m);
+    }
+
     const type    = m.querySelector('#ap-type')?.value?.trim();
     const desig   = m.querySelector('#ap-desig')?.value?.trim();
     const longueur = parseFloat(m.querySelector('#ap-longueur')?.value);
-    const chantier = m.querySelector('#ap-chantier')?.value?.trim();
     const lieu     = m.querySelector('#ap-lieu')?.value?.trim();
-    const dispo    = m.querySelector('#ap-dispo')?.value || 'disponible';
     const commentaire = m.querySelector('#ap-commentaire')?.value?.trim() || '';
 
     // Validation
-    if (!type)         return _signalerErreur(m, '#ap-type', 'Le type de section est obligatoire');
-    if (!desig)        return _signalerErreur(m, '#ap-desig', 'La désignation est obligatoire');
+    if (!type)    return _signalerErreur(m, '#ap-type',    'Le type de section est obligatoire');
+    if (!desig)   return _signalerErreur(m, '#ap-desig',   'La désignation est obligatoire');
     if (!longueur || longueur <= 0) return _signalerErreur(m, '#ap-longueur', 'La longueur est obligatoire');
 
     const session = Auth.getSession();
     const isAdmin = Auth.hasRight('can_validate');
 
-    // Récupérer le poids/ml depuis les données ou la modale
-    const poidsml = parseFloat(m.dataset.poidsml) || 0;
+    const poidsml    = parseFloat(m.dataset.poidsml) || 0;
     const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
-
-    // Utiliser l'ID déjà affiché à l'opérateur — sinon en générer un nouveau
     const nouvelleId = m.dataset.idPrevu || _genererIdBarre();
 
-    // Générer le code barre alphanumérique (non-bloquant)
     let codeBarre = null;
-    try {
-      codeBarre = await window.SB.genererCodeBarre();
-    } catch(e) {
-      console.warn('[Stock] Impossible de générer le code barre :', e);
-    }
+    try { codeBarre = await window.SB.genererCodeBarre(); } catch(e) {}
 
-    /** @type {Object} Structure identique à stock.json */
     const barre = {
       id: nouvelleId,
       categorie: 'profil',
@@ -1271,9 +1305,9 @@ const Stock = (() => {
       longueur_m: longueur,
       poids_ml: poidsml,
       poids_barre_kg: poidsBarre,
-      chantier_origine: chantier || 'Non renseigné',
+      chantier_origine: 'Non renseigné',
       lieu_stockage: lieu,
-      disponibilite: dispo,
+      disponibilite: 'disponible',
       chantier_affectation: null,
       statut: isAdmin ? 'valide' : 'en_attente',
       date_ajout: _dateAujourdhui(),
@@ -1285,15 +1319,7 @@ const Stock = (() => {
     };
 
     await _persisterElement(barre);
-
-    // Enregistrer l'entrée dans l'historique
-    await _enregistrerHistorique(
-      nouvelleId, 'ENTREE',
-      null, longueur,
-      chantier || null,
-      session?.identifiant || null,
-      null, commentaire || null
-    );
+    await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null);
 
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
@@ -1304,6 +1330,190 @@ const Stock = (() => {
       ? `Profilé ${type} ${desig} ajouté (${nouvelleId})`
       : `Profilé ${type} ${desig} soumis pour validation`;
     _notif(msg, isAdmin ? 'succes' : 'info');
+  }
+
+  /**
+   * Soumet le formulaire en mode réception commande :
+   * crée une barre individuelle pour chaque unité de chaque ligne.
+   */
+  async function _soumettreAjoutCommande(m) {
+    const chantier    = m.querySelector('#ap-cmd-chantier')?.value?.trim()    || '';
+    const refCmd      = m.querySelector('#ap-cmd-ref')?.value?.trim()         || '';
+    const fournisseur = m.querySelector('#ap-cmd-fournisseur')?.value?.trim() || '';
+
+    const lignes = [...m.querySelectorAll('#ap-cmd-tbody .cmd-ligne')];
+    if (!lignes.length) return _notif('Ajoutez au moins une ligne', 'erreur');
+
+    // Validation globale avant création
+    for (const [i, ligne] of lignes.entries()) {
+      const type  = ligne.querySelector('.cmd-type')?.value?.trim();
+      const desig = ligne.querySelector('.cmd-desig')?.value?.trim();
+      const lng   = parseFloat(ligne.querySelector('.cmd-longueur')?.value);
+      const qte   = parseInt(ligne.querySelector('.cmd-qte')?.value) || 0;
+      if (!type || !desig) return _notif(`Ligne ${i+1} : type et désignation obligatoires`, 'erreur');
+      if (!lng || lng <= 0) return _notif(`Ligne ${i+1} : longueur invalide`, 'erreur');
+      if (qte < 1)         return _notif(`Ligne ${i+1} : quantité invalide`, 'erreur');
+    }
+
+    const session = Auth.getSession();
+    const isAdmin = Auth.hasRight('can_validate');
+    let total = 0;
+
+    for (const ligne of lignes) {
+      const type    = ligne.querySelector('.cmd-type')?.value?.trim();
+      const desig   = ligne.querySelector('.cmd-desig')?.value?.trim();
+      const classe  = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
+      const longueur = parseFloat(ligne.querySelector('.cmd-longueur')?.value);
+      const qte     = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
+      const lieu    = ligne.querySelector('.cmd-lieu')?.value?.trim()  || '';
+
+      const dims    = _getDims(type, desig);
+      const poidsml = dims?.pml || 0;
+
+      const parts = [];
+      if (refCmd)      parts.push(`Réf cmd: ${refCmd}`);
+      if (fournisseur) parts.push(`Fournisseur: ${fournisseur}`);
+      if (classe)      parts.push(`Classe: ${classe}`);
+      const commentaire = parts.join(' | ');
+
+      for (let i = 0; i < qte; i++) {
+        const nouvelleId = _genererIdBarre();
+        let codeBarre = null;
+        try { codeBarre = await window.SB.genererCodeBarre(); } catch(e) {}
+
+        const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
+
+        const barre = {
+          id: nouvelleId,
+          categorie: 'profil',
+          section_type: type,
+          designation: desig,
+          longueur_m: longueur,
+          poids_ml: poidsml,
+          poids_barre_kg: poidsBarre,
+          chantier_origine: chantier || 'Non renseigné',
+          lieu_stockage: lieu,
+          disponibilite: 'disponible',
+          chantier_affectation: null,
+          statut: isAdmin ? 'valide' : 'en_attente',
+          date_ajout: _dateAujourdhui(),
+          ajoute_par: session?.identifiant || 'inconnu',
+          valide_par: isAdmin ? session?.identifiant : null,
+          date_validation: isAdmin ? _dateAujourdhui() : null,
+          commentaire,
+          code_barre: codeBarre,
+        };
+
+        await _persisterElement(barre);
+        await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, chantier || null, session?.identifiant || null, null, commentaire || null);
+        total++;
+      }
+    }
+
+    _fermerModale('m-ajout-profil');
+    _peuplerFiltres();
+    _filtrer();
+    _majAlerteAttente();
+
+    const msg = isAdmin
+      ? `${total} barre(s) ajoutée(s) au stock`
+      : `${total} barre(s) soumise(s) pour validation`;
+    _notif(msg, isAdmin ? 'succes' : 'info');
+  }
+
+  /**
+   * Ajoute une ligne vide dans le tableau de saisie commande.
+   * @param {HTMLTableSectionElement} tbody
+   */
+  function _ajouterLigneCommande(tbody) {
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.className = 'cmd-ligne';
+
+    // Select type
+    const selType = document.createElement('select');
+    selType.className = 'cmd-type';
+    _remplirSelectType(selType);
+
+    // Select désignation (vide au départ)
+    const selDesig = document.createElement('select');
+    selDesig.className = 'cmd-desig';
+    selDesig.innerHTML = '<option value="">— d\'abord le type —</option>';
+
+    // Select classe acier
+    const selClasse = document.createElement('select');
+    selClasse.className = 'cmd-classe';
+    ['', 'S235', 'S275', 'S355', 'S420', 'S460', 'S690'].forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v || '—';
+      selClasse.appendChild(o);
+    });
+
+    // Input longueur
+    const inpLong = document.createElement('input');
+    inpLong.type = 'number'; inpLong.className = 'cmd-longueur';
+    inpLong.placeholder = '6.00'; inpLong.step = '0.01'; inpLong.min = '0.01';
+
+    // Input quantité
+    const inpQte = document.createElement('input');
+    inpQte.type = 'number'; inpQte.className = 'cmd-qte';
+    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
+
+    // Select lieu
+    const selLieu = document.createElement('select');
+    selLieu.className = 'cmd-lieu';
+    _remplirSelectLieux(selLieu);
+
+    // Bouton suppression
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
+    btnDel.textContent = '✕';
+    btnDel.addEventListener('click', () => {
+      tr.remove();
+      // Toujours garder au moins une ligne
+      if (!tbody.querySelector('.cmd-ligne')) _ajouterLigneCommande(tbody);
+    });
+
+    [selType, selDesig, selClasse, inpLong, inpQte, selLieu, btnDel].forEach(el => {
+      const td = document.createElement('td');
+      td.appendChild(el);
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  }
+
+  /**
+   * Met à jour le select désignation d'une ligne commande après changement de type.
+   * @param {HTMLTableRowElement} tr
+   */
+  function _apMajDesigLigne(tr) {
+    const type     = tr.querySelector('.cmd-type')?.value;
+    const selDesig = tr.querySelector('.cmd-desig');
+    if (!selDesig) return;
+
+    selDesig.innerHTML = '<option value="">— Choisir —</option>';
+    if (!type) return;
+
+    let desigs = [];
+    if (_sections?.standard) {
+      _sections.standard.forEach(f => {
+        f.sections.forEach(s => {
+          if (s.serie === type) {
+            const taille = s.desig.startsWith(type + ' ') ? s.desig.slice(type.length + 1) : s.desig;
+            if (!desigs.includes(taille)) desigs.push(taille);
+          }
+        });
+      });
+    }
+    if (!desigs.length) {
+      desigs = [...new Set(_data.barres.filter(b => b.categorie === 'profil' && b.section_type === type).map(b => b.designation))].sort((a, b) => parseFloat(a) - parseFloat(b));
+    }
+    desigs.forEach(d => {
+      const o = document.createElement('option');
+      o.value = d; o.textContent = d;
+      selDesig.appendChild(o);
+    });
   }
 
 
