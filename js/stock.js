@@ -304,7 +304,7 @@ const Stock = (() => {
     return source.filter(b => {
       if (type     && b.section_type     !== type)     return false;
       if (desig    && b.designation      !== desig)    return false;
-      if (chantier && b.chantier_origine !== chantier) return false;
+      if (chantier && b.chantier_affectation !== chantier) return false;
       if (lieu     && b.lieu_stockage    !== lieu)     return false;
       if (dispo    && b.disponibilite    !== dispo)    return false;
       if (texte) {
@@ -686,7 +686,7 @@ const Stock = (() => {
       [...new Set(profils.map(b => b.section_type))].sort()
     );
     _remplirSelect('p-chantier',
-      [...new Set(profils.map(b => b.chantier_origine))].sort()
+      [...new Set(profils.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))].sort()
     );
     _remplirSelect('p-lieu',
       [...new Set(profils.map(b => b.lieu_stockage))].sort()
@@ -986,6 +986,13 @@ const Stock = (() => {
 
       const btnSoumettre = mMod.querySelector('.btn-soumettre');
       if (btnSoumettre) btnSoumettre.addEventListener('click', () => _soumettreModification(mMod));
+    }
+
+    // ── Modal résumé réception commande ──────────────────────
+    const mResume = document.getElementById('m-reception-resume');
+    if (mResume) {
+      const btnFermer = mResume.querySelector('#btn-resume-fermer');
+      if (btnFermer) btnFermer.addEventListener('click', () => _fermerModale('m-reception-resume'));
     }
 
     // ── Modale demande d'attribution ──────────────────────────
@@ -1357,15 +1364,17 @@ const Stock = (() => {
 
     const session = Auth.getSession();
     const isAdmin = Auth.hasRight('can_validate');
-    let total = 0;
+
+    // Résumé par ligne pour affichage post-soumission
+    const resumeLignes = [];
 
     for (const ligne of lignes) {
-      const type    = ligne.querySelector('.cmd-type')?.value?.trim();
-      const desig   = ligne.querySelector('.cmd-desig')?.value?.trim();
-      const classe  = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
+      const type     = ligne.querySelector('.cmd-type')?.value?.trim();
+      const desig    = ligne.querySelector('.cmd-desig')?.value?.trim();
+      const classe   = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
       const longueur = parseFloat(ligne.querySelector('.cmd-longueur')?.value);
-      const qte     = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
-      const lieu    = ligne.querySelector('.cmd-lieu')?.value?.trim()  || '';
+      const qte      = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
+      const lieu     = ligne.querySelector('.cmd-lieu')?.value?.trim()  || '';
 
       const dims    = _getDims(type, desig);
       const poidsml = dims?.pml || 0;
@@ -1376,6 +1385,7 @@ const Stock = (() => {
       if (classe)      parts.push(`Classe: ${classe}`);
       const commentaire = parts.join(' | ');
 
+      const idsLigne = [];
       for (let i = 0; i < qte; i++) {
         const nouvelleId = _genererIdBarre();
         let codeBarre = null;
@@ -1393,8 +1403,8 @@ const Stock = (() => {
           poids_barre_kg: poidsBarre,
           chantier_origine: chantier || 'Non renseigné',
           lieu_stockage: lieu,
-          disponibilite: 'disponible',
-          chantier_affectation: null,
+          disponibilite: chantier ? 'affecte' : 'disponible',
+          chantier_affectation: chantier || null,
           statut: isAdmin ? 'valide' : 'en_attente',
           date_ajout: _dateAujourdhui(),
           ajoute_par: session?.identifiant || 'inconnu',
@@ -1406,8 +1416,10 @@ const Stock = (() => {
 
         await _persisterElement(barre);
         await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, chantier || null, session?.identifiant || null, null, commentaire || null);
-        total++;
+        idsLigne.push(nouvelleId);
       }
+
+      resumeLignes.push({ type, desig, classe, longueur, qte, ids: idsLigne });
     }
 
     _fermerModale('m-ajout-profil');
@@ -1415,10 +1427,62 @@ const Stock = (() => {
     _filtrer();
     _majAlerteAttente();
 
-    const msg = isAdmin
-      ? `${total} barre(s) ajoutée(s) au stock`
-      : `${total} barre(s) soumise(s) pour validation`;
-    _notif(msg, isAdmin ? 'succes' : 'info');
+    // Afficher le résumé interactif
+    _afficherResumeReception(resumeLignes, chantier, refCmd, fournisseur);
+  }
+
+  /**
+   * Affiche le modal de résumé après une réception de commande.
+   * Permet à l'opérateur de noter les IDs et de filtrer directement.
+   */
+  function _afficherResumeReception(resumeLignes, chantier, refCmd, fournisseur) {
+    const m = document.getElementById('m-reception-resume');
+    if (!m) return;
+
+    // En-tête récapitulatif
+    const entete = m.querySelector('#resume-entete');
+    const parts = [];
+    if (chantier)    parts.push(`Chantier : <strong>${_e(chantier)}</strong>`);
+    if (refCmd)      parts.push(`Réf. : <strong>${_e(refCmd)}</strong>`);
+    if (fournisseur) parts.push(`Fournisseur : <strong>${_e(fournisseur)}</strong>`);
+    entete.innerHTML = parts.length
+      ? parts.join(' &nbsp;·&nbsp; ')
+      : '<em>Réception sans chantier défini</em>';
+
+    // Tableau des lignes
+    const tbody = m.querySelector('#resume-tbody');
+    tbody.innerHTML = '';
+    resumeLignes.forEach(({ type, desig, classe, longueur, qte, ids }) => {
+      const tr = document.createElement('tr');
+      const idBadges = ids.map(id => `<span class="chip-id">${_e(id)}</span>`).join(' ');
+      tr.innerHTML = `
+        <td><strong>${_e(type)}</strong></td>
+        <td>${_e(desig)}</td>
+        <td>${classe ? `<span class="badge-classe-acier">${_e(classe)}</span>` : '—'}</td>
+        <td>${longueur.toFixed(2)} m</td>
+        <td style="text-align:center">${qte}</td>
+        <td class="td-ids-resume">${idBadges}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Bouton "Voir dans le stock"
+    const btnFiltrer = m.querySelector('#btn-resume-filtrer');
+    if (btnFiltrer) {
+      if (chantier) {
+        btnFiltrer.style.display = '';
+        btnFiltrer.onclick = () => {
+          _fermerModale('m-reception-resume');
+          _basculerOnglet('profils');
+          const sel = document.getElementById('p-chantier');
+          if (sel) { sel.value = chantier; _filtrer(); }
+        };
+      } else {
+        btnFiltrer.style.display = 'none';
+      }
+    }
+
+    _ouvrirModale('m-reception-resume');
   }
 
   /**

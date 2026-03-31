@@ -766,6 +766,49 @@
     }
     .btn-suppr-ligne:hover { color: var(--rouge); }
 
+    /* ── BADGE CLASSE ACIER ──────────────────────────────────── */
+    .badge-classe-acier {
+      display: inline-block;
+      background: #1565c0;
+      color: #fff;
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+
+    /* ── MODAL RÉSUMÉ RÉCEPTION ──────────────────────────────── */
+    .resume-entete {
+      background: #f5f5f5;
+      border-radius: 4px;
+      padding: 8px 14px;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .resume-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 500px;
+    }
+    .resume-table th {
+      background: var(--gris-clair);
+      padding: 6px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .resume-table td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .td-ids-resume { display: flex; flex-wrap: wrap; gap: 4px; }
+    .resume-hint {
+      margin: 10px 0 4px;
+      font-size: 12px;
+      color: #666;
+    }
+
     /* ── HISTORIQUE BARRE ─────────────────────────────────────── */
 
     .hist-table {
@@ -911,7 +954,7 @@
     <select id="p-desig"    class="sel-filtre" title="Désignation">
       <option value="">Toutes désignations</option>
     </select>
-    <select id="p-chantier" class="sel-filtre" title="Chantier d'origine">
+    <select id="p-chantier" class="sel-filtre" title="Chantier affecté">
       <option value="">Tous chantiers</option>
     </select>
     <select id="p-lieu"     class="sel-filtre" title="Lieu de stockage">
@@ -1119,6 +1162,37 @@
   <!-- ══════════════════════════════════════════════════════════════
        MODALE 2 — AJOUT TÔLE
        ══════════════════════════════════════════════════════════════ -->
+  <!-- ── MODAL RÉSUMÉ RÉCEPTION COMMANDE ──────────────────────── -->
+  <div id="m-reception-resume" class="modale-bg" role="dialog" aria-modal="true" aria-label="Résumé réception">
+    <div class="modale modale-lg">
+      <div class="modale-titre">Réception enregistrée</div>
+      <div id="resume-entete" class="resume-entete"></div>
+
+      <div class="table-lignes-cmd-wrap" style="margin-top:12px">
+        <table class="resume-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Désig.</th>
+              <th>Classe</th>
+              <th>Longueur</th>
+              <th style="text-align:center">Qté</th>
+              <th>IDs créés</th>
+            </tr>
+          </thead>
+          <tbody id="resume-tbody"></tbody>
+        </table>
+      </div>
+
+      <p class="resume-hint">📋 Notez ces IDs sur les étiquettes des barres avant de les ranger en stock.</p>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" id="btn-resume-fermer">Fermer</button>
+        <button class="btn-modale btn-modale-rouge" id="btn-resume-filtrer">Voir dans le stock →</button>
+      </div>
+    </div>
+  </div>
+
   <div id="m-ajout-tole" class="modale-bg" role="dialog" aria-modal="true" aria-label="Ajouter une tôle">
     <div class="modale modale-lg">
       <div class="modale-titre">Ajouter une tôle au stock</div>
