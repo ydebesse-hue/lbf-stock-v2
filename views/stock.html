@@ -231,6 +231,7 @@
     .btn-action:hover { opacity: .85; }
     .btn-rouge { background: var(--rouge); color: white; }
     .btn-gris  { background: #e0e0e0;      color: var(--noir); }
+    .btn-vert  { background: var(--vert);  color: white; }
 
     .sel-filtre {
       padding: 6px 8px;
@@ -755,6 +756,7 @@
     <div class="toolbar-sep"></div>
     <button id="btn-reset-profils" class="btn-action btn-gris" title="Réinitialiser les filtres">✕ Réinitialiser</button>
     <input id="p-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
+    <button id="btn-export-profils" class="btn-action btn-vert" onclick="Stock.exporterExcel()" title="Exporter le tableau filtré en Excel">Export Excel</button>
   </div>
 
   <!-- ── TOOLBAR TÔLES ────────────────────────────────────────── -->
@@ -781,6 +783,7 @@
     <div class="toolbar-sep"></div>
     <button id="btn-reset-toles" class="btn-action btn-gris" title="Réinitialiser">✕ Réinitialiser</button>
     <input id="t-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
+    <button id="btn-export-toles" class="btn-action btn-vert" onclick="Stock.exporterExcel()" title="Exporter le tableau filtré en Excel">Export Excel</button>
   </div>
 
   <!-- ── TABLEAU PRINCIPAL ─────────────────────────────────────── -->
@@ -1476,6 +1479,7 @@
     .zone-inactive { opacity: 0.35; }
   </style>
 
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="../js/supabase.js"></script>
   <script src="../auth/auth.js"></script>
   <script src="../js/stock.js"></script>

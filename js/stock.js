@@ -41,12 +41,13 @@ const Stock = (() => {
      ÉTAT INTERNE
      ────────────────────────────────────────────────────────────── */
 
-  let _data      = null;        // données fusionnées (stock.json + localStorage)
-  let _sections  = null;        // données de sections.json (pour les modales)
-  let _onglet    = 'profils';   // onglet actif
-  let _tri       = { col: null, ordre: 'asc' };
-  let _selection = null;        // élément sélectionné (partagé avec les modales)
-  let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
+  let _data             = null;        // données fusionnées (stock.json + localStorage)
+  let _sections         = null;        // données de sections.json (pour les modales)
+  let _onglet           = 'profils';   // onglet actif
+  let _tri              = { col: null, ordre: 'asc' };
+  let _selection        = null;        // élément sélectionné (partagé avec les modales)
+  let _demandes         = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
+  let _dernierResultats = [];          // dernière liste filtrée — export Excel
 
 
   /* ──────────────────────────────────────────────────────────────
@@ -274,6 +275,7 @@ const Stock = (() => {
 
     if (_tri.col) resultats = _trier(resultats);
 
+    _dernierResultats = resultats;
     _rendrTableau(resultats);
     _majCompteur(resultats.length, source.length);
 
@@ -2398,6 +2400,80 @@ const Stock = (() => {
 
 
   /* ──────────────────────────────────────────────────────────────
+     EXPORT EXCEL
+     ────────────────────────────────────────────────────────────── */
+
+  function exporterExcel() {
+    if (!window.XLSX) {
+      alert('La bibliothèque Excel (SheetJS) n\'est pas disponible.');
+      return;
+    }
+    if (!_dernierResultats.length) {
+      alert('Aucune donnée à exporter.');
+      return;
+    }
+
+    const wb   = XLSX.utils.book_new();
+    const date = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
+
+    if (_onglet === 'profils') {
+      const lignes = [[
+        'ID', 'Type', 'Désignation', 'Longueur (m)', 'Poids (kg)',
+        'Lieu de stockage', 'Date ajout', 'Chantier origine', 'Disponibilité', 'Commentaire'
+      ]];
+      _dernierResultats.forEach(b => {
+        const poids = b.poids_barre_kg
+          ? parseFloat(b.poids_barre_kg.toFixed(1))
+          : parseFloat(((b.poids_ml || 0) * (b.longueur_m || 0)).toFixed(1));
+        const dateAjout = b.date_ajout
+          ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '';
+        const dispo = b.disponibilite === 'disponible' ? 'Disponible'
+          : b.disponibilite === 'affecte' ? 'Affecté' : (b.statut || '');
+        lignes.push([
+          b.id, b.section_type, b.designation,
+          b.longueur_m, poids, b.lieu_stockage,
+          dateAjout, b.chantier_origine || '', dispo, b.commentaire || ''
+        ]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(lignes);
+      ws['!cols'] = [
+        { wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 13 }, { wch: 11 },
+        { wch: 16 }, { wch: 12 }, { wch: 22 }, { wch: 13 }, { wch: 30 }
+      ];
+      XLSX.utils.book_append_sheet(wb, ws, 'Profilés');
+      XLSX.writeFile(wb, `Stock_Profils_${date}.xlsx`);
+
+    } else {
+      const lignes = [[
+        'ID', 'Épaisseur (mm)', 'Largeur (mm)', 'Longueur (mm)', 'Surface (m²)',
+        'Poids (kg)', 'Lieu de stockage', 'Date ajout', 'Chantier origine', 'Disponibilité', 'Commentaire'
+      ]];
+      _dernierResultats.forEach(b => {
+        const surface = (b.largeur_mm && b.longueur_mm)
+          ? parseFloat(((b.largeur_mm * b.longueur_mm) / 1e6).toFixed(3)) : '';
+        const poids = b.poids_unitaire_kg
+          ? parseFloat(b.poids_unitaire_kg.toFixed(1)) : '';
+        const dateAjout = b.date_ajout
+          ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '';
+        const dispo = b.disponibilite === 'disponible' ? 'Disponible'
+          : b.disponibilite === 'affecte' ? 'Affecté' : (b.statut || '');
+        lignes.push([
+          b.id, b.epaisseur_mm, b.largeur_mm || '', b.longueur_mm || '',
+          surface, poids, b.lieu_stockage,
+          dateAjout, b.chantier_origine || '', dispo, b.commentaire || ''
+        ]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(lignes);
+      ws['!cols'] = [
+        { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 13 }, { wch: 12 },
+        { wch: 11 }, { wch: 16 }, { wch: 12 }, { wch: 22 }, { wch: 13 }, { wch: 30 }
+      ];
+      XLSX.utils.book_append_sheet(wb, ws, 'Tôles');
+      XLSX.writeFile(wb, `Stock_Toles_${date}.xlsx`);
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────────
      API PUBLIQUE
      ────────────────────────────────────────────────────────────── */
   return {
@@ -2409,6 +2485,7 @@ const Stock = (() => {
     validerElement,
     refuserElement,
     getSelection,
+    exporterExcel,
   };
 
 })();
