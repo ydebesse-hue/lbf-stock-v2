@@ -389,7 +389,7 @@ const Stock = (() => {
       case 'chantier':    return item.chantier_origine || '';
       case 'lieu':        return item.lieu_stockage    || '';
       case 'dispo':       return item.disponibilite    || '';
-      case 'date':        return item.date_ajout       || '';
+      case 'date':        return item.date_modif || item.date_validation || item.date_ajout || '';
       case 'epaisseur':   return item.epaisseur_mm     || 0;
       case 'dimensions':  return (item.largeur_mm || 0) * 100000 + (item.longueur_mm || 0);
       case 'quantite':    return item.quantite         || 0;
@@ -429,6 +429,7 @@ const Stock = (() => {
       { col: 'longueur',    label: 'Longueur restante (m)' },
       { col: 'poids',       label: 'Poids (kg)'         },
       { col: 'dispo',       label: 'Statut'             },
+      { col: 'date',        label: 'Dernière modif.'    },
       { col: 'chantier',    label: 'Chantier'           },
       { col: 'lieu',        label: 'Stockage'           },
     ];
@@ -442,13 +443,19 @@ const Stock = (() => {
     h += '<th>Historique</th><th>Actions</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="10" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
+      h += `<tr><td colspan="11" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
     } else {
       data.forEach(b => {
         const attente = b.statut === 'en_attente';
         const poids   = b.poids_barre_kg
           ? b.poids_barre_kg.toFixed(1)
           : (b.poids_ml && b.longueur_m ? (b.poids_ml * b.longueur_m).toFixed(1) : '—');
+
+        // Dernière modification : date_modif si disponible, sinon date_validation, sinon date_ajout
+        const dateModif = b.date_modif || b.date_validation || b.date_ajout;
+        const dateAff   = dateModif
+          ? new Date(dateModif).toLocaleDateString('fr-FR')
+          : '—';
 
         // Chantier : affectation si affecté, sinon —
         const chantierAff = b.disponibilite === 'affecte' && b.chantier_affectation
@@ -464,6 +471,7 @@ const Stock = (() => {
         h += `<td>${b.longueur_m.toFixed(2)}</td>`;
         h += `<td>${poids}</td>`;
         h += `<td>${_badgeDispo(b)}</td>`;
+        h += `<td style="white-space:nowrap;color:#666;font-size:12px">${dateAff}</td>`;
         h += `<td>${chantierAff}</td>`;
         h += `<td>${_e(b.lieu_stockage)}
           <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(b.lieu_stockage)}')" title="Voir sur le plan">📍</button>
