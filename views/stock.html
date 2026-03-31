@@ -662,6 +662,29 @@
     .zone-motif {
       margin-top: 10px;
     }
+    /* ── LARGEURS COLONNES TABLEAU PROFILÉS ──────────────────── */
+
+    .table-profils { table-layout: fixed; }
+
+    /* 1-ID  2-Type  3-Désig  4-Longueur  5-Poids  6-Statut  7-Modif  8-Chantier  9-Stockage  10-Hist  11-Actions */
+    .table-profils th:nth-child(1),  .table-profils td:nth-child(1)  { width: 80px;  }
+    .table-profils th:nth-child(2),  .table-profils td:nth-child(2)  { width: 65px;  }
+    .table-profils th:nth-child(3),  .table-profils td:nth-child(3)  { /* auto */    }
+    .table-profils th:nth-child(4),  .table-profils td:nth-child(4)  { width: 95px;  text-align: center; }
+    .table-profils th:nth-child(5),  .table-profils td:nth-child(5)  { width: 75px;  text-align: center; }
+    .table-profils th:nth-child(6),  .table-profils td:nth-child(6)  { width: 115px; }
+    .table-profils th:nth-child(7),  .table-profils td:nth-child(7)  { width: 90px;  }
+    .table-profils th:nth-child(8),  .table-profils td:nth-child(8)  { width: 125px; }
+    .table-profils th:nth-child(9),  .table-profils td:nth-child(9)  { width: 105px; }
+    .table-profils th:nth-child(10), .table-profils td:nth-child(10) { width: 55px;  text-align: center; }
+    .table-profils th:nth-child(11), .table-profils td:nth-child(11) { width: 120px; white-space: nowrap; }
+
+    /* Troncature texte long dans les cellules fixes */
+    .table-profils td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Exceptions : désignation et actions peuvent wrapper */
+    .table-profils td:nth-child(3)  { white-space: normal; }
+    .table-profils td:nth-child(11) { white-space: nowrap; }
+
     /* ── HISTORIQUE BARRE ─────────────────────────────────────── */
 
     .hist-table {

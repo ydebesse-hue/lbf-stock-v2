@@ -426,7 +426,7 @@ const Stock = (() => {
       { col: 'id',          label: 'ID'                 },
       { col: 'type',        label: 'Type'               },
       { col: 'designation', label: 'Désignation'        },
-      { col: 'longueur',    label: 'Longueur restante (m)' },
+      { col: 'longueur',    label: 'Longueur (m)'           },
       { col: 'poids',       label: 'Poids (kg)'         },
       { col: 'dispo',       label: 'Statut'             },
       { col: 'date',        label: 'Dernière modif.'    },
@@ -434,7 +434,7 @@ const Stock = (() => {
       { col: 'lieu',        label: 'Stockage'           },
     ];
 
-    let h = '<table><thead><tr>';
+    let h = '<table class="table-profils"><thead><tr>';
     cols.forEach(c => {
       const actif = _tri.col === c.col;
       const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
