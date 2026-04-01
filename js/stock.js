@@ -1030,6 +1030,13 @@ const Stock = (() => {
             return;
           }
           // Premier passage en mode perso
+          // Initialiser les préfs personnalisées à partir de l'affichage courant
+          // si aucune préférence n'a encore été sauvegardée
+          try {
+            if (!localStorage.getItem(CLE_COLS_PROFILS)) {
+              _sauverColsVis(_chargerColsVis());
+            }
+          } catch(e) {}
           _setModeVue('personnalise');
           _syncBoutonsVue();
           _filtrer();
@@ -1045,10 +1052,9 @@ const Stock = (() => {
     if (panelCols) {
       panelCols.addEventListener('change', e => {
         if (e.target.type !== 'checkbox') return;
-        let saved = {};
-        try { saved = JSON.parse(localStorage.getItem(CLE_COLS_PROFILS) || '{}'); } catch(e) {}
-        saved[e.target.dataset.col] = e.target.checked;
-        _sauverColsVis(saved);
+        const vis = _chargerColsVis();
+        vis[e.target.dataset.col] = e.target.checked;
+        _sauverColsVis(vis);
         _filtrer();
       });
       document.addEventListener('click', e => {
