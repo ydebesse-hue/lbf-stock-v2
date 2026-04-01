@@ -959,6 +959,22 @@ const Stock = (() => {
     if (ra) ra.addEventListener('click', () => { _resetFiltres('archivees'); _filtrer(); });
 
     // Boutons ajout → ouvrir modales
+    // Focus ligne au clic cellule
+    const zoneTab = document.getElementById('tableau-stock');
+    if (zoneTab) {
+      zoneTab.addEventListener('click', e => {
+        const td = e.target.closest('td');
+        if (!td) return;
+        // Ne pas activer si clic sur un bouton dans la cellule
+        if (e.target.closest('button')) return;
+        const tr = td.closest('tr');
+        if (!tr || tr.closest('thead')) return;
+        const deja = tr.classList.contains('ligne-focus');
+        zoneTab.querySelectorAll('tr.ligne-focus').forEach(r => r.classList.remove('ligne-focus'));
+        if (!deja) tr.classList.add('ligne-focus');
+      });
+    }
+
     // Colonnes masquables
     const btnCols = document.getElementById('btn-cols-profils');
     const panelCols = document.getElementById('panel-cols-profils');

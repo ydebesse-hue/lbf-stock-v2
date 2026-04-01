@@ -286,10 +286,12 @@
 
     .tri-ind { font-size: 10px; color: rgba(255,255,255,.5); margin-left: 3px; }
 
-    #tableau-stock tbody tr             { border-bottom: 1px solid #eaeaea; transition: background .1s; }
+    #tableau-stock tbody tr             { border-bottom: 1px solid #eaeaea; transition: background .1s; cursor: pointer; }
     #tableau-stock tbody tr:hover       { background: #fafafa; }
     #tableau-stock tbody tr.ligne-attente       { background: var(--or-bg) !important; }
     #tableau-stock tbody tr.ligne-attente:hover { background: #ffeebb !important; }
+    #tableau-stock tbody tr.ligne-focus         { background: #fff0f0 !important; outline: 2px solid var(--rouge); outline-offset: -2px; }
+    #tableau-stock tbody tr.ligne-focus:hover   { background: #ffe8e8 !important; }
     #tableau-stock tbody td             { padding: 8px 10px; vertical-align: middle; }
 
     .vide {
