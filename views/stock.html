@@ -1106,21 +1106,6 @@
           </div>
         </div>
 
-        <!-- ID généré — affiché dès la sélection de la désignation -->
-        <div id="ap-zone-id" style="display:none; margin-bottom:10px;">
-          <div style="background:var(--noir); color:white; border-radius:3px;
-                      padding:10px 14px; display:flex; align-items:center; gap:12px;">
-            <span style="font-size:11px; color:#aaa; text-transform:uppercase;
-                         letter-spacing:.5px; white-space:nowrap;">ID barre</span>
-            <span id="ap-id-genere"
-                  style="font-family:Impact,sans-serif; font-size:22px;
-                         letter-spacing:2px; color:var(--rouge);">—</span>
-            <span style="font-size:11px; color:#888; margin-left:auto;">
-              📋 Notez cet ID sur l'étiquette de la barre
-            </span>
-          </div>
-        </div>
-
         <!-- Schéma SVG + dimensions -->
         <div id="ap-schema" class="schema-zone" style="display:none">
           <div class="schema-svg-zone" id="ap-visuel">
@@ -1170,6 +1155,21 @@
         <div class="fr">
           <label>Commentaire</label>
           <textarea id="ap-commentaire" placeholder="Informations complémentaires (état, provenance…)"></textarea>
+        </div>
+
+        <!-- ID généré — affiché juste avant l'enregistrement -->
+        <div id="ap-zone-id" style="display:none; margin-top:10px;">
+          <div style="background:var(--noir); color:white; border-radius:3px;
+                      padding:10px 14px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:11px; color:#aaa; text-transform:uppercase;
+                         letter-spacing:.5px; white-space:nowrap;">ID barre</span>
+            <span id="ap-id-genere"
+                  style="font-family:Impact,sans-serif; font-size:22px;
+                         letter-spacing:2px; color:var(--rouge);">—</span>
+            <span style="font-size:11px; color:#888; margin-left:auto;">
+              📋 Notez cet ID sur l'étiquette de la barre
+            </span>
+          </div>
         </div>
 
         <div class="ap-note-statut note-statut note-statut-attente"></div>
