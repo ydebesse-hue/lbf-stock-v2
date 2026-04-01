@@ -155,39 +155,6 @@ async function sbInsererHistorique(data) {
   return Array.isArray(result) ? result[0] : result;
 }
 
-/**
- * Génère le prochain code barre disponible.
- * Format alphanumérique base 36, 4 caractères majuscules :
- *   "0001" → "0002" → … → "0009" → "000A" → … → "000Z" → "0010" → …
- * @returns {Promise<string>}
- */
-async function genererCodeBarre() {
-  let codes = [];
-  try {
-    // Récupérer tous les codes existants depuis la table stock
-    const rep = await fetch(
-      `${SUPABASE_URL}/rest/v1/stock?select=code_barre&code_barre=not.is.null`,
-      { headers: _headers }
-    );
-    if (rep.ok) {
-      const items = await rep.json();
-      codes = items.map(i => i.code_barre).filter(Boolean);
-    }
-  } catch (e) {
-    console.warn('[genererCodeBarre] Impossible de lire les codes existants :', e);
-  }
-
-  // Trouver la valeur maximale en base 36
-  let max = 0;
-  codes.forEach(code => {
-    const val = parseInt(code, 36);
-    if (!isNaN(val) && val > max) max = val;
-  });
-
-  // Incrémenter et formater sur 4 caractères base 36 en majuscules
-  return (max + 1).toString(36).toUpperCase().padStart(4, '0');
-}
-
 // ═══════════════════════════════════════════════════════
 //  EXPORT
 // ═══════════════════════════════════════════════════════
@@ -200,5 +167,4 @@ window.SB = {
   upsert:                 sbUpsert,
   lireHistoriqueParBarre: sbLireHistoriqueParBarre,
   insererHistorique:      sbInsererHistorique,
-  genererCodeBarre:       genererCodeBarre,
 };

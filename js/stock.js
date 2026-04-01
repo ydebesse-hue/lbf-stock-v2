@@ -36,6 +36,31 @@ const Stock = (() => {
   /** Lieux de stockage disponibles */
   const LIEUX = ['Rack 1', 'Rack 2', 'Rack 3', 'Rack 4', 'Extérieur', 'Autre'];
 
+  /** Classes acier disponibles */
+  const CLASSES_ACIER = ['S235', 'S275', 'S355', 'S420', 'S460', 'S690'];
+
+  /** Clé localStorage pour la visibilité des colonnes profilés */
+  const CLE_COLS_PROFILS = 'lbf-stock-cols-profils';
+
+  /** Définition des colonnes du tableau profilés */
+  const COLS_PROFILS = [
+    { key: 'id',          label: 'ID',              tri: 'id',          defaut: true  },
+    { key: 'type',        label: 'Type',            tri: 'type',        defaut: true  },
+    { key: 'designation', label: 'Désignation',     tri: 'designation', defaut: true  },
+    { key: 'longueur',    label: 'Longueur (m)',    tri: 'longueur',    defaut: true  },
+    { key: 'poids',       label: 'Poids (kg)',      tri: 'poids',       defaut: true  },
+    { key: 'classe',      label: 'Classe',          tri: null,          defaut: true  },
+    { key: 'dispo',       label: 'Statut',          tri: 'dispo',       defaut: true  },
+    { key: 'date',        label: 'Dernière modif.', tri: 'date',        defaut: true  },
+    { key: 'chantier',    label: 'Chantier',        tri: 'chantier',    defaut: true  },
+    { key: 'lieu',        label: 'Stockage',        tri: 'lieu',        defaut: true  },
+    { key: 'origine',     label: 'Origine',         tri: null,          defaut: false },
+    { key: 'ref_cmd',     label: 'Réf. commande',   tri: null,          defaut: false },
+    { key: 'fournisseur', label: 'Fournisseur',     tri: null,          defaut: false },
+    { key: 'ajoute_par',  label: 'Ajouté par',      tri: null,          defaut: false },
+    { key: 'commentaire', label: 'Commentaire',     tri: null,          defaut: false },
+  ];
+
 
   /* ──────────────────────────────────────────────────────────────
      ÉTAT INTERNE
@@ -251,6 +276,30 @@ const Stock = (() => {
 
 
   /* ──────────────────────────────────────────────────────────────
+     VISIBILITÉ DES COLONNES
+     ────────────────────────────────────────────────────────────── */
+
+  function _chargerColsVis() {
+    try {
+      const raw = localStorage.getItem(CLE_COLS_PROFILS);
+      const saved = raw ? JSON.parse(raw) : {};
+      const vis = {};
+      COLS_PROFILS.forEach(c => {
+        vis[c.key] = c.key in saved ? saved[c.key] : c.defaut;
+      });
+      return vis;
+    } catch(e) {
+      const vis = {};
+      COLS_PROFILS.forEach(c => { vis[c.key] = c.defaut; });
+      return vis;
+    }
+  }
+
+  function _sauverColsVis(vis) {
+    try { localStorage.setItem(CLE_COLS_PROFILS, JSON.stringify(vis)); } catch(e) {}
+  }
+
+  /* ──────────────────────────────────────────────────────────────
      FILTRAGE
      ────────────────────────────────────────────────────────────── */
 
@@ -386,7 +435,7 @@ const Stock = (() => {
       case 'designation': return item.designation      || '';
       case 'longueur':    return item.longueur_m       || 0;
       case 'poids':       return item.poids_barre_kg   || item.poids_unitaire_kg || 0;
-      case 'chantier':    return item.chantier_origine || '';
+      case 'chantier':    return item.chantier_affectation || '';
       case 'lieu':        return item.lieu_stockage    || '';
       case 'dispo':       return item.disponibilite    || '';
       case 'date':        return item.date_modif || item.date_validation || item.date_ajout || '';
@@ -421,68 +470,86 @@ const Stock = (() => {
   function _htmlProfils(data) {
     const admin = Auth.hasRight('can_validate');
     const modif = Auth.hasRight('can_edit');
-
-    const cols = [
-      { col: 'id',          label: 'ID'                 },
-      { col: 'type',        label: 'Type'               },
-      { col: 'designation', label: 'Désignation'        },
-      { col: 'longueur',    label: 'Longueur (m)'           },
-      { col: 'poids',       label: 'Poids (kg)'         },
-      { col: 'dispo',       label: 'Statut'             },
-      { col: 'date',        label: 'Dernière modif.'    },
-      { col: 'chantier',    label: 'Chantier'           },
-      { col: 'lieu',        label: 'Stockage'           },
-    ];
+    const vis   = _chargerColsVis();
+    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + 2; // +hist +actions
 
     let h = '<table class="table-profils"><thead><tr>';
-    cols.forEach(c => {
-      const actif = _tri.col === c.col;
-      const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
-      h += `<th data-col="${c.col}" class="${actif ? 'tri-actif' : ''}">${c.label} <span class="tri-ind">${ind}</span></th>`;
+    COLS_PROFILS.forEach(c => {
+      if (!vis[c.key]) return;
+      const cls   = `col-p-${c.key}`;
+      if (c.tri) {
+        const actif = _tri.col === c.tri;
+        const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
+        h += `<th class="${cls}${actif ? ' tri-actif' : ''}" data-col="${c.tri}">${c.label} <span class="tri-ind">${ind}</span></th>`;
+      } else {
+        h += `<th class="${cls}">${c.label}</th>`;
+      }
     });
-    h += '<th>Historique</th><th>Actions</th></tr></thead><tbody>';
+    h += '<th class="col-p-hist">Hist.</th><th class="col-p-actions">Actions</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="11" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
+      h += `<tr><td colspan="${nbCols}" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
     } else {
       data.forEach(b => {
         const attente = b.statut === 'en_attente';
-        const poids   = b.poids_barre_kg
-          ? b.poids_barre_kg.toFixed(1)
-          : (b.poids_ml && b.longueur_m ? (b.poids_ml * b.longueur_m).toFixed(1) : '—');
-
-        // Dernière modification : date_modif si disponible, sinon date_validation, sinon date_ajout
-        const dateModif = b.date_modif || b.date_validation || b.date_ajout;
-        const dateAff   = dateModif
-          ? new Date(dateModif).toLocaleDateString('fr-FR')
-          : '—';
-
-        // Chantier : affectation si affecté, sinon —
-        const chantierAff = b.disponibilite === 'affecte' && b.chantier_affectation
-          ? _e(b.chantier_affectation)
-          : '—';
-
         h += `<tr${attente ? ' class="ligne-attente"' : ''}>`;
-        h += `<td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>`;
-        h += `<td><strong>${_e(b.section_type)}</strong></td>`;
-        h += `<td>${_e(b.designation)}
-          <button class="btn-inline" onclick="Stock.ouvrirFicheSection('${_e(b.section_type)}','${_e(b.designation)}')" title="Fiche section">🔍</button>
-        </td>`;
-        h += `<td>${b.longueur_m.toFixed(2)}</td>`;
-        h += `<td>${poids}</td>`;
-        h += `<td>${_badgeDispo(b)}</td>`;
-        h += `<td style="white-space:nowrap;color:#666;font-size:12px">${dateAff}</td>`;
-        h += `<td>${chantierAff}</td>`;
-        h += `<td>${_e(b.lieu_stockage)}
-          <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(b.lieu_stockage)}')" title="Voir sur le plan">📍</button>
-        </td>`;
-        h += `<td class="td-actions"><button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button></td>`;
-        h += `<td class="td-actions">${_actionsLigneProfil(b, modif, admin)}</td>`;
-        h += `</tr>`;
+        COLS_PROFILS.forEach(c => {
+          if (!vis[c.key]) return;
+          h += `<td class="col-p-${c.key}">${_cellProfil(c.key, b)}</td>`;
+        });
+        h += `<td class="col-p-hist"><button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Historique">📋</button></td>`;
+        h += `<td class="col-p-actions">${_actionsLigneProfil(b, modif, admin)}</td>`;
+        h += '</tr>';
       });
     }
 
     return h + '</tbody></table>';
+  }
+
+  /** Retourne le contenu HTML d'une cellule du tableau profilés */
+  function _cellProfil(key, b) {
+    switch (key) {
+      case 'id':
+        return `<span class="chip-id">${_e(b.id)}</span>`;
+      case 'type':
+        return `<strong>${_e(b.section_type)}</strong>`;
+      case 'designation':
+        return `${_e(b.designation)}<button class="btn-inline" onclick="Stock.ouvrirFicheSection('${_e(b.section_type)}','${_e(b.designation)}')" title="Fiche section">🔍</button>`;
+      case 'longueur':
+        return b.longueur_m.toFixed(2);
+      case 'poids': {
+        const p = b.poids_barre_kg
+          ? b.poids_barre_kg.toFixed(1)
+          : (b.poids_ml && b.longueur_m ? (b.poids_ml * b.longueur_m).toFixed(1) : '—');
+        return p;
+      }
+      case 'classe':
+        return b.classe_acier
+          ? `<span class="badge-classe-acier">${_e(b.classe_acier)}</span>`
+          : '—';
+      case 'dispo':
+        return _badgeDispo(b);
+      case 'date': {
+        const d = b.date_modif || b.date_validation || b.date_ajout;
+        return d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+      }
+      case 'chantier':
+        return b.chantier_affectation ? _e(b.chantier_affectation) : '—';
+      case 'lieu':
+        return `${_e(b.lieu_stockage)}<button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(b.lieu_stockage)}')" title="Plan">📍</button>`;
+      case 'origine':
+        return _e(b.chantier_origine) || '—';
+      case 'ref_cmd':
+        return _e(b.ref_commande) || '—';
+      case 'fournisseur':
+        return _e(b.fournisseur) || '—';
+      case 'ajoute_par':
+        return _e(b.ajoute_par) || '—';
+      case 'commentaire':
+        return `<span title="${_e(b.commentaire || '')}">${_e(b.commentaire) || '—'}</span>`;
+      default:
+        return '—';
+    }
   }
 
   /**
@@ -892,6 +959,35 @@ const Stock = (() => {
     if (ra) ra.addEventListener('click', () => { _resetFiltres('archivees'); _filtrer(); });
 
     // Boutons ajout → ouvrir modales
+    // Colonnes masquables
+    const btnCols = document.getElementById('btn-cols-profils');
+    const panelCols = document.getElementById('panel-cols-profils');
+    if (btnCols && panelCols) {
+      // Construire les checkboxes
+      const vis = _chargerColsVis();
+      panelCols.innerHTML = '<div class="panel-cols-titre">Colonnes visibles</div>'
+        + COLS_PROFILS.map(c =>
+          `<label><input type="checkbox" data-col="${c.key}"${vis[c.key] ? ' checked' : ''}> ${c.label}</label>`
+        ).join('');
+
+      btnCols.addEventListener('click', e => {
+        e.stopPropagation();
+        panelCols.classList.toggle('open');
+      });
+      panelCols.addEventListener('change', e => {
+        if (e.target.type !== 'checkbox') return;
+        const v = _chargerColsVis();
+        v[e.target.dataset.col] = e.target.checked;
+        _sauverColsVis(v);
+        _filtrer();
+      });
+      document.addEventListener('click', e => {
+        if (!panelCols.contains(e.target) && e.target !== btnCols) {
+          panelCols.classList.remove('open');
+        }
+      });
+    }
+
     const btnProfil = document.getElementById('btn-ajout-profil');
     if (btnProfil) btnProfil.addEventListener('click', () => _ouvrirModaleAjoutProfil());
 
@@ -1283,10 +1379,11 @@ const Stock = (() => {
       return _soumettreAjoutCommande(m);
     }
 
-    const type    = m.querySelector('#ap-type')?.value?.trim();
-    const desig   = m.querySelector('#ap-desig')?.value?.trim();
-    const longueur = parseFloat(m.querySelector('#ap-longueur')?.value);
-    const lieu     = m.querySelector('#ap-lieu')?.value?.trim();
+    const type        = m.querySelector('#ap-type')?.value?.trim();
+    const desig       = m.querySelector('#ap-desig')?.value?.trim();
+    const longueur    = parseFloat(m.querySelector('#ap-longueur')?.value);
+    const lieu        = m.querySelector('#ap-lieu')?.value?.trim();
+    const classe      = m.querySelector('#ap-classe')?.value?.trim() || '';
     const commentaire = m.querySelector('#ap-commentaire')?.value?.trim() || '';
 
     // Validation
@@ -1301,9 +1398,6 @@ const Stock = (() => {
     const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
     const nouvelleId = m.dataset.idPrevu || _genererIdBarre();
 
-    let codeBarre = null;
-    try { codeBarre = await window.SB.genererCodeBarre(); } catch(e) {}
-
     const barre = {
       id: nouvelleId,
       categorie: 'profil',
@@ -1312,17 +1406,19 @@ const Stock = (() => {
       longueur_m: longueur,
       poids_ml: poidsml,
       poids_barre_kg: poidsBarre,
-      chantier_origine: 'Non renseigné',
+      chantier_origine: null,
       lieu_stockage: lieu,
       disponibilite: 'disponible',
       chantier_affectation: null,
+      classe_acier: classe || null,
+      ref_commande: null,
+      fournisseur: null,
       statut: isAdmin ? 'valide' : 'en_attente',
       date_ajout: _dateAujourdhui(),
       ajoute_par: session?.identifiant || 'inconnu',
       valide_par: isAdmin ? session?.identifiant : null,
       date_validation: isAdmin ? _dateAujourdhui() : null,
       commentaire,
-      code_barre: codeBarre,
     };
 
     await _persisterElement(barre);
@@ -1379,18 +1475,9 @@ const Stock = (() => {
       const dims    = _getDims(type, desig);
       const poidsml = dims?.pml || 0;
 
-      const parts = [];
-      if (refCmd)      parts.push(`Réf cmd: ${refCmd}`);
-      if (fournisseur) parts.push(`Fournisseur: ${fournisseur}`);
-      if (classe)      parts.push(`Classe: ${classe}`);
-      const commentaire = parts.join(' | ');
-
       const idsLigne = [];
       for (let i = 0; i < qte; i++) {
         const nouvelleId = _genererIdBarre();
-        let codeBarre = null;
-        try { codeBarre = await window.SB.genererCodeBarre(); } catch(e) {}
-
         const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
 
         const barre = {
@@ -1401,21 +1488,23 @@ const Stock = (() => {
           longueur_m: longueur,
           poids_ml: poidsml,
           poids_barre_kg: poidsBarre,
-          chantier_origine: chantier || 'Non renseigné',
+          chantier_origine: chantier || null,
           lieu_stockage: lieu,
           disponibilite: chantier ? 'affecte' : 'disponible',
           chantier_affectation: chantier || null,
+          classe_acier: classe || null,
+          ref_commande: refCmd || null,
+          fournisseur: fournisseur || null,
           statut: isAdmin ? 'valide' : 'en_attente',
           date_ajout: _dateAujourdhui(),
           ajoute_par: session?.identifiant || 'inconnu',
           valide_par: isAdmin ? session?.identifiant : null,
           date_validation: isAdmin ? _dateAujourdhui() : null,
-          commentaire,
-          code_barre: codeBarre,
+          commentaire: '',
         };
 
         await _persisterElement(barre);
-        await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, chantier || null, session?.identifiant || null, null, commentaire || null);
+        await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, chantier || null, session?.identifiant || null, null, refCmd || null);
         idsLigne.push(nouvelleId);
       }
 
@@ -1737,12 +1826,15 @@ const Stock = (() => {
       _apMajSchema(m, '#mod-type', '#mod-desig');
     }, 0);
 
-    _setVal(m, '#mod-longueur',   barre.longueur_m);
-    _setVal(m, '#mod-chantier',   barre.chantier_origine);
-    _setVal(m, '#mod-lieu',       barre.lieu_stockage);
-    _setVal(m, '#mod-dispo',      barre.disponibilite);
+    _setVal(m, '#mod-longueur',    barre.longueur_m);
+    _setVal(m, '#mod-chantier',    barre.chantier_origine  || '');
+    _setVal(m, '#mod-lieu',        barre.lieu_stockage);
+    _setVal(m, '#mod-dispo',       barre.disponibilite);
     _setVal(m, '#mod-affectation', barre.chantier_affectation || '');
-    _setVal(m, '#mod-commentaire', barre.commentaire || '');
+    _setVal(m, '#mod-classe',      barre.classe_acier  || '');
+    _setVal(m, '#mod-ref-cmd',     barre.ref_commande  || '');
+    _setVal(m, '#mod-fournisseur', barre.fournisseur   || '');
+    _setVal(m, '#mod-commentaire', barre.commentaire   || '');
 
     // Stocker l'id en cours de modification
     m.dataset.idEnCours  = barre.id;
@@ -1804,10 +1896,13 @@ const Stock = (() => {
       const type    = m.querySelector('#mod-type')?.value?.trim();
       const desig   = m.querySelector('#mod-desig')?.value?.trim();
       const longueur = parseFloat(m.querySelector('#mod-longueur')?.value);
-      const chantier = m.querySelector('#mod-chantier')?.value?.trim();
-      const lieu     = m.querySelector('#mod-lieu')?.value?.trim();
-      const dispo    = m.querySelector('#mod-dispo')?.value || 'disponible';
+      const chantier    = m.querySelector('#mod-chantier')?.value?.trim()    || null;
+      const lieu        = m.querySelector('#mod-lieu')?.value?.trim();
+      const dispo       = m.querySelector('#mod-dispo')?.value || 'disponible';
       const affectation = m.querySelector('#mod-affectation')?.value?.trim() || null;
+      const classe      = m.querySelector('#mod-classe')?.value?.trim()      || null;
+      const refCmd      = m.querySelector('#mod-ref-cmd')?.value?.trim()     || null;
+      const fournisseur = m.querySelector('#mod-fournisseur')?.value?.trim() || null;
       const commentaire = m.querySelector('#mod-commentaire')?.value?.trim() || '';
 
       if (!type)  return _signalerErreur(m, '#mod-type',  'Le type est obligatoire');
@@ -1829,10 +1924,13 @@ const Stock = (() => {
         longueur_m: longueur,
         poids_ml: poidsml,
         poids_barre_kg: poidsBarre,
-        chantier_origine: chantier || original.chantier_origine,
+        chantier_origine: chantier !== null ? chantier : original.chantier_origine,
         lieu_stockage: lieu,
         disponibilite: dispo,
         chantier_affectation: affectation,
+        classe_acier: classe,
+        ref_commande: refCmd,
+        fournisseur: fournisseur,
         commentaire,
         // Archivage direct / Gestion → en_attente / Admin → valide
         statut: estArchivage ? 'archivee' : (isAdmin ? 'valide' : 'en_attente'),
