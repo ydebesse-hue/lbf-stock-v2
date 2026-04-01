@@ -998,12 +998,8 @@ const Stock = (() => {
 
     function _ouvrirPanelCols() {
       if (!panelCols) return;
-      // Lire les prefs personnalisées (indépendamment du mode actif)
-      let saved = {};
-      try { saved = JSON.parse(localStorage.getItem(CLE_COLS_PROFILS) || '{}'); } catch(e) {}
-      const vis = {};
-      COLS_PROFILS.forEach(c => { vis[c.key] = c.key in saved ? saved[c.key] : c.defaut; });
-
+      // Même source de vérité que le rendu du tableau
+      const vis = _chargerColsVis();
       panelCols.innerHTML = '<div class="panel-cols-titre">Colonnes visibles</div>'
         + COLS_PROFILS.map(c =>
           `<label><input type="checkbox" data-col="${c.key}"${vis[c.key] ? ' checked' : ''}> ${c.label}</label>`
