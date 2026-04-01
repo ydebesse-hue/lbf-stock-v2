@@ -996,22 +996,28 @@ const Stock = (() => {
     // Sélecteur de vue (Essentiel / Complet / Personnalisé)
     const panelCols = document.getElementById('panel-cols-profils');
 
+    function _ouvrirPanelCols() {
+      if (!panelCols) return;
+      // Lire les prefs personnalisées (indépendamment du mode actif)
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem(CLE_COLS_PROFILS) || '{}'); } catch(e) {}
+      const vis = {};
+      COLS_PROFILS.forEach(c => { vis[c.key] = c.key in saved ? saved[c.key] : c.defaut; });
+
+      panelCols.innerHTML = '<div class="panel-cols-titre">Colonnes visibles</div>'
+        + COLS_PROFILS.map(c =>
+          `<label><input type="checkbox" data-col="${c.key}"${vis[c.key] ? ' checked' : ''}> ${c.label}</label>`
+        ).join('');
+      panelCols.classList.add('open');
+    }
+
     function _syncBoutonsVue() {
       const mode = _getModeVue();
       ['essentiel','complet','personnalise'].forEach(m => {
         const el = document.getElementById(`btn-vue-${m}`);
         if (el) el.classList.toggle('active', m === mode);
       });
-      if (panelCols) {
-        panelCols.classList.remove('open');
-        // Mettre à jour les checkboxes selon le mode courant
-        if (mode === 'personnalise') {
-          const vis = _chargerColsVis();
-          panelCols.querySelectorAll('input[type=checkbox]').forEach(cb => {
-            cb.checked = vis[cb.dataset.col] ?? false;
-          });
-        }
-      }
+      if (panelCols) panelCols.classList.remove('open');
     }
 
     ['essentiel','complet','personnalise'].forEach(mode => {
@@ -1019,35 +1025,34 @@ const Stock = (() => {
       if (!btn) return;
       btn.addEventListener('click', e => {
         if (mode === 'personnalise') {
-          // Si déjà actif → toggle le panel
+          e.stopPropagation();
+          // Si déjà actif → toggle panel
           if (_getModeVue() === 'personnalise') {
-            e.stopPropagation();
-            panelCols?.classList.toggle('open');
+            panelCols?.classList.contains('open')
+              ? panelCols.classList.remove('open')
+              : _ouvrirPanelCols();
             return;
           }
+          // Premier passage en mode perso
+          _setModeVue('personnalise');
+          _syncBoutonsVue();
+          _filtrer();
+          _ouvrirPanelCols();
+          return;
         }
         _setModeVue(mode);
         _syncBoutonsVue();
         _filtrer();
-        if (mode === 'personnalise') {
-          e.stopPropagation();
-          panelCols?.classList.add('open');
-        }
       });
     });
 
-    // Construire les checkboxes dans le panel
     if (panelCols) {
-      const vis = _chargerColsVis();
-      panelCols.innerHTML = '<div class="panel-cols-titre">Colonnes visibles</div>'
-        + COLS_PROFILS.map(c =>
-          `<label><input type="checkbox" data-col="${c.key}"${vis[c.key] ? ' checked' : ''}> ${c.label}</label>`
-        ).join('');
       panelCols.addEventListener('change', e => {
         if (e.target.type !== 'checkbox') return;
-        const v = _chargerColsVis();
-        v[e.target.dataset.col] = e.target.checked;
-        _sauverColsVis(v);
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem(CLE_COLS_PROFILS) || '{}'); } catch(e) {}
+        saved[e.target.dataset.col] = e.target.checked;
+        _sauverColsVis(saved);
         _filtrer();
       });
       document.addEventListener('click', e => {
