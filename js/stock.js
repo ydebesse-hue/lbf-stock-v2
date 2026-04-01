@@ -1029,14 +1029,9 @@ const Stock = (() => {
               : _ouvrirPanelCols();
             return;
           }
-          // Premier passage en mode perso
-          // Initialiser les préfs personnalisées à partir de l'affichage courant
-          // si aucune préférence n'a encore été sauvegardée
-          try {
-            if (!localStorage.getItem(CLE_COLS_PROFILS)) {
-              _sauverColsVis(_chargerColsVis());
-            }
-          } catch(e) {}
+          // Passage en mode perso : snapshot de l'affichage courant
+          // pour que les checkboxes soient toujours en accord avec ce qui est affiché
+          _sauverColsVis(_chargerColsVis());
           _setModeVue('personnalise');
           _syncBoutonsVue();
           _filtrer();
