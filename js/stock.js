@@ -1088,13 +1088,8 @@ const Stock = (() => {
     // ── Modale modification ───────────────────────────────────
     const mMod = document.getElementById('m-modification');
     if (mMod) {
-      const selType  = mMod.querySelector('#mod-type');
-      const selDesig = mMod.querySelector('#mod-desig');
-      const inpLong  = mMod.querySelector('#mod-longueur');
-
-      if (selType)  selType.addEventListener('change',  () => _apMajDesig(mMod, '#mod-type', '#mod-desig'));
-      if (selDesig) selDesig.addEventListener('change', () => _apMajSchema(mMod, '#mod-type', '#mod-desig'));
-      if (inpLong)  inpLong.addEventListener('input',   () => _apMajPoids(mMod, '#mod-longueur'));
+      const inpLong = mMod.querySelector('#mod-longueur');
+      if (inpLong) inpLong.addEventListener('input', () => _apMajPoids(mMod, '#mod-longueur'));
 
       const btnSoumettre = mMod.querySelector('.btn-soumettre');
       if (btnSoumettre) btnSoumettre.addEventListener('click', () => _soumettreModification(mMod));
@@ -1825,41 +1820,50 @@ const Stock = (() => {
     const m = document.getElementById('m-modification');
     if (!m) return;
 
-    // En-tête de la modale
+    // Titre modale
     const titre = m.querySelector('.modale-titre');
-    if (titre) titre.textContent = `Modifier — ${barre.section_type} ${barre.designation} (${barre.id})`;
+    if (titre) titre.textContent = 'Modifier la barre';
 
-    // Remplir les selects
-    _remplirSelectType(m.querySelector('#mod-type'));
+    // ── En-tête lecture seule ──
+    const elId    = m.querySelector('#mod-display-id');
+    const elType  = m.querySelector('#mod-display-type');
+    const elDesig = m.querySelector('#mod-display-desig');
+    const elLong  = m.querySelector('#mod-display-longueur');
+    if (elId)    elId.textContent    = barre.id;
+    if (elType)  elType.textContent  = barre.section_type;
+    if (elDesig) elDesig.textContent = barre.designation;
+    if (elLong)  elLong.textContent  = barre.longueur_m.toFixed(2) + ' m';
+
+    // Bouton fiche section
+    const btnFiche = m.querySelector('#mod-btn-fiche');
+    if (btnFiche) btnFiche.onclick = () => Stock.ouvrirFicheSection(barre.section_type, barre.designation);
+
+    // Chips métadonnées
+    const metaDiv = m.querySelector('#mod-barre-meta');
+    if (metaDiv) {
+      const chips = [];
+      if (barre.chantier_origine) chips.push(`<span class="mod-meta-chip"><strong>Origine :</strong>&nbsp;${_e(barre.chantier_origine)}</span>`);
+      if (barre.classe_acier)     chips.push(`<span class="mod-meta-chip"><strong>Classe :</strong>&nbsp;${_e(barre.classe_acier)}</span>`);
+      if (barre.ref_commande)     chips.push(`<span class="mod-meta-chip"><strong>Réf :</strong>&nbsp;${_e(barre.ref_commande)}</span>`);
+      if (barre.fournisseur)      chips.push(`<span class="mod-meta-chip"><strong>Fourn. :</strong>&nbsp;${_e(barre.fournisseur)}</span>`);
+      metaDiv.innerHTML = chips.join('');
+    }
+
+    // ── Champs éditables ──
     _remplirSelectLieux(m.querySelector('#mod-lieu'));
-
-    // Pré-remplir les valeurs
-    _setVal(m, '#mod-type',        barre.section_type);
-    _apMajDesig(m, '#mod-type', '#mod-desig');  // cascade désignations
-    // Après avoir peuplé les désignations, sélectionner la bonne
-    setTimeout(() => {
-      _setVal(m, '#mod-desig', barre.designation);
-      _apMajSchema(m, '#mod-type', '#mod-desig');
-    }, 0);
-
     _setVal(m, '#mod-longueur',    barre.longueur_m);
-    _setVal(m, '#mod-chantier',    barre.chantier_origine  || '');
     _setVal(m, '#mod-lieu',        barre.lieu_stockage);
     _setVal(m, '#mod-dispo',       barre.disponibilite);
     _setVal(m, '#mod-affectation', barre.chantier_affectation || '');
-    _setVal(m, '#mod-classe',      barre.classe_acier  || '');
-    _setVal(m, '#mod-ref-cmd',     barre.ref_commande  || '');
-    _setVal(m, '#mod-fournisseur', barre.fournisseur   || '');
-    _setVal(m, '#mod-commentaire', barre.commentaire   || '');
+    _setVal(m, '#mod-commentaire', barre.commentaire || '');
+    _apMajPoids(m, '#mod-longueur');
 
-    // Stocker l'id en cours de modification
-    m.dataset.idEnCours  = barre.id;
-    m.dataset.categorieEnCours = 'profil';
-    m.dataset.poidsml = barre.poids_ml || '';
+    // Stocker l'id et les données immuables
+    m.dataset.idEnCours         = barre.id;
+    m.dataset.categorieEnCours  = 'profil';
+    m.dataset.poidsml           = barre.poids_ml || '';
 
-    // Note selon profil
     _majNoteStatut(m, '.mod-note-statut');
-
     _ouvrirModale('m-modification');
   }
 
@@ -1909,46 +1913,27 @@ const Stock = (() => {
     const isAdmin = Auth.hasRight('can_validate');
 
     if (categorie === 'profil') {
-      const type    = m.querySelector('#mod-type')?.value?.trim();
-      const desig   = m.querySelector('#mod-desig')?.value?.trim();
-      const longueur = parseFloat(m.querySelector('#mod-longueur')?.value);
-      const chantier    = m.querySelector('#mod-chantier')?.value?.trim()    || null;
+      const longueur    = parseFloat(m.querySelector('#mod-longueur')?.value);
       const lieu        = m.querySelector('#mod-lieu')?.value?.trim();
       const dispo       = m.querySelector('#mod-dispo')?.value || 'disponible';
       const affectation = m.querySelector('#mod-affectation')?.value?.trim() || null;
-      const classe      = m.querySelector('#mod-classe')?.value?.trim()      || null;
-      const refCmd      = m.querySelector('#mod-ref-cmd')?.value?.trim()     || null;
-      const fournisseur = m.querySelector('#mod-fournisseur')?.value?.trim() || null;
       const commentaire = m.querySelector('#mod-commentaire')?.value?.trim() || '';
 
-      if (!type)  return _signalerErreur(m, '#mod-type',  'Le type est obligatoire');
-      if (!desig) return _signalerErreur(m, '#mod-desig', 'La désignation est obligatoire');
       // La longueur 0 est autorisée (déclenchera un archivage)
       if (isNaN(longueur) || longueur < 0) return _signalerErreur(m, '#mod-longueur', 'La longueur est obligatoire');
 
-      const poidsml   = parseFloat(m.dataset.poidsml) || original.poids_ml || 0;
+      const poidsml    = parseFloat(m.dataset.poidsml) || original.poids_ml || 0;
       const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : original.poids_barre_kg;
-
-      // Si longueur = 0 → archivage direct (bypass du workflow en_attente)
       const estArchivage = longueur === 0;
 
-      /** @type {Object} Barre modifiée — Gestion repasse en en_attente sauf archivage */
       const modif = {
         ...original,
-        section_type: type,
-        designation: desig,
         longueur_m: longueur,
-        poids_ml: poidsml,
         poids_barre_kg: poidsBarre,
-        chantier_origine: chantier !== null ? chantier : original.chantier_origine,
         lieu_stockage: lieu,
         disponibilite: dispo,
         chantier_affectation: affectation,
-        classe_acier: classe,
-        ref_commande: refCmd,
-        fournisseur: fournisseur,
         commentaire,
-        // Archivage direct / Gestion → en_attente / Admin → valide
         statut: estArchivage ? 'archivee' : (isAdmin ? 'valide' : 'en_attente'),
         valide_par: isAdmin ? session?.identifiant : null,
         date_validation: isAdmin ? _dateAujourdhui() : null,
@@ -1958,14 +1943,13 @@ const Stock = (() => {
 
       await _persisterElement(modif);
 
-      // Enregistrer dans l'historique selon la nature de la modification
       const longAvant = original.longueur_m;
       if (estArchivage) {
         await _enregistrerHistorique(original.id, 'ARCHIVAGE', longAvant, 0,
-          affectation || chantier || null, session?.identifiant || null, null, commentaire || null);
+          affectation || original.chantier_origine || null, session?.identifiant || null, null, commentaire || null);
       } else if (longueur < longAvant) {
         await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
-          chantier || original.chantier_origine || null, session?.identifiant || null, null, commentaire || null);
+          original.chantier_origine || null, session?.identifiant || null, null, commentaire || null);
       } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
         await _enregistrerHistorique(original.id, 'AFFECTATION', longAvant, longueur,
           affectation || null, session?.identifiant || null, null, commentaire || null);

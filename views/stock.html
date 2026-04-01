@@ -812,6 +812,50 @@
     }
     .btn-suppr-ligne:hover { color: var(--rouge); }
 
+    /* ── EN-TÊTE BARRE (modale modification) ────────────────── */
+    .mod-barre-info {
+      background: #f8f8f8;
+      border: 1px solid #e5e5e5;
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+    .mod-barre-info-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .mod-display-section { font-size: 15px; }
+    .mod-display-section strong { color: var(--rouge); margin-right: 4px; }
+    .mod-longueur-ref {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      font-size: 12px;
+      color: #888;
+      line-height: 1.4;
+    }
+    .mod-longueur-ref strong { font-size: 16px; color: var(--noir); }
+    .mod-barre-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .mod-meta-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: #e8e8e8;
+      border-radius: 3px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #555;
+    }
+    .mod-meta-chip strong { color: #333; font-size: 11px; }
+
     /* ── BADGE CLASSE ACIER ──────────────────────────────────── */
     .badge-classe-acier {
       display: inline-block;
@@ -1358,54 +1402,41 @@
 
       <!-- Zone profilé (affichée par défaut) -->
       <div class="mod-zone-profil">
-        <div class="form-cols2">
-          <div class="fr">
-            <label>Type de section <span style="color:var(--rouge)">*</span></label>
-            <select id="mod-type"><option value="">— Choisir —</option></select>
+
+        <!-- En-tête lecture seule ──────────────────────────── -->
+        <div class="mod-barre-info">
+          <div class="mod-barre-info-top">
+            <span class="chip-id" id="mod-display-id">—</span>
+            <span class="mod-display-section">
+              <strong id="mod-display-type">—</strong>
+              <span id="mod-display-desig">—</span>
+            </span>
+            <button class="btn-inline" id="mod-btn-fiche" title="Fiche section">🔍</button>
+            <span class="mod-longueur-ref">
+              <span>Longueur actuelle</span>
+              <strong id="mod-display-longueur">—</strong>
+            </span>
           </div>
-          <div class="fr">
-            <label>Désignation <span style="color:var(--rouge)">*</span></label>
-            <select id="mod-desig"><option value="">— Choisir le type d'abord —</option></select>
-          </div>
+          <div class="mod-barre-meta" id="mod-barre-meta"></div>
         </div>
 
-        <!-- Schéma SVG dynamique -->
-        <div id="mod-schema" class="schema-zone" style="display:none">
-          <div class="schema-svg-zone" id="mod-visuel">
-            <div class="schema-titre" id="mod-schema-label">—</div>
-            <!-- Image réelle — affichée si disponible dans assets/profils/ -->
-            <img id="mod-img" src="" alt=""
-                 style="display:none; width:160px; height:160px; object-fit:contain;
-                        border:1px solid var(--gris-clair); border-radius:3px;
-                        background:#f7f7f7; cursor:zoom-in;">
-            <!-- SVG généré — fallback si pas d'image -->
-            <svg id="mod-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
-          </div>
-          <div class="schema-dims">
-            <h4>Caractéristiques</h4>
-            <div id="mod-dims-list"></div>
-          </div>
-        </div>
-
+        <!-- Modification principale ────────────────────────── -->
         <div class="form-cols2">
           <div class="fr">
-            <label>Longueur (m) <span style="color:var(--rouge)">*</span></label>
-            <input type="number" id="mod-longueur" placeholder="6.00" step="0.01" min="0.1">
+            <label>Nouvelle longueur (m) <span style="color:var(--rouge)">*</span></label>
+            <input type="number" id="mod-longueur" placeholder="6.00" step="0.01" min="0">
             <div class="poids-calc-zone">
               Poids estimé :&nbsp;<span class="poids-calc-val" id="mod-poids-calc">—</span>
             </div>
           </div>
           <div class="fr">
-            <label>Chantier d'origine</label>
-            <input type="text" id="mod-chantier" placeholder="Référence chantier">
+            <label>Lieu de stockage (rack)</label>
+            <select id="mod-lieu"><option value="">— Choisir —</option></select>
           </div>
         </div>
 
+        <!-- Affectation ─────────────────────────────────────── -->
         <div class="form-cols2">
-          <div class="fr">
-            <label>Lieu de stockage</label>
-            <select id="mod-lieu"><option value="">— Choisir —</option></select>
-          </div>
           <div class="fr">
             <label>Disponibilité</label>
             <select id="mod-dispo">
@@ -1413,33 +1444,9 @@
               <option value="affecte">Affecté à un chantier</option>
             </select>
           </div>
-        </div>
-
-        <div class="fr">
-          <label>Chantier d'affectation</label>
-          <input type="text" id="mod-affectation" placeholder="Renseignez si la barre est affectée">
-        </div>
-
-        <div class="form-cols3">
           <div class="fr">
-            <label>Classe acier</label>
-            <select id="mod-classe">
-              <option value="">— Inconnue —</option>
-              <option value="S235">S235</option>
-              <option value="S275">S275</option>
-              <option value="S355">S355</option>
-              <option value="S420">S420</option>
-              <option value="S460">S460</option>
-              <option value="S690">S690</option>
-            </select>
-          </div>
-          <div class="fr">
-            <label>Réf. commande / BL</label>
-            <input type="text" id="mod-ref-cmd" placeholder="N° bon de commande">
-          </div>
-          <div class="fr">
-            <label>Fournisseur</label>
-            <input type="text" id="mod-fournisseur" placeholder="Nom du fournisseur">
+            <label>Chantier d'affectation</label>
+            <input type="text" id="mod-affectation" placeholder="Nom ou référence du chantier">
           </div>
         </div>
 
@@ -1447,6 +1454,8 @@
           <label>Commentaire</label>
           <textarea id="mod-commentaire" placeholder="Informations complémentaires…"></textarea>
         </div>
+
+        <div class="mod-note-statut note-statut note-statut-attente"></div>
       </div>
 
       <!-- Zone tôle (masquée par défaut, affichée si modification d'une tôle) -->
