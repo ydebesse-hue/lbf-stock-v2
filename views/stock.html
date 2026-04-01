@@ -689,18 +689,28 @@
     .col-p-ajoute_par  { width: 90px;  }
     .col-p-commentaire { width: 130px; }
 
-    /* ── BOUTON + PANEL COLONNES ─────────────────────────────── */
-    .btn-cols {
-      background: #f5f5f5;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-      padding: 5px 10px;
-      cursor: pointer;
-      font-size: 13px;
-      white-space: nowrap;
-      position: relative;
+    /* ── SÉLECTEUR DE VUE ───────────────────────────────────── */
+    .vue-selector {
+      display: flex;
+      align-items: center;
+      gap: 0;
     }
-    .btn-cols:hover { background: #eee; }
+    .btn-vue {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-right: none;
+      padding: 5px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      color: #555;
+      transition: background .12s, color .12s;
+    }
+    .btn-vue:first-child { border-radius: 3px 0 0 3px; }
+    .vue-selector > div:last-child .btn-vue { border-right: 1px solid #ccc; border-radius: 0 3px 3px 0; }
+    .btn-vue:hover  { background: #e4e4e4; }
+    .btn-vue.active { background: var(--rouge); color: #fff; border-color: var(--rouge); }
+    .btn-vue.active + .btn-vue { border-left-color: var(--rouge); }
     #panel-cols-profils {
       display: none;
       position: absolute;
@@ -1059,9 +1069,13 @@
     <div class="toolbar-sep"></div>
     <button id="btn-reset-profils" class="btn-action btn-gris" title="Réinitialiser les filtres">✕ Réinitialiser</button>
     <input id="p-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
-    <div style="position:relative; margin-left:auto">
-      <button id="btn-cols-profils" class="btn-cols">Colonnes ⚙</button>
-      <div id="panel-cols-profils"></div>
+    <div class="vue-selector" style="margin-left:auto">
+      <button id="btn-vue-essentiel"   class="btn-vue" title="Colonnes essentielles">Essentiel</button>
+      <button id="btn-vue-complet"     class="btn-vue" title="Toutes les colonnes">Complet</button>
+      <div style="position:relative">
+        <button id="btn-vue-personnalise" class="btn-vue" title="Colonnes personnalisées">Personnalisé ⚙</button>
+        <div id="panel-cols-profils"></div>
+      </div>
     </div>
   </div>
 

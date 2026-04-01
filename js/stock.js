@@ -61,6 +61,12 @@ const Stock = (() => {
     { key: 'commentaire', label: 'Commentaire',     tri: null,          defaut: false },
   ];
 
+  /** Colonnes visibles en mode "Essentiel" */
+  const COLS_ESSENTIELLES = new Set(['id','type','designation','longueur','dispo','chantier','lieu']);
+
+  /** Clé localStorage pour le mode de vue du tableau profilés */
+  const CLE_VUE_PROFILS = 'lbf-stock-vue-profils';
+
 
   /* ──────────────────────────────────────────────────────────────
      ÉTAT INTERNE
@@ -279,20 +285,32 @@ const Stock = (() => {
      VISIBILITÉ DES COLONNES
      ────────────────────────────────────────────────────────────── */
 
+  function _getModeVue() {
+    try { return localStorage.getItem(CLE_VUE_PROFILS) || 'essentiel'; } catch(e) { return 'essentiel'; }
+  }
+
+  function _setModeVue(mode) {
+    try { localStorage.setItem(CLE_VUE_PROFILS, mode); } catch(e) {}
+  }
+
   function _chargerColsVis() {
-    try {
-      const raw = localStorage.getItem(CLE_COLS_PROFILS);
-      const saved = raw ? JSON.parse(raw) : {};
-      const vis = {};
-      COLS_PROFILS.forEach(c => {
-        vis[c.key] = c.key in saved ? saved[c.key] : c.defaut;
-      });
-      return vis;
-    } catch(e) {
-      const vis = {};
-      COLS_PROFILS.forEach(c => { vis[c.key] = c.defaut; });
-      return vis;
+    const mode = _getModeVue();
+    const vis = {};
+    if (mode === 'essentiel') {
+      COLS_PROFILS.forEach(c => { vis[c.key] = COLS_ESSENTIELLES.has(c.key); });
+    } else if (mode === 'complet') {
+      COLS_PROFILS.forEach(c => { vis[c.key] = true; });
+    } else {
+      // personnalise
+      try {
+        const raw = localStorage.getItem(CLE_COLS_PROFILS);
+        const saved = raw ? JSON.parse(raw) : {};
+        COLS_PROFILS.forEach(c => { vis[c.key] = c.key in saved ? saved[c.key] : c.defaut; });
+      } catch(e) {
+        COLS_PROFILS.forEach(c => { vis[c.key] = c.defaut; });
+      }
     }
+    return vis;
   }
 
   function _sauverColsVis(vis) {
@@ -975,21 +993,56 @@ const Stock = (() => {
       });
     }
 
-    // Colonnes masquables
-    const btnCols = document.getElementById('btn-cols-profils');
+    // Sélecteur de vue (Essentiel / Complet / Personnalisé)
     const panelCols = document.getElementById('panel-cols-profils');
-    if (btnCols && panelCols) {
-      // Construire les checkboxes
+
+    function _syncBoutonsVue() {
+      const mode = _getModeVue();
+      ['essentiel','complet','personnalise'].forEach(m => {
+        const el = document.getElementById(`btn-vue-${m}`);
+        if (el) el.classList.toggle('active', m === mode);
+      });
+      if (panelCols) {
+        panelCols.classList.remove('open');
+        // Mettre à jour les checkboxes selon le mode courant
+        if (mode === 'personnalise') {
+          const vis = _chargerColsVis();
+          panelCols.querySelectorAll('input[type=checkbox]').forEach(cb => {
+            cb.checked = vis[cb.dataset.col] ?? false;
+          });
+        }
+      }
+    }
+
+    ['essentiel','complet','personnalise'].forEach(mode => {
+      const btn = document.getElementById(`btn-vue-${mode}`);
+      if (!btn) return;
+      btn.addEventListener('click', e => {
+        if (mode === 'personnalise') {
+          // Si déjà actif → toggle le panel
+          if (_getModeVue() === 'personnalise') {
+            e.stopPropagation();
+            panelCols?.classList.toggle('open');
+            return;
+          }
+        }
+        _setModeVue(mode);
+        _syncBoutonsVue();
+        _filtrer();
+        if (mode === 'personnalise') {
+          e.stopPropagation();
+          panelCols?.classList.add('open');
+        }
+      });
+    });
+
+    // Construire les checkboxes dans le panel
+    if (panelCols) {
       const vis = _chargerColsVis();
       panelCols.innerHTML = '<div class="panel-cols-titre">Colonnes visibles</div>'
         + COLS_PROFILS.map(c =>
           `<label><input type="checkbox" data-col="${c.key}"${vis[c.key] ? ' checked' : ''}> ${c.label}</label>`
         ).join('');
-
-      btnCols.addEventListener('click', e => {
-        e.stopPropagation();
-        panelCols.classList.toggle('open');
-      });
       panelCols.addEventListener('change', e => {
         if (e.target.type !== 'checkbox') return;
         const v = _chargerColsVis();
@@ -998,11 +1051,13 @@ const Stock = (() => {
         _filtrer();
       });
       document.addEventListener('click', e => {
-        if (!panelCols.contains(e.target) && e.target !== btnCols) {
+        if (!panelCols.contains(e.target) && !e.target.closest('#btn-vue-personnalise')) {
           panelCols.classList.remove('open');
         }
       });
     }
+
+    _syncBoutonsVue();
 
     const btnProfil = document.getElementById('btn-ajout-profil');
     if (btnProfil) btnProfil.addEventListener('click', () => _ouvrirModaleAjoutProfil());
