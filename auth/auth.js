@@ -80,29 +80,24 @@ async function login(identifiant, motDePasse) {
 
   try {
     // 1. Authentification Supabase (stocke le JWT dans supabase.js)
-    await window.SB.login(email, motDePasse);
+    const authData = await window.SB.login(email, motDePasse);
 
-    // 2. Charger le profil (RLS : seul le profil courant est retourné)
-    const profils = await window.SB.lire('profils');
-    const profil  = profils[0];
+    // 2. Lire le rôle depuis les métadonnées utilisateur Supabase
+    const meta = authData.user?.user_metadata || {};
+    const role = meta.role || 'consultation';
 
-    if (!profil) {
-      await window.SB.logout();
-      return { ok: false, erreur: 'Profil introuvable. Contactez l\'administrateur.' };
-    }
-
-    if (!profil.actif) {
+    if (meta.actif === false) {
       await window.SB.logout();
       return { ok: false, erreur: 'Compte désactivé. Contactez l\'administrateur.' };
     }
 
     // 3. Construire la session applicative (même structure qu'avant)
     const session = {
-      id:          profil.id,
-      identifiant: profil.identifiant,
-      nomComplet:  profil.nom_complet,
-      profil:      profil.role,
-      droits:      DROITS[profil.role] || DROITS.consultation,
+      id:          authData.user.id,
+      identifiant: meta.identifiant || identifiant,
+      nomComplet:  meta.nom_complet  || identifiant,
+      profil:      role,
+      droits:      DROITS[role] || DROITS.consultation,
       loginAt:     Date.now(),
     };
 
