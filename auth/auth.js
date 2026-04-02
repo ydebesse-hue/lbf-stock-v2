@@ -86,11 +86,6 @@ async function login(identifiant, motDePasse) {
     const meta = authData.user?.user_metadata || {};
     const role = meta.role || 'consultation';
 
-    if (meta.actif === false) {
-      await window.SB.logout();
-      return { ok: false, erreur: 'Compte désactivé. Contactez l\'administrateur.' };
-    }
-
     // 3. Construire la session applicative (même structure qu'avant)
     const session = {
       id:          authData.user.id,
