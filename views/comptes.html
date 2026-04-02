@@ -599,15 +599,7 @@ const CLE_USERS = 'lbf_users_modifs';
  */
 async function chargerUsers() {
   try {
-    const profils = await window.SB.lire('profils');
-    // Normaliser les champs snake_case → camelCase pour l'UI
-    _users = profils.map(p => ({
-      id:          p.id,
-      identifiant: p.identifiant,
-      nomComplet:  p.nom_complet,
-      profil:      p.role,
-      actif:       p.actif,
-    }));
+    _users = await window.SB.lire('users');
   } catch (err) {
     afficherNotif('Impossible de charger la liste des comptes.', 'erreur');
     _users = [];
@@ -633,14 +625,7 @@ function _chargerLocal() {
  * @param {Object} user
  */
 async function _persisterUser(user) {
-  // Mapper camelCase → snake_case pour la table profils
-  await window.SB.upsert('profils', {
-    id:          user.id,
-    identifiant: user.identifiant,
-    nom_complet: user.nomComplet,
-    role:        user.profil,
-    actif:       user.actif,
-  });
+  await window.SB.upsert('users', user);
   const idx = _users.findIndex(u => u.id === user.id);
   if (idx !== -1) { _users[idx] = user; } else { _users.push(user); }
 }
@@ -804,12 +789,14 @@ async function sauvegarderCompte() {
       const uid        = authResult.user?.id;
       if (!uid) throw new Error('ID utilisateur manquant dans la réponse Supabase.');
 
-      // 2. Créer le profil dans la table profils
-      await window.SB.inserer('profils', {
-        id:          uid,
+      // 2. Créer l'entrée dans la table users
+      const hashMdp = await sha256(mdp1);
+      await window.SB.inserer('users', {
+        id:          _genIdUser(),
         identifiant: identifiant,
-        nom_complet: nomComplet,
-        role:        profil,
+        nomComplet:  nomComplet,
+        profil:      profil,
+        motDePasse:  hashMdp,
         actif:       actif,
       });
 
@@ -899,7 +886,7 @@ async function confirmerSuppression() {
   if (!_supId) return;
 
   try {
-    await window.SB.supprimer('profils', _supId);
+    await window.SB.supprimer('users', _supId);
   } catch(e) {
     afficherNotif('Erreur lors de la suppression du compte.', 'erreur');
     return;
