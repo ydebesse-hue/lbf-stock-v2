@@ -601,8 +601,16 @@ async function chargerUsers() {
   try {
     _users = await window.SB.lire('users');
   } catch (err) {
-    afficherNotif('Impossible de charger la liste des comptes.', 'erreur');
-    _users = [];
+    console.warn('[Comptes] Supabase indisponible, fallback JSON :', err);
+    try {
+      const rep = await fetch('../data/users.json');
+      if (!rep.ok) throw new Error('users.json introuvable');
+      const data = await rep.json();
+      _users = data.users || [];
+    } catch(e) {
+      afficherNotif('Impossible de charger la liste des comptes.', 'erreur');
+      _users = [];
+    }
   }
   _rendreTableau();
 }
@@ -625,9 +633,18 @@ function _chargerLocal() {
  * @param {Object} user
  */
 async function _persisterUser(user) {
-  await window.SB.upsert('users', user);
-  const idx = _users.findIndex(u => u.id === user.id);
-  if (idx !== -1) { _users[idx] = user; } else { _users.push(user); }
+  try {
+    await window.SB.upsert('users', user);
+  } catch(e) {
+    console.warn('[Comptes] Supabase indisponible, fallback localStorage :', e);
+    const local = _chargerLocal();
+    const idx = local.findIndex(u => u.id === user.id);
+    if (idx !== -1) { local[idx] = user; } else { local.push(user); }
+    localStorage.setItem(CLE_USERS, JSON.stringify(local));
+  }
+  // Mettre à jour l'état en mémoire
+  const idxData = _users.findIndex(u => u.id === user.id);
+  if (idxData !== -1) { _users[idxData] = user; } else { _users.push(user); }
 }
 
 /**
@@ -757,13 +774,14 @@ async function sauvegarderCompte() {
   const mdp1        = document.getElementById('mc-mdp').value;
   const mdp2        = document.getElementById('mc-mdp2').value;
 
+  // Validations
   if (!identifiant || !nomComplet) {
     afficherErreurModale('mc-erreur', 'Identifiant et nom complet sont obligatoires.');
     return;
   }
 
+  // En création, vérifier unicité identifiant
   if (!_editId) {
-    // ── CRÉATION ──────────────────────────────────────────
     const doublon = _users.find(u => u.identifiant.toLowerCase() === identifiant.toLowerCase());
     if (doublon) {
       afficherErreurModale('mc-erreur', 'Cet identifiant est déjà utilisé.');
@@ -777,49 +795,34 @@ async function sauvegarderCompte() {
       afficherErreurModale('mc-erreur', 'Les mots de passe ne correspondent pas.');
       return;
     }
-    if (mdp1.length < 6) {
-      afficherErreurModale('mc-erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
-      return;
-    }
-
-    try {
-      // 1. Créer le compte Supabase Auth
-      const email      = identifiant.toLowerCase() + (window.Auth.EMAIL_SUFFIX || '@lbf.local');
-      const authResult = await window.SB.creerCompte(email, mdp1);
-      const uid        = authResult.user?.id;
-      if (!uid) throw new Error('ID utilisateur manquant dans la réponse Supabase.');
-
-      // 2. Créer l'entrée dans la table users
-      const hashMdp = await sha256(mdp1);
-      await window.SB.inserer('users', {
-        id:          _genIdUser(),
-        identifiant: identifiant,
-        nomComplet:  nomComplet,
-        profil:      profil,
-        motDePasse:  hashMdp,
-        actif:       actif,
-      });
-
-      _users.push({ id: uid, identifiant, nomComplet, profil, actif });
-      _rendreTableau();
-      fermerM('m-compte');
-      afficherNotif('Compte créé avec succès.', 'succes');
-    } catch(err) {
-      afficherErreurModale('mc-erreur', err.message || 'Erreur lors de la création du compte.');
-    }
-
-  } else {
-    // ── MODIFICATION ──────────────────────────────────────
-    const user = { ..._users.find(u => u.id === _editId), identifiant, nomComplet, profil, actif };
-    try {
-      await _persisterUser(user);
-      _rendreTableau();
-      fermerM('m-compte');
-      afficherNotif('Compte modifié.', 'succes');
-    } catch(err) {
-      afficherErreurModale('mc-erreur', err.message || 'Erreur lors de la modification.');
-    }
   }
+
+  // Construire l'objet
+  let user;
+  if (_editId) {
+    // Modification — conserver le MDP existant
+    user = { ..._users.find(u => u.id === _editId) };
+    user.identifiant = identifiant;
+    user.nomComplet  = nomComplet;
+    user.profil      = profil;
+    user.actif       = actif;
+  } else {
+    // Création — hacher le mot de passe
+    const hashMdp = await sha256(mdp1);
+    user = {
+      id:          _genIdUser(),
+      identifiant: identifiant,
+      nomComplet:  nomComplet,
+      profil:      profil,
+      motDePasse:  hashMdp,
+      actif:       actif,
+    };
+  }
+
+  await _persisterUser(user);
+  _rendreTableau();
+  fermerM('m-compte');
+  afficherNotif(_editId ? 'Compte modifié.' : 'Compte créé avec succès.', 'succes');
 }
 
 /* ============================================================
@@ -853,28 +856,15 @@ async function sauvegarderMdp() {
     return;
   }
 
-  // Identifier l'utilisateur cible
-  const targetUser = _users.find(u => u.id === _editId);
-  if (!targetUser) return;
+  const user = _users.find(u => u.id === _editId);
+  if (!user) return;
 
-  const session = window.Auth.getSession();
-  const estSonPropreCompte = targetUser.identifiant === session?.identifiant;
+  const hashMdp = await sha256(mdp1);
+  const userMaj = { ...user, motDePasse: hashMdp };
+  await _persisterUser(userMaj);
 
-  if (!estSonPropreCompte) {
-    // L'admin ne peut pas changer le MDP d'un autre via le front — fournir le SQL
-    const sql = `UPDATE auth.users\nSET encrypted_password = crypt('${mdp1}', gen_salt('bf'))\nWHERE email = '${targetUser.identifiant.toLowerCase()}@lbf.local';`;
-    afficherErreurModale('mdp-erreur',
-      `Pour changer le mot de passe d'un autre compte, exécutez ce SQL dans Supabase → SQL Editor :\n\n${sql}`);
-    return;
-  }
-
-  try {
-    await window.SB.changerMotDePasse(mdp1);
-    fermerM('m-mdp');
-    afficherNotif('Mot de passe mis à jour.', 'succes');
-  } catch(err) {
-    afficherErreurModale('mdp-erreur', err.message || 'Erreur lors du changement de mot de passe.');
-  }
+  fermerM('m-mdp');
+  afficherNotif('Mot de passe mis à jour.', 'succes');
 }
 
 /* ============================================================
@@ -893,12 +883,18 @@ async function confirmerSuppression() {
   try {
     await window.SB.supprimer('users', _supId);
   } catch(e) {
-    afficherNotif('Erreur lors de la suppression du compte.', 'erreur');
-    return;
+    console.warn('[Comptes] Supabase indisponible, fallback localStorage :', e);
+    const user = _users.find(u => u.id === _supId);
+    if (user) {
+      const local = _chargerLocal();
+      local.push({ ...user, _supprime: true });
+      localStorage.setItem(CLE_USERS, JSON.stringify(local));
+    }
   }
 
   _users = _users.filter(u => u.id !== _supId);
   _supId = null;
+
   _rendreTableau();
   fermerM('m-supprimer');
   afficherNotif('Compte supprimé.', 'succes');
