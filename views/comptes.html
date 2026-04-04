@@ -853,13 +853,18 @@ async function sauvegarderMdp() {
     return;
   }
 
-  // Seul l'utilisateur connecté peut changer son propre mot de passe via l'app.
-  // Pour d'autres comptes : utiliser le tableau de bord Supabase.
+  // Identifier l'utilisateur cible
+  const targetUser = _users.find(u => u.id === _editId);
+  if (!targetUser) return;
+
   const session = window.Auth.getSession();
-  if (_editId !== session?.id) {
+  const estSonPropreCompte = targetUser.identifiant === session?.identifiant;
+
+  if (!estSonPropreCompte) {
+    // L'admin ne peut pas changer le MDP d'un autre via le front — fournir le SQL
+    const sql = `UPDATE auth.users\nSET encrypted_password = crypt('${mdp1}', gen_salt('bf'))\nWHERE email = '${targetUser.identifiant.toLowerCase()}@lbf.local';`;
     afficherErreurModale('mdp-erreur',
-      'Seul l\'utilisateur lui-même peut modifier son mot de passe ici. ' +
-      'Pour réinitialiser un autre compte, utilisez le tableau de bord Supabase → Authentication → Users.');
+      `Pour changer le mot de passe d'un autre compte, exécutez ce SQL dans Supabase → SQL Editor :\n\n${sql}`);
     return;
   }
 
