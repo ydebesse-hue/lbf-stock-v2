@@ -49,6 +49,9 @@ async function biblioInit(profil) {
     Biblio.data = SECTIONS_DEMO;
   }
 
+  // Charger les sections custom depuis localStorage
+  biblioChargerCustom();
+
   // Initialisation de l'interface selon le profil
   biblioRendreBoutonAjout();
   biblioRendreGrille();
@@ -163,6 +166,53 @@ function biblioRendreGrille() {
     });
     conteneur.appendChild(grille);
   });
+
+  // ── Sections custom (Tubes, Plats personnalisés, etc.) ──
+  const customFiltrees = Biblio.data.custom.filter(s => {
+    if (famFiltree && s.famille !== famFiltree) return false;
+    if (rech && !s.desig.toLowerCase().includes(rech)) return false;
+    return true;
+  });
+
+  if (customFiltrees.length > 0) {
+    // Grouper par famille
+    const parFamille = {};
+    customFiltrees.forEach(s => {
+      if (!parFamille[s.famille]) parFamille[s.famille] = [];
+      parFamille[s.famille].push(s);
+    });
+
+    Object.entries(parFamille).forEach(([famille, sections]) => {
+      nbFamilles++;
+      nbTotal += sections.length;
+
+      const sep = document.createElement('div');
+      sep.className = 'biblio-sep-famille';
+      sep.innerHTML = `
+        <div class="bsf-titre">${famille}</div>
+        <div class="bsf-norme">Sections personnalisées</div>`;
+      conteneur.appendChild(sep);
+
+      const grille = document.createElement('div');
+      grille.className = 'biblio-grille-series';
+      sections.forEach(s => {
+        const idSec = `custom_${s.famille}_${s.desig}`.replace(/[^a-zA-Z0-9_]/g, '_');
+        const carte = document.createElement('div');
+        carte.className = 'biblio-carte-serie';
+        carte.onclick = () => biblioOuvrirFiche(idSec);
+        carte.innerHTML = `
+          <div class="cs-visuel" style="display:flex;align-items:center;justify-content:center;height:80px;font-size:28px;">
+            <span>⬜</span>
+          </div>
+          <div class="cs-corps">
+            <div class="cs-serie">${s.desig}</div>
+            <div class="cs-count">${s.statut === 'attente' ? '⏳ En attente' : 'Personnalisé'}</div>
+          </div>`;
+        grille.appendChild(carte);
+      });
+      conteneur.appendChild(grille);
+    });
+  }
 
   if (nbFamilles === 0) {
     conteneur.innerHTML = `
