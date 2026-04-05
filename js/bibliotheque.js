@@ -1020,6 +1020,22 @@ function _colonnesFamille(famille) {
         { key:'tw',  label:'e mm'  },
         { key:'pml', label:'kg/m'  },
       ];
+    case 'Profilés creux':
+      return [
+        { key:'a',   label:'a mm'  },
+        { key:'h',   label:'h mm'  },
+        { key:'b',   label:'b mm'  },
+        { key:'t',   label:'e mm'  },
+        { key:'pml', label:'kg/m'  },
+      ];
+    case 'Tube':
+      return [
+        { key:'a',   label:'a mm'  },
+        { key:'h',   label:'h mm'  },
+        { key:'b',   label:'b mm'  },
+        { key:'t',   label:'e mm'  },
+        { key:'pml', label:'kg/m'  },
+      ];
     case 'Plat':
       return [
         { key:'b',   label:'b mm'  },
