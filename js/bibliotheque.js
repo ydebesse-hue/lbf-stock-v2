@@ -452,7 +452,15 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
   const accordeon = m.querySelector('#mf-accordeon');
   if (!accordeon) return;
 
-  const colonnes = _colonnesFamille(famJson);
+  const colonnes = _colonnesFamille(famJson, serie);
+
+  // Dédoublonner par desig (variantes chaud/froid = même desig)
+  const vus = new Set();
+  const secUniques = sections.filter(s => {
+    if (vus.has(s.desig)) return false;
+    vus.add(s.desig);
+    return true;
+  });
 
   // En-tête tableau
   let thHtml = '<thead><tr>';
@@ -462,12 +470,13 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
 
   // Corps tableau
   let tbHtml = '<tbody>';
-  sections.forEach((s, i) => {
+  secUniques.forEach((s, i) => {
     const idxGlobal = MfEtat.sections.indexOf(s);
     tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
     tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
     colonnes.forEach(c => {
-      tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${s[c.key] !== undefined ? s[c.key] : '—'}</td>`;
+      const val = s[c.key];
+      tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val != null ? val : '—'}</td>`;
     });
     tbHtml += '</tr>';
   });
@@ -985,7 +994,40 @@ function biblioSelectionnerDesig(idxGlobal) {
 /**
  * Retourne les colonnes à afficher selon la famille
  */
-function _colonnesFamille(famille) {
+function _colonnesFamille(famille, serie) {
+  // Profilés creux : colonnes selon la série
+  if (famille === 'Profilés creux' || famille === 'Tube') {
+    if (serie === 'SHS' || serie === 'Tube carré') {
+      return [
+        { key:'a',   label:'a mm'  },
+        { key:'e',   label:'e mm'  },
+        { key:'pml', label:'kg/m'  },
+      ];
+    }
+    if (serie === 'RHS' || serie === 'Tube rectangulaire') {
+      return [
+        { key:'h',   label:'h mm'  },
+        { key:'b',   label:'b mm'  },
+        { key:'e',   label:'e mm'  },
+        { key:'pml', label:'kg/m'  },
+      ];
+    }
+    if (serie === 'CHS') {
+      return [
+        { key:'d',   label:'d mm'  },
+        { key:'e',   label:'e mm'  },
+        { key:'pml', label:'kg/m'  },
+      ];
+    }
+    // Fallback générique creux
+    return [
+      { key:'a',   label:'a mm'  },
+      { key:'h',   label:'h mm'  },
+      { key:'b',   label:'b mm'  },
+      { key:'e',   label:'e mm'  },
+      { key:'pml', label:'kg/m'  },
+    ];
+  }
   switch (famille) {
     case 'Profilés I':
       return [
@@ -1146,17 +1188,18 @@ function biblioDimsTableau(s) {
   const lignes = [];
 
   // Dimensions selon le type de section
-  if (s.h  !== undefined) lignes.push(['h — Hauteur',          `${s.h} mm`]);
-  if (s.b  !== undefined) lignes.push(['b — Largeur aile',     `${s.b} mm`]);
-  if (s.tw !== undefined) lignes.push(['tw — Épaisseur âme',   `${s.tw} mm`]);
-  if (s.tf !== undefined) lignes.push(['tf — Épaisseur aile',  `${s.tf} mm`]);
-  if (s.r  !== undefined) lignes.push(['r — Congé',            `${s.r} mm`]);
-  if (s.a  !== undefined) lignes.push(['a — Côté',             `${s.a} mm`]);
-  if (s.t  !== undefined) lignes.push(['t — Épaisseur',        `${s.t} mm`]);
-  if (s.b_plat !== undefined) lignes.push(['b — Largeur',      `${s.b_plat} mm`]);
-  if (s.e  !== undefined) lignes.push(['e — Épaisseur',        `${s.e} mm`]);
-  if (s.pml!== undefined) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
-  if (s.A  !== undefined) lignes.push(['Section',              `${s.A} cm²`]);
+  if (s.h   != null) lignes.push(['h — Hauteur',          `${s.h} mm`]);
+  if (s.b   != null) lignes.push(['b — Largeur aile',     `${s.b} mm`]);
+  if (s.tw  != null) lignes.push(['tw — Épaisseur âme',   `${s.tw} mm`]);
+  if (s.tf  != null) lignes.push(['tf — Épaisseur aile',  `${s.tf} mm`]);
+  if (s.r   != null) lignes.push(['r — Congé',            `${s.r} mm`]);
+  if (s.d   != null) lignes.push(['d — Diamètre ext.',    `${s.d} mm`]);
+  if (s.a   != null) lignes.push(['a — Côté',             `${s.a} mm`]);
+  if (s.e   != null) lignes.push(['e — Épaisseur',        `${s.e} mm`]);
+  if (s.t   != null) lignes.push(['e — Épaisseur',        `${s.t} mm`]);
+  if (s.b_plat != null) lignes.push(['b — Largeur',       `${s.b_plat} mm`]);
+  if (s.pml != null) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
+  if (s.A   != null) lignes.push(['Section',              `${s.A} cm²`]);
   if (s.norme) lignes.push(['Norme', s.norme]);
 
   return lignes.map(([label, val]) => `
