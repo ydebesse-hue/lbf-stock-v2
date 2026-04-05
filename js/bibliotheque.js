@@ -120,6 +120,16 @@ function biblioRendreGrille() {
         { serie:'L égale',   photo:'../assets/profils/Le.png' },
         { serie:'L inégale', photo:'../assets/profils/Li.png' }
       ]
+    },
+    {
+      id:     'Tube',
+      titre:  'Tubes creux',
+      norme:  'EN 10219-2',
+      famJson:'Tube',
+      series: [
+        { serie:'Tube carré',        photo:'../assets/profils/SHS.png' },
+        { serie:'Tube rectangulaire',photo:'../assets/profils/RHS.png' }
+      ]
     }
   ];
 
