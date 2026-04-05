@@ -40,13 +40,19 @@ async function biblioInit(profil) {
   Biblio.profil = profil || 'consultation';
 
   try {
-    // Tentative de chargement du fichier JSON
-    const rep = await fetch('../data/sections.json');
-    if (!rep.ok) throw new Error('Impossible de charger sections.json');
-    Biblio.data = await rep.json();
+    // Chargement depuis Supabase
+    const rows = await window.SB.lire('sections', { order: 'sort_order' });
+    Biblio.data = _rowsToStandard(rows);
   } catch (e) {
-    console.warn('sections.json non accessible — données de démo utilisées');
-    Biblio.data = SECTIONS_DEMO;
+    console.warn('Supabase indisponible — fallback sections.json :', e);
+    try {
+      const rep = await fetch('../data/sections.json');
+      if (!rep.ok) throw new Error('sections.json introuvable');
+      Biblio.data = await rep.json();
+    } catch (e2) {
+      console.warn('sections.json non accessible — données de démo utilisées');
+      Biblio.data = SECTIONS_DEMO;
+    }
   }
 
   // Charger les sections custom depuis localStorage
@@ -56,6 +62,26 @@ async function biblioInit(profil) {
   biblioRendreBoutonAjout();
   biblioRendreGrille();
   biblioBindFiltres();
+}
+
+/**
+ * Convertit les lignes Supabase (table sections) vers la structure
+ * { standard: [{famille, type, norme, sections:[]}], custom:[] }
+ */
+function _rowsToStandard(rows) {
+  const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat'];
+  const map = {};
+  rows.forEach(r => {
+    if (!map[r.famille]) {
+      map[r.famille] = { famille: r.famille, type: r.type, norme: r.norme, sections: [] };
+    }
+    const dims = typeof r.dims === 'string' ? JSON.parse(r.dims) : (r.dims || {});
+    map[r.famille].sections.push({ serie: r.serie, desig: r.desig, pml: r.pml, fabrication: r.fabrication || null, ...dims });
+  });
+  const standard = ORDRE.map(f => map[f]).filter(Boolean);
+  // Ajouter les familles non listées dans ORDRE
+  Object.keys(map).forEach(f => { if (!ORDRE.includes(f)) standard.push(map[f]); });
+  return { standard, custom: [] };
 }
 
 /* ══════════════════════════════════════════════
@@ -122,13 +148,24 @@ function biblioRendreGrille() {
       ]
     },
     {
+      id:     'Profilés creux',
+      titre:  'Profilés creux — SHS · RHS · CHS',
+      norme:  'EN 10210 / EN 10219',
+      famJson:'Profilés creux',
+      series: [
+        { serie:'SHS', photo:'../assets/profils/SHS chaud.png' },
+        { serie:'RHS', photo:'../assets/profils/RHS chaud.png' },
+        { serie:'CHS', photo:'../assets/profils/CHS chaud.png' }
+      ]
+    },
+    {
       id:     'Tube',
       titre:  'Tubes creux',
       norme:  'EN 10219-2',
       famJson:'Tube',
       series: [
-        { serie:'Tube carré',        photo:'../assets/profils/SHS.png' },
-        { serie:'Tube rectangulaire',photo:'../assets/profils/RHS.png' }
+        { serie:'Tube carré',        photo:'../assets/profils/SHS chaud.png' },
+        { serie:'Tube rectangulaire',photo:'../assets/profils/RHS chaud.png' }
       ]
     }
   ];

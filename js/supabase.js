@@ -30,10 +30,10 @@ const _headers = {
  * @param {string} table
  * @returns {Promise<Array>}
  */
-async function sbLire(table) {
-  const rep = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*`, {
-    headers: _headers,
-  });
+async function sbLire(table, opts = {}) {
+  let url = `${SUPABASE_URL}/rest/v1/${table}?select=*`;
+  if (opts.order) url += `&order=${encodeURIComponent(opts.order)}`;
+  const rep = await fetch(url, { headers: _headers });
   if (!rep.ok) throw new Error(`Erreur lecture ${table} : ${rep.status}`);
   return rep.json();
 }
