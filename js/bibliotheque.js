@@ -33,7 +33,7 @@ const Biblio = {
 ══════════════════════════════════════════════ */
 
 /**
- * Charge sections.json et initialise l'affichage
+ * Charge les sections depuis Supabase (fallback : sections.json) et initialise l'affichage.
  * @param {string} profil - profil utilisateur courant
  */
 async function biblioInit(profil) {
@@ -55,9 +55,6 @@ async function biblioInit(profil) {
     }
   }
 
-  // Charger les sections custom depuis localStorage
-  biblioChargerCustom();
-
   // Initialisation de l'interface selon le profil
   biblioRendreBoutonAjout();
   biblioRendreGrille();
@@ -65,8 +62,10 @@ async function biblioInit(profil) {
 }
 
 /**
- * Convertit les lignes Supabase (table sections) vers la structure
- * { standard: [{famille, type, norme, sections:[]}], custom:[] }
+ * Convertit le tableau plat de lignes Supabase en structure { standard: [...] }
+ * compatible avec le reste du code.
+ * @param {Array} rows
+ * @returns {{ standard: Array }}
  */
 function _rowsToStandard(rows) {
   const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat'];
@@ -79,8 +78,6 @@ function _rowsToStandard(rows) {
     map[r.famille].sections.push({ serie: r.serie, desig: r.desig, pml: r.pml, fabrication: r.fabrication || null, ...dims });
   });
   const standard = ORDRE.map(f => map[f]).filter(Boolean);
-  // Ajouter les familles non listées dans ORDRE
-  Object.keys(map).forEach(f => { if (!ORDRE.includes(f)) standard.push(map[f]); });
   return { standard, custom: [] };
 }
 
@@ -153,19 +150,18 @@ function biblioRendreGrille() {
       norme:  'EN 10210 / EN 10219',
       famJson:'Profilés creux',
       series: [
-        { serie:'SHS', photo:'../assets/profils/SHS chaud.png' },
-        { serie:'RHS', photo:'../assets/profils/RHS chaud.png' },
-        { serie:'CHS', photo:'../assets/profils/CHS chaud.png' }
+        { serie:'SHS', photo:'../assets/profils/SHS chaud.png', photo2:'../assets/profils/SHS froid.png' },
+        { serie:'RHS', photo:'../assets/profils/RHS chaud.png', photo2:'../assets/profils/RHS froid.png' },
+        { serie:'CHS', photo:'../assets/profils/CHS chaud.png', photo2:'../assets/profils/CHS froid.png' }
       ]
     },
     {
-      id:     'Tube',
-      titre:  'Tubes creux',
-      norme:  'EN 10219-2',
-      famJson:'Tube',
+      id:     'Plat',
+      titre:  'Plat',
+      norme:  'EN 10058',
+      famJson:'Plat',
       series: [
-        { serie:'Tube carré',        photo:'../assets/profils/SHS chaud.png' },
-        { serie:'Tube rectangulaire',photo:'../assets/profils/RHS chaud.png' }
+        { serie:'Plat', photo:'../assets/profils/Plat.png' }
       ]
     }
   ];
@@ -214,53 +210,6 @@ function biblioRendreGrille() {
     conteneur.appendChild(grille);
   });
 
-  // ── Sections custom (Tubes, Plats personnalisés, etc.) ──
-  const customFiltrees = Biblio.data.custom.filter(s => {
-    if (famFiltree && s.famille !== famFiltree) return false;
-    if (rech && !s.desig.toLowerCase().includes(rech)) return false;
-    return true;
-  });
-
-  if (customFiltrees.length > 0) {
-    // Grouper par famille
-    const parFamille = {};
-    customFiltrees.forEach(s => {
-      if (!parFamille[s.famille]) parFamille[s.famille] = [];
-      parFamille[s.famille].push(s);
-    });
-
-    Object.entries(parFamille).forEach(([famille, sections]) => {
-      nbFamilles++;
-      nbTotal += sections.length;
-
-      const sep = document.createElement('div');
-      sep.className = 'biblio-sep-famille';
-      sep.innerHTML = `
-        <div class="bsf-titre">${famille}</div>
-        <div class="bsf-norme">Sections personnalisées</div>`;
-      conteneur.appendChild(sep);
-
-      const grille = document.createElement('div');
-      grille.className = 'biblio-grille-series';
-      sections.forEach(s => {
-        const idSec = `custom_${s.famille}_${s.desig}`.replace(/[^a-zA-Z0-9_]/g, '_');
-        const carte = document.createElement('div');
-        carte.className = 'biblio-carte-serie';
-        carte.onclick = () => biblioOuvrirFiche(idSec);
-        carte.innerHTML = `
-          <div class="cs-visuel" style="display:flex;align-items:center;justify-content:center;height:80px;font-size:28px;">
-            <span>⬜</span>
-          </div>
-          <div class="cs-corps">
-            <div class="cs-serie">${s.desig}</div>
-            <div class="cs-count">${s.statut === 'attente' ? '⏳ En attente' : 'Personnalisé'}</div>
-          </div>`;
-        grille.appendChild(carte);
-      });
-      conteneur.appendChild(grille);
-    });
-  }
-
   if (nbFamilles === 0) {
     conteneur.innerHTML = `
       <div class="biblio-vide" style="grid-column:1/-1;padding:40px;text-align:center;">
@@ -287,13 +236,27 @@ function biblioCreerCarteSerie(sr, fam) {
   carte.id = carteId;
   carte.onclick = () => biblioOuvrirModaleSerie(sr.serie, fam.id);
 
-  // Zone visuelle : image PNG si dispo, SVG sinon
+  // Zone visuelle : image(s) PNG si dispo, SVG sinon
+  const imgPrincipale = sr.photo2
+    ? `<div class="cs-visuel-double">
+         <div class="cs-visuel-item">
+           <img class="cs-photo" src="${sr.photo}" alt="${sr.serie} chaud"
+                onerror="this.style.display='none'">
+           <span class="cs-photo-label">Chaud</span>
+         </div>
+         <div class="cs-visuel-item">
+           <img class="cs-photo" src="${sr.photo2}" alt="${sr.serie} froid"
+                onerror="this.style.display='none'">
+           <span class="cs-photo-label">Froid</span>
+         </div>
+       </div>`
+    : `<img class="cs-photo" id="${carteId}-img"
+            src="${sr.photo}" alt="${sr.serie}"
+            onerror="carteSeriePhotoErreur('${carteId}','${fam.id}')">`;
+
   const visuelHtml = `
     <div class="cs-visuel">
-      <img class="cs-photo" id="${carteId}-img"
-           src="${sr.photo}"
-           alt="${sr.serie}"
-           onerror="carteSeriePhotoErreur('${carteId}','${fam.id}')">
+      ${imgPrincipale}
       <div class="cs-svg-fallback" id="${carteId}-svg" style="display:none">
         ${biblioSchemasFamille(fam.id).split('</div>')[0] + '</div>'}
       </div>
@@ -372,6 +335,22 @@ m.querySelector('#mf-desig-label').style.color  = 'var(--noir)';
     } else {
       imgZone.innerHTML = `<span style="color:#ccc;font-size:12px;">—</span>`;
     }
+  }
+
+  // Toggle chaud/froid pour Profilés creux
+  const fabFiltre = m.querySelector('#mf-fab-filtre');
+  if (famJson === 'Profilés creux') {
+    MfEtat.fabrication = 'chaud';
+    MfEtat.serieActive = serie;
+    MfEtat.mode        = 'simple';
+    if (fabFiltre) { fabFiltre.innerHTML = _mfHtmlToggleFab('chaud'); fabFiltre.style.display = ''; }
+    // Image chaud par défaut
+    const imgZone = m.querySelector('#mf-img-zone');
+    const imgSrcChaud = MF_PHOTOS[`${serie} chaud`] || MF_PHOTOS[serie] || null;
+    if (imgZone && imgSrcChaud) imgZone.innerHTML = mfImageHtml(imgSrcChaud, `${serie} chaud`);
+  } else {
+    MfEtat.fabrication = null; MfEtat.serieActive = null; MfEtat.mode = 'simple';
+    if (fabFiltre) { fabFiltre.innerHTML = ''; fabFiltre.style.display = 'none'; }
   }
 
   // Construire le tableau simple (sans accordéon, une seule série)
@@ -454,14 +433,6 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
 
   const colonnes = _colonnesFamille(famJson, serie);
 
-  // Dédoublonner par desig (variantes chaud/froid = même desig)
-  const vus = new Set();
-  const secUniques = sections.filter(s => {
-    if (vus.has(s.desig)) return false;
-    vus.add(s.desig);
-    return true;
-  });
-
   // En-tête tableau
   let thHtml = '<thead><tr>';
   thHtml += '<th style="text-align:left;padding:7px 10px;">Désig.</th>';
@@ -469,14 +440,17 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
   thHtml += '</tr></thead>';
 
   // Corps tableau
+  const secsFiltrees = MfEtat.fabrication
+    ? sections.filter(s => !s.fabrication || s.fabrication === MfEtat.fabrication)
+    : sections;
   let tbHtml = '<tbody>';
-  secUniques.forEach((s, i) => {
+  secsFiltrees.forEach((s, i) => {
     const idxGlobal = MfEtat.sections.indexOf(s);
     tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
     tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
     colonnes.forEach(c => {
-      const val = s[c.key];
-      tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val != null ? val : '—'}</td>`;
+      const val = c.fmt ? c.fmt(s[c.key]) : (s[c.key] !== undefined ? s[c.key] : '—');
+      tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val}</td>`;
     });
     tbHtml += '</tr>';
   });
@@ -730,12 +704,62 @@ function biblioGetSectionsFiltrees() {
    MODALE FAMILLE — TABLEAU + SVG
 ══════════════════════════════════════════════ */
 
+/* ── Toggle Chaud / Froid ────────────────────────────────────────────── */
+
+function _mfHtmlToggleFab(actif) {
+  const btn = (fab, label) => {
+    const on = fab === actif;
+    const bg    = on ? (fab === 'chaud' ? '#c0392b' : '#2473a8') : '#eee';
+    const color = on ? 'white' : '#555';
+    const fw    = on ? 'bold' : 'normal';
+    return `<button class="mf-fab-btn" data-fab="${fab}" onclick="mfFiltrerFabrication('${fab}')"
+      style="background:${bg};color:${color};font-weight:${fw};border:none;padding:5px 14px;
+             border-radius:3px;font-size:12px;cursor:pointer;font-family:inherit;">${label}</button>`;
+  };
+  return `<div style="display:flex;gap:6px;align-items:center;">
+    <span style="font-size:11px;color:#888;margin-right:2px;">Façonnage :</span>
+    ${btn('chaud', 'À chaud (EN 10210)')}
+    ${btn('froid', 'À froid (EN 10219)')}
+  </div>`;
+}
+
+function mfFiltrerFabrication(fab) {
+  MfEtat.fabrication = fab;
+  const m = document.getElementById('m-famille');
+  if (!m) return;
+
+  // Mettre à jour les boutons
+  m.querySelector('#mf-fab-filtre').innerHTML = _mfHtmlToggleFab(fab);
+
+  // Mettre à jour l'image
+  if (MfEtat.serieActive) {
+    const imgSrc = MF_PHOTOS[`${MfEtat.serieActive} ${fab}`] || MF_PHOTOS[MfEtat.serieActive] || null;
+    const imgZone = m.querySelector('#mf-img-zone');
+    if (imgZone && imgSrc) imgZone.innerHTML = mfImageHtml(imgSrc, `${MfEtat.serieActive} ${fab}`);
+  }
+
+  // Reconstruire la liste filtrée
+  if (MfEtat.mode === 'simple') {
+    mfRendreTableauSimple(m, MfEtat.sections, MfEtat.famJson, MfEtat.serieActive);
+  } else {
+    mfRendreAccordeon(m, MfEtat.groupes, MfEtat.famJson);
+  }
+
+  // Réinitialiser le panneau de dimensions
+  m.querySelector('#mf-dims').innerHTML = '';
+  m.querySelector('#mf-desig-label').textContent = '← Sélectionnez une ligne';
+  m.querySelector('#mf-desig-label').style.color  = 'var(--rouge)';
+}
+
 /* État modale famille */
 const MfEtat = {
-  famId:    '',
-  famJson:  '',
-  sections: [],
-  groupes:  []   // [ { serie, sections[] } ]
+  famId:       '',
+  famJson:     '',
+  sections:    [],
+  groupes:     [],
+  fabrication: null,   // 'chaud' | 'froid' | null
+  serieActive: null,   // serie courante (mode simple uniquement)
+  mode:        'accordeon' // 'simple' | 'accordeon'
 };
 
 /* ── Mapping famId + série → chemin image PNG ────────────────────────── */
@@ -752,7 +776,16 @@ const MF_PHOTOS = {
   'UPN':       '../assets/profils/UPN.png',
   'UPE':       '../assets/profils/UPE.png',
   'L égale':   '../assets/profils/Le.png',
-  'L inégale': '../assets/profils/Li.png'
+  'L inégale': '../assets/profils/Li.png',
+  'SHS':          '../assets/profils/SHS chaud.png',
+  'SHS chaud':    '../assets/profils/SHS chaud.png',
+  'SHS froid':    '../assets/profils/SHS froid.png',
+  'RHS':          '../assets/profils/RHS chaud.png',
+  'RHS chaud':    '../assets/profils/RHS chaud.png',
+  'RHS froid':    '../assets/profils/RHS froid.png',
+  'CHS':          '../assets/profils/CHS chaud.png',
+  'CHS chaud':    '../assets/profils/CHS chaud.png',
+  'CHS froid':    '../assets/profils/CHS froid.png'
 };
 
 /**
@@ -817,6 +850,18 @@ m.querySelector('#mf-norme').innerHTML =
   m.querySelector('#mf-desig-label').textContent = '← Sélectionnez une ligne';
   m.querySelector('#mf-img-zone').innerHTML      = '<span style="color:#ccc;font-size:12px;">—</span>';
 
+  // Toggle chaud/froid pour Profilés creux
+  const fabFiltreFam = m.querySelector('#mf-fab-filtre');
+  if (famJson === 'Profilés creux') {
+    MfEtat.fabrication = 'chaud';
+    MfEtat.serieActive = null;
+    MfEtat.mode        = 'accordeon';
+    if (fabFiltreFam) { fabFiltreFam.innerHTML = _mfHtmlToggleFab('chaud'); fabFiltreFam.style.display = ''; }
+  } else {
+    MfEtat.fabrication = null; MfEtat.serieActive = null; MfEtat.mode = 'accordeon';
+    if (fabFiltreFam) { fabFiltreFam.innerHTML = ''; fabFiltreFam.style.display = 'none'; }
+  }
+
   // Construire l'accordéon
   mfRendreAccordeon(m, groupes, famJson);
   m.classList.add('open');
@@ -834,9 +879,8 @@ function mfRendreAccordeon(m, groupes, famJson) {
   if (!conteneur) return;
   conteneur.innerHTML = '';
 
-  const colonnes = _colonnesFamille(famJson);
-
   groupes.forEach((grp, gi) => {
+    const colonnes = _colonnesFamille(famJson, grp.serie);
     const groupeId = `mfg-${gi}`;
 
     // En-tête groupe
@@ -863,13 +907,17 @@ function mfRendreAccordeon(m, groupes, famJson) {
     thHtml += '</tr></thead>';
 
     let tbHtml = '<tbody>';
-    grp.secs.forEach((s, si) => {
+    const secsFiltered = MfEtat.fabrication
+      ? grp.secs.filter(s => !s.fabrication || s.fabrication === MfEtat.fabrication)
+      : grp.secs;
+    secsFiltered.forEach((s, si) => {
       // Indice global dans toutes les sections
       const idxGlobal = MfEtat.sections.indexOf(s);
       tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
       tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
       colonnes.forEach(c => {
-        tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${s[c.key] !== undefined ? s[c.key] : '—'}</td>`;
+        const val = c.fmt ? c.fmt(s[c.key]) : (s[c.key] !== undefined ? s[c.key] : '—');
+        tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val}</td>`;
       });
       tbHtml += '</tr>';
     });
@@ -968,14 +1016,15 @@ function biblioSelectionnerDesig(idxGlobal) {
   m.querySelector('#mf-desig-label').textContent = 'Dimensions normalisées';
   m.querySelector('#mf-desig-label').style.color = 'var(--noir)';
 
-  // Afficher l'image PNG selon la série (ne pas recharger si déjà affichée)
+  // Afficher l'image PNG selon la série + fabrication
   const serie   = s.serie || MfEtat.famId;
-  const imgSrc  = MF_PHOTOS[serie] || null;
+  const imgKey  = s.fabrication ? `${serie} ${s.fabrication}` : serie;
+  const imgSrc  = MF_PHOTOS[imgKey] || MF_PHOTOS[serie] || null;
   const imgZone = m.querySelector('#mf-img-zone');
   const imgCur  = imgZone ? imgZone.querySelector('img') : null;
-  if (imgZone && (!imgCur || imgCur.dataset.serie !== serie)) {
+  if (imgZone && (!imgCur || imgCur.dataset.serie !== imgKey)) {
     if (imgSrc) {
-      imgZone.innerHTML = mfImageHtml(imgSrc, serie);
+      imgZone.innerHTML = mfImageHtml(imgSrc, imgKey);
     } else {
       imgZone.innerHTML = `<div style="padding:10px;">${biblioSvgCote({ famille: MfEtat.famJson, ...s }, 180, 160)}</div>`;
     }
@@ -992,39 +1041,34 @@ function biblioSelectionnerDesig(idxGlobal) {
 }
 
 /**
- * Retourne les colonnes à afficher selon la famille
+ * Retourne les colonnes à afficher selon la famille (et la série pour Profilés creux)
  */
 function _colonnesFamille(famille, serie) {
-  // Profilés creux : colonnes selon la série
-  if (famille === 'Profilés creux' || famille === 'Tube') {
-    if (serie === 'SHS' || serie === 'Tube carré') {
-      return [
-        { key:'a',   label:'a mm'  },
-        { key:'e',   label:'e mm'  },
-        { key:'pml', label:'kg/m'  },
-      ];
-    }
-    if (serie === 'RHS' || serie === 'Tube rectangulaire') {
-      return [
-        { key:'h',   label:'h mm'  },
-        { key:'b',   label:'b mm'  },
-        { key:'e',   label:'e mm'  },
-        { key:'pml', label:'kg/m'  },
-      ];
-    }
-    if (serie === 'CHS') {
-      return [
-        { key:'d',   label:'d mm'  },
-        { key:'e',   label:'e mm'  },
-        { key:'pml', label:'kg/m'  },
-      ];
-    }
-    // Fallback générique creux
-    return [
-      { key:'a',   label:'a mm'  },
-      { key:'h',   label:'h mm'  },
+  if (famille === 'Profilés creux') {
+    const fab = { key:'fabrication', label:'Façonnage',
+      fmt: v => v === 'chaud' ? '<span style="color:#c0392b;font-size:11px;">⬛ Chaud</span>'
+               : v === 'froid' ? '<span style="color:#2980b9;font-size:11px;">⬜ Froid</span>' : '—' };
+    if (serie === 'CHS') return [
+      { key:'d',   label:'d mm'  },
+      { key:'e',   label:'e mm'  },
+      { key:'pml', label:'kg/m'  },
+    ];
+    if (serie === 'RHS') return [
+      fab,
+      { key:'a',   label:'h mm'  },
       { key:'b',   label:'b mm'  },
       { key:'e',   label:'e mm'  },
+      { key:'re',  label:'re mm' },
+      { key:'ri',  label:'ri mm' },
+      { key:'pml', label:'kg/m'  },
+    ];
+    // SHS (et fallback)
+    return [
+      fab,
+      { key:'a',   label:'a mm'  },
+      { key:'e',   label:'e mm'  },
+      { key:'re',  label:'re mm' },
+      { key:'ri',  label:'ri mm' },
       { key:'pml', label:'kg/m'  },
     ];
   }
@@ -1060,22 +1104,6 @@ function _colonnesFamille(famille, serie) {
         { key:'h',   label:'a mm'  },
         { key:'b',   label:'b mm'  },
         { key:'tw',  label:'e mm'  },
-        { key:'pml', label:'kg/m'  },
-      ];
-    case 'Profilés creux':
-      return [
-        { key:'a',   label:'a mm'  },
-        { key:'h',   label:'h mm'  },
-        { key:'b',   label:'b mm'  },
-        { key:'t',   label:'e mm'  },
-        { key:'pml', label:'kg/m'  },
-      ];
-    case 'Tube':
-      return [
-        { key:'a',   label:'a mm'  },
-        { key:'h',   label:'h mm'  },
-        { key:'b',   label:'b mm'  },
-        { key:'t',   label:'e mm'  },
         { key:'pml', label:'kg/m'  },
       ];
     case 'Plat':
@@ -1117,15 +1145,39 @@ function _dimsSection(s, famille) {
       ];
     case 'Cornière':
       return [
-        ['a — Grand côté',  (s.h  ||'—')+' mm'],
+        ['a — Grand côté',  (s.a  ||'—')+' mm'],
         ['b — Petit côté',  (s.b  ||'—')+' mm'],
-        ['e — Épaisseur',   (s.tw ||'—')+' mm'],
+        ['t — Épaisseur',   (s.t  ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
     case 'Plat':
       return [
         ['b — Largeur',     (s.b  ||'—')+' mm'],
-        ['e — Épaisseur',   (s.tw ||'—')+' mm'],
+        ['e — Épaisseur',   (s.e  ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+      ];
+    case 'Profilés creux':
+      if (s.serie === 'CHS') return [
+        ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
+        ['d — Diamètre ext.', (s.d  ||'—')+' mm'],
+        ['e — Épaisseur',     (s.e  ||'—')+' mm'],
+        ['Poids/ml',          (s.pml||'—')+' kg/m'],
+      ];
+      if (s.serie === 'RHS') return [
+        ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
+        ['a — Hauteur',     (s.a  ||'—')+' mm'],
+        ['b — Largeur',     (s.b  ||'—')+' mm'],
+        ['e — Épaisseur',   (s.e  ||'—')+' mm'],
+        ['re — Rayon ext.', (s.re ||'—')+' mm'],
+        ['ri — Rayon int.', (s.ri ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+      ];
+      return [ // SHS
+        ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
+        ['a — Côté',        (s.a  ||'—')+' mm'],
+        ['e — Épaisseur',   (s.e  ||'—')+' mm'],
+        ['re — Rayon ext.', (s.re ||'—')+' mm'],
+        ['ri — Rayon int.', (s.ri ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
     default:
@@ -1188,19 +1240,31 @@ function biblioDimsTableau(s) {
   const lignes = [];
 
   // Dimensions selon le type de section
-  if (s.h   != null) lignes.push(['h — Hauteur',          `${s.h} mm`]);
-  if (s.b   != null) lignes.push(['b — Largeur aile',     `${s.b} mm`]);
-  if (s.tw  != null) lignes.push(['tw — Épaisseur âme',   `${s.tw} mm`]);
-  if (s.tf  != null) lignes.push(['tf — Épaisseur aile',  `${s.tf} mm`]);
-  if (s.r   != null) lignes.push(['r — Congé',            `${s.r} mm`]);
-  if (s.d   != null) lignes.push(['d — Diamètre ext.',    `${s.d} mm`]);
-  if (s.a   != null) lignes.push(['a — Côté',             `${s.a} mm`]);
-  if (s.e   != null) lignes.push(['e — Épaisseur',        `${s.e} mm`]);
-  if (s.t   != null) lignes.push(['e — Épaisseur',        `${s.t} mm`]);
-  if (s.b_plat != null) lignes.push(['b — Largeur',       `${s.b_plat} mm`]);
-  if (s.pml != null) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
-  if (s.A   != null) lignes.push(['Section',              `${s.A} cm²`]);
+  if (s.h  !== undefined) lignes.push(['h — Hauteur',          `${s.h} mm`]);
+  if (s.b  !== undefined) {
+    const lblB = (s.famille === 'Profilés creux' && s.serie === 'RHS') ? 'b — Largeur'
+               : (s.famille === 'Cornière')                             ? 'b — Petit côté'
+               : 'b — Largeur aile';
+    lignes.push([lblB, `${s.b} mm`]);
+  }
+  if (s.tw !== undefined) lignes.push(['tw — Épaisseur âme',   `${s.tw} mm`]);
+  if (s.tf !== undefined) lignes.push(['tf — Épaisseur aile',  `${s.tf} mm`]);
+  if (s.r  !== undefined) lignes.push(['r — Congé',            `${s.r} mm`]);
+  if (s.d  !== undefined) lignes.push(['d — Diamètre ext.',    `${s.d} mm`]);
+  if (s.a  !== undefined) {
+    const lblA = (s.serie === 'RHS') ? 'a — Hauteur'
+               : (s.famille === 'Cornière') ? 'a — Grand côté'
+               : 'a — Côté';
+    lignes.push([lblA, `${s.a} mm`]);
+  }
+  if (s.t  !== undefined) lignes.push(['t — Épaisseur',        `${s.t} mm`]);
+  if (s.e  !== undefined) lignes.push(['e — Épaisseur',        `${s.e} mm`]);
+  if (s.re !== undefined) lignes.push(['re — Rayon ext.',      `${s.re} mm`]);
+  if (s.ri !== undefined) lignes.push(['ri — Rayon int.',      `${s.ri} mm`]);
+  if (s.pml!== undefined) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
+  if (s.A  !== undefined) lignes.push(['Section',              `${s.A} cm²`]);
   if (s.norme) lignes.push(['Norme', s.norme]);
+  if (s.fabrication) lignes.push(['Façonnage', s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
 
   return lignes.map(([label, val]) => `
     <div class="dim-row">
