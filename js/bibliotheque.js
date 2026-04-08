@@ -1100,6 +1100,15 @@ function _colonnesFamille(famille, serie) {
         { key:'pml', label:'kg/m'  },
       ];
     case 'Cornière':
+      if (serie === 'L inégale') {
+        return [
+          { key:'a',   label:'h mm'  },
+          { key:'b',   label:'b mm'  },
+          { key:'t',   label:'t mm'  },
+          { key:'r1',  label:'r1 mm' },
+          { key:'pml', label:'kg/m'  },
+        ];
+      }
       return [
         { key:'a',   label:'h mm'  },
         { key:'t',   label:'t mm'  },
@@ -1144,6 +1153,15 @@ function _dimsSection(s, famille) {
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
     case 'Cornière':
+      if (s.serie === 'L inégale') {
+        return [
+          ['h — Hauteur',       (s.a  ||'—')+' mm'],
+          ['b — Largeur',       (s.b  ||'—')+' mm'],
+          ['t — Épaisseur',     (s.t  ||'—')+' mm'],
+          ['r1 — Rayon int.',   (s.r1 ||'—')+' mm'],
+          ['Poids/ml',          (s.pml||'—')+' kg/m'],
+        ];
+      }
       return [
         ['h — Largeur d\'aile', (s.a  ||'—')+' mm'],
         ['t — Épaisseur',       (s.t  ||'—')+' mm'],
