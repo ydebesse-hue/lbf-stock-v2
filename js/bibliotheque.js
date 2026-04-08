@@ -1057,9 +1057,9 @@ function _colonnesFamille(famille, serie) {
       fab,
       { key:'a',   label:'h mm'  },
       { key:'b',   label:'b mm'  },
-      { key:'e',   label:'e mm'  },
-      { key:'re',  label:'re mm' },
+      { key:'e',   label:'t mm'  },
       { key:'ri',  label:'ri mm' },
+      { key:'re',  label:'re mm' },
       { key:'pml', label:'kg/m'  },
     ];
     // SHS (et fallback)
@@ -1183,11 +1183,11 @@ function _dimsSection(s, famille) {
       ];
       if (s.serie === 'RHS') return [
         ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
-        ['a — Hauteur',     (s.a  ||'—')+' mm'],
+        ['h — Hauteur',     (s.a  ||'—')+' mm'],
         ['b — Largeur',     (s.b  ||'—')+' mm'],
-        ['e — Épaisseur',   (s.e  ||'—')+' mm'],
-        ['re — Rayon ext.', (s.re ||'—')+' mm'],
+        ['t — Épaisseur',   ((s.e ?? s.t) ||'—')+' mm'],
         ['ri — Rayon int.', (s.ri ||'—')+' mm'],
+        ['re — Rayon ext.', (s.re ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
       return [ // SHS
