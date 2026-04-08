@@ -1258,31 +1258,46 @@ function biblioDimsTableau(s) {
   const lignes = [];
 
   // Dimensions selon le type de section
-  if (s.h  !== undefined) lignes.push(['h — Hauteur',          `${s.h} mm`]);
-  if (s.b  !== undefined) {
-    const lblB = (s.famille === 'Profilés creux' && s.serie === 'RHS') ? 'b — Largeur'
-               : (s.famille === 'Cornière')                             ? 'b — Petit côté'
-               : 'b — Largeur aile';
-    lignes.push([lblB, `${s.b} mm`]);
+  if (s.famille === 'Profilés creux') {
+    if (s.fabrication) lignes.push(['Façonnage', s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
+    if (s.serie === 'CHS') {
+      if (s.d   !== undefined) lignes.push(['d — Diamètre ext.', `${s.d} mm`]);
+      if (s.e   !== undefined) lignes.push(['t — Épaisseur',     `${s.e} mm`]);
+    } else if (s.serie === 'RHS') {
+      if (s.a   !== undefined) lignes.push(['h — Hauteur',       `${s.a} mm`]);
+      if (s.b   !== undefined) lignes.push(['b — Largeur',       `${s.b} mm`]);
+      const ep = s.e ?? s.t;
+      if (ep    !== undefined) lignes.push(['t — Épaisseur',     `${ep} mm`]);
+      if (s.ri  !== undefined) lignes.push(['ri — Rayon int.',   `${s.ri} mm`]);
+      if (s.re  !== undefined) lignes.push(['re — Rayon ext.',   `${s.re} mm`]);
+    } else { // SHS
+      if (s.a   !== undefined) lignes.push(['h — Hauteur',       `${s.a} mm`]);
+      const ep = s.e ?? s.t;
+      if (ep    !== undefined) lignes.push(['t — Épaisseur',     `${ep} mm`]);
+      if (s.ri  !== undefined) lignes.push(['ri — Rayon int.',   `${s.ri} mm`]);
+      if (s.re  !== undefined) lignes.push(['re — Rayon ext.',   `${s.re} mm`]);
+    }
+    if (s.pml !== undefined) lignes.push(['Poids/ml',            `${s.pml} kg/m`]);
+  } else {
+    if (s.h  !== undefined) lignes.push(['h — Hauteur',          `${s.h} mm`]);
+    if (s.b  !== undefined) {
+      const lblB = (s.famille === 'Cornière') ? 'b — Petit côté' : 'b — Largeur aile';
+      lignes.push([lblB, `${s.b} mm`]);
+    }
+    if (s.tw !== undefined) lignes.push(['tw — Épaisseur âme',   `${s.tw} mm`]);
+    if (s.tf !== undefined) lignes.push(['tf — Épaisseur aile',  `${s.tf} mm`]);
+    if (s.r  !== undefined) lignes.push(['r — Congé',            `${s.r} mm`]);
+    if (s.a  !== undefined) {
+      const lblA = (s.famille === 'Cornière') ? 'h — Hauteur' : 'a — Côté';
+      lignes.push([lblA, `${s.a} mm`]);
+    }
+    if (s.t  !== undefined) lignes.push(['t — Épaisseur',        `${s.t} mm`]);
+    if (s.r1 !== undefined) lignes.push(['r1 — Rayon int.',      `${s.r1} mm`]);
+    if (s.pml!== undefined) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
+    if (s.A  !== undefined) lignes.push(['Section',              `${s.A} cm²`]);
+    if (s.norme) lignes.push(['Norme', s.norme]);
+    if (s.fabrication) lignes.push(['Façonnage', s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
   }
-  if (s.tw !== undefined) lignes.push(['tw — Épaisseur âme',   `${s.tw} mm`]);
-  if (s.tf !== undefined) lignes.push(['tf — Épaisseur aile',  `${s.tf} mm`]);
-  if (s.r  !== undefined) lignes.push(['r — Congé',            `${s.r} mm`]);
-  if (s.d  !== undefined) lignes.push(['d — Diamètre ext.',    `${s.d} mm`]);
-  if (s.a  !== undefined) {
-    const lblA = (s.serie === 'RHS') ? 'a — Hauteur'
-               : (s.famille === 'Cornière') ? 'a — Grand côté'
-               : 'a — Côté';
-    lignes.push([lblA, `${s.a} mm`]);
-  }
-  if (s.t  !== undefined) lignes.push(['t — Épaisseur',        `${s.t} mm`]);
-  if (s.e  !== undefined) lignes.push(['e — Épaisseur',        `${s.e} mm`]);
-  if (s.re !== undefined) lignes.push(['re — Rayon ext.',      `${s.re} mm`]);
-  if (s.ri !== undefined) lignes.push(['ri — Rayon int.',      `${s.ri} mm`]);
-  if (s.pml!== undefined) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
-  if (s.A  !== undefined) lignes.push(['Section',              `${s.A} cm²`]);
-  if (s.norme) lignes.push(['Norme', s.norme]);
-  if (s.fabrication) lignes.push(['Façonnage', s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
 
   return lignes.map(([label, val]) => `
     <div class="dim-row">
