@@ -1101,9 +1101,9 @@ function _colonnesFamille(famille, serie) {
       ];
     case 'Cornière':
       return [
-        { key:'h',   label:'a mm'  },
-        { key:'b',   label:'b mm'  },
-        { key:'tw',  label:'e mm'  },
+        { key:'a',   label:'h mm'  },
+        { key:'t',   label:'t mm'  },
+        { key:'r1',  label:'r1 mm' },
         { key:'pml', label:'kg/m'  },
       ];
     case 'Plat':
@@ -1145,10 +1145,10 @@ function _dimsSection(s, famille) {
       ];
     case 'Cornière':
       return [
-        ['a — Grand côté',  (s.a  ||'—')+' mm'],
-        ['b — Petit côté',  (s.b  ||'—')+' mm'],
-        ['t — Épaisseur',   (s.t  ||'—')+' mm'],
-        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+        ['h — Largeur d\'aile', (s.a  ||'—')+' mm'],
+        ['t — Épaisseur',       (s.t  ||'—')+' mm'],
+        ['r1 — Rayon int.',     (s.r1 ||'—')+' mm'],
+        ['Poids/ml',            (s.pml||'—')+' kg/m'],
       ];
     case 'Plat':
       return [
