@@ -1193,7 +1193,7 @@ function _dimsSection(s, famille) {
       return [ // SHS
         ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
         ['h — Hauteur',     (s.a  ||'—')+' mm'],
-        ['t — Épaisseur',   (s.e ?? s.t ||'—')+' mm'],
+        ['t — Épaisseur',   ((s.e ?? s.t) ||'—')+' mm'],
         ['ri — Rayon int.', (s.ri ||'—')+' mm'],
         ['re — Rayon ext.', (s.re ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
