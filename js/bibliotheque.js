@@ -55,6 +55,9 @@ async function biblioInit(profil) {
     }
   }
 
+  // Charger les sections custom depuis localStorage
+  biblioChargerCustom();
+
   // Initialisation de l'interface selon le profil
   biblioRendreBoutonAjout();
   biblioRendreGrille();
@@ -302,7 +305,8 @@ function biblioOuvrirModaleSerie(serie, famId) {
 
   const MAP_FAM = {
     'IPE': 'Profilés I', 'HE': 'Profilés H',
-    'U':   'Profilés U', 'Cornière': 'Cornière', 'Plat': 'Plat'
+    'U':   'Profilés U', 'Cornière': 'Cornière',
+    'Profilés creux': 'Profilés creux', 'Plat': 'Plat'
   };
   const famJson = MAP_FAM[famId] || famId;
   const famStd  = Biblio.data.standard.find(f => f.famille === famJson);
@@ -802,18 +806,20 @@ function biblioOuvrirModaleFamille(famId, serieActive) {
   if (!m) return;
 
   const MAP_FAM = {
-    'IPE':      'Profilés I',
-    'HE':       'Profilés H',
-    'U':        'Profilés U',
-    'Cornière': 'Cornière',
-    'Plat':     'Plat'
+    'IPE':             'Profilés I',
+    'HE':              'Profilés H',
+    'U':               'Profilés U',
+    'Cornière':        'Cornière',
+    'Profilés creux':  'Profilés creux',
+    'Plat':            'Plat'
   };
   const MAP_TITRE = {
-    'IPE':      'Famille IPE · IPN',
-    'HE':       'Famille HEA · HEB · HEM',
-    'U':        'Famille UPN · UPE',
-    'Cornière': 'Famille Cornière',
-    'Plat':     'Famille Plat'
+    'IPE':             'Famille IPE · IPN',
+    'HE':              'Famille HEA · HEB · HEM',
+    'U':               'Famille UPN · UPE',
+    'Cornière':        'Famille Cornière',
+    'Profilés creux':  'Famille Profilés creux — SHS · RHS · CHS',
+    'Plat':            'Famille Plat'
   };
 
   const famJson = MAP_FAM[famId] || famId;
@@ -1016,7 +1022,6 @@ function biblioSelectionnerDesig(idxGlobal) {
   const _titreDesig = s.desig.startsWith(_serie) ? s.desig : `${_serie} ${s.desig}`;
   m.querySelector('#mf-titre').textContent = _titreDesig;
   m.querySelector('#mf-titre').style.color = 'var(--rouge)';
-  m.querySelector('#mf-titre').style.color = 'var(--rouge)';
   // Titre fixe dimensions
   m.querySelector('#mf-desig-label').textContent = 'Dimensions normalisées';
   m.querySelector('#mf-desig-label').style.color = 'var(--noir)';
@@ -1054,6 +1059,7 @@ function _colonnesFamille(famille, serie) {
       fmt: v => v === 'chaud' ? '<span style="color:#c0392b;font-size:11px;">⬛ Chaud</span>'
                : v === 'froid' ? '<span style="color:#2980b9;font-size:11px;">⬜ Froid</span>' : '—' };
     if (serie === 'CHS') return [
+      fab,
       { key:'d',   label:'de mm' },
       { key:'di',  label:'di mm' },
       { key:'e',   label:'t mm'  },
@@ -1124,7 +1130,7 @@ function _colonnesFamille(famille, serie) {
     case 'Plat':
       return [
         { key:'b',   label:'b mm'  },
-        { key:'tw',  label:'e mm'  },
+        { key:'e',   label:'e mm'  },
         { key:'pml', label:'kg/m'  },
       ];
     default:
@@ -1626,9 +1632,9 @@ function biblioSvgCote(section, w, h) {
 
   switch (section.famille) {
     case 'Profilés I': case 'Profilés H': {
-      const bw = section.famille === 'IPE' ? 90 : 110;
+      const bw = section.serie?.startsWith('IPE') ? 90 : 110;
       const ox = (w - bw) / 2;
-      const th = section.famille === 'HEB' ? 18 : 13;
+      const th = section.serie === 'HEB' || section.serie === 'HEM' ? 18 : 13;
       const tw = section.tw || 6;
 
       inner += e('rect', { x: ox, y: 18, width: bw, height: th, fill: F, stroke: S, 'stroke-width': 1.5 });
