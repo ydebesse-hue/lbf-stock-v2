@@ -75,7 +75,12 @@ function _rowsToStandard(rows) {
       map[r.famille] = { famille: r.famille, type: r.type, norme: r.norme, sections: [] };
     }
     const dims = typeof r.dims === 'string' ? JSON.parse(r.dims) : (r.dims || {});
-    map[r.famille].sections.push({ serie: r.serie, desig: r.desig, pml: r.pml, fabrication: r.fabrication || null, ...dims });
+    const sec = { serie: r.serie, desig: r.desig, pml: r.pml, fabrication: r.fabrication || null, ...dims };
+    if (r.serie === 'CHS') {
+      const ep = sec.e ?? sec.t;
+      if (sec.d !== undefined && ep !== undefined) sec.di = Math.round((sec.d - 2 * ep) * 10) / 10;
+    }
+    map[r.famille].sections.push(sec);
   });
   const standard = ORDRE.map(f => map[f]).filter(Boolean);
   return { standard, custom: [] };
@@ -1049,8 +1054,9 @@ function _colonnesFamille(famille, serie) {
       fmt: v => v === 'chaud' ? '<span style="color:#c0392b;font-size:11px;">⬛ Chaud</span>'
                : v === 'froid' ? '<span style="color:#2980b9;font-size:11px;">⬜ Froid</span>' : '—' };
     if (serie === 'CHS') return [
-      { key:'d',   label:'d mm'  },
-      { key:'e',   label:'e mm'  },
+      { key:'d',   label:'de mm' },
+      { key:'di',  label:'di mm' },
+      { key:'e',   label:'t mm'  },
       { key:'pml', label:'kg/m'  },
     ];
     if (serie === 'RHS') return [
@@ -1176,10 +1182,11 @@ function _dimsSection(s, famille) {
       ];
     case 'Profilés creux':
       if (s.serie === 'CHS') return [
-        ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
-        ['d — Diamètre ext.', (s.d  ||'—')+' mm'],
-        ['e — Épaisseur',     (s.e  ||'—')+' mm'],
-        ['Poids/ml',          (s.pml||'—')+' kg/m'],
+        ['Façonnage',          s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
+        ['de — Diamètre ext.', (s.d  ||'—')+' mm'],
+        ['di — Diamètre int.', (s.di ||'—')+' mm'],
+        ['t — Épaisseur',      ((s.e ?? s.t) ||'—')+' mm'],
+        ['Poids/ml',           (s.pml||'—')+' kg/m'],
       ];
       if (s.serie === 'RHS') return [
         ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
@@ -1261,8 +1268,10 @@ function biblioDimsTableau(s) {
   if (s.famille === 'Profilés creux') {
     if (s.fabrication) lignes.push(['Façonnage', s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
     if (s.serie === 'CHS') {
-      if (s.d   !== undefined) lignes.push(['d — Diamètre ext.', `${s.d} mm`]);
-      if (s.e   !== undefined) lignes.push(['t — Épaisseur',     `${s.e} mm`]);
+      if (s.d   !== undefined) lignes.push(['de — Diamètre ext.', `${s.d} mm`]);
+      if (s.di  !== undefined) lignes.push(['di — Diamètre int.', `${s.di} mm`]);
+      const ep = s.e ?? s.t;
+      if (ep    !== undefined) lignes.push(['t — Épaisseur',      `${ep} mm`]);
     } else if (s.serie === 'RHS') {
       if (s.a   !== undefined) lignes.push(['h — Hauteur',       `${s.a} mm`]);
       if (s.b   !== undefined) lignes.push(['b — Largeur',       `${s.b} mm`]);
