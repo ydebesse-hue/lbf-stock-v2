@@ -2246,6 +2246,9 @@ const Stock = (() => {
       'L égale':   { norme: 'EN 10056-1',  desc: 'Cornière à ailes égales' },
       'L inégale': { norme: 'EN 10056-1',  desc: 'Cornière à ailes inégales' },
       'Plat':      { norme: 'EN 10058',    desc: 'Plat laminé à chaud' },
+      'SHS':       { norme: 'EN 10210 / EN 10219', desc: 'Tube carré à section creuse' },
+      'RHS':       { norme: 'EN 10210 / EN 10219', desc: 'Tube rectangulaire à section creuse' },
+      'CHS':       { norme: 'EN 10210 / EN 10219', desc: 'Tube circulaire à section creuse' },
     };
     const info = NORMES[type] || { norme: 'Section normalisée', desc: '' };
     if (badgeNorme) badgeNorme.textContent = info.norme;
@@ -2270,6 +2273,9 @@ const Stock = (() => {
         'UPE':       'UPE.png',
         'L égale':   'Le.png',
         'L inégale': 'Li.png',
+        'SHS':       'SHS chaud.png',
+        'RHS':       'RHS chaud.png',
+        'CHS':       'CHS chaud.png',
       };
 
       const nomFichier = SERIES_IMAGES[type] || null;
@@ -2920,8 +2926,10 @@ const Stock = (() => {
       return;
     }
     const rows = [];
-    const fam = dims.famille || '';
-    const ser = dims.serie   || '';
+    const ser = dims.serie || '';
+    const fam = dims.famille ||
+      (['SHS','RHS','CHS'].includes(ser)              ? 'Profilés creux' :
+       ['L égale','L inégale'].includes(ser)           ? 'Cornière'       : '');
 
     if (fam === 'Profilés creux') {
       if (dims.fabrication) rows.push(['Façonnage', dims.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
@@ -3001,10 +3009,13 @@ const Stock = (() => {
       svg.appendChild(e('rect', { x:35, y:25,  width:10, height:100, fill:F, stroke:S, 'stroke-width':1.5 }));
     } else if (type === 'Plat') {
       svg.appendChild(e('rect', { x:20, y:65, width:120, height:30, fill:F, stroke:S, 'stroke-width':1.5 }));
-    } else if (type === 'Tube □') {
+    } else if (type === 'SHS' || type === 'Tube □') {
       svg.appendChild(e('rect', { x:25, y:25,  width:110, height:110, fill:F, stroke:S, 'stroke-width':1.5 }));
       svg.appendChild(e('rect', { x:38, y:38,  width:84,  height:84,  fill:'white', stroke:S, 'stroke-width':1.5 }));
-    } else if (type === 'Tube ○') {
+    } else if (type === 'RHS') {
+      svg.appendChild(e('rect', { x:20, y:35,  width:120, height:90,  fill:F, stroke:S, 'stroke-width':1.5 }));
+      svg.appendChild(e('rect', { x:33, y:48,  width:94,  height:64,  fill:'white', stroke:S, 'stroke-width':1.5 }));
+    } else if (type === 'CHS' || type === 'Tube ○') {
       svg.appendChild(e('circle', { cx:80, cy:80, r:58, fill:F, stroke:S, 'stroke-width':1.5 }));
       svg.appendChild(e('circle', { cx:80, cy:80, r:45, fill:'white', stroke:S, 'stroke-width':1.5 }));
     }
