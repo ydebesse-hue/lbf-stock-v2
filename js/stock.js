@@ -110,11 +110,16 @@ const Stock = (() => {
       const compteur = nums.length ? Math.max(...nums) : 0;
       _data = { barres, compteur };
 
-      // Charger les sections (pour cascades dans les modales)
+      // Charger les sections depuis Supabase, fallback sections.json
       try {
-        const repSec = await fetch('../data/sections.json');
-        if (repSec.ok) _sections = await repSec.json();
-      } catch(e) { /* sections optionnelles */ }
+        const rows = await window.SB.lire('sections', { order: 'sort_order' });
+        _sections = _sectionsFromRows(rows);
+      } catch(e) {
+        try {
+          const repSec = await fetch('../data/sections.json');
+          if (repSec.ok) _sections = await repSec.json();
+        } catch(e2) { /* sections optionnelles */ }
+      }
 
       // Charger les demandes en attente depuis Supabase
       try {
@@ -1363,6 +1368,7 @@ const Stock = (() => {
       'HEA': 'HEA.png', 'HEA A': 'HEAA.png', 'HEB': 'HEB.png', 'HEM': 'HEM.png',
       'UPN': 'UPN.png', 'UPE': 'UPE.png',
       'L égale': 'Le.png', 'L inégale': 'Li.png',
+      'SHS': 'SHS chaud.png', 'RHS': 'RHS chaud.png', 'CHS': 'CHS chaud.png',
     };
     const nomFichier = SERIES_IMAGES[type] || null;
     const img   = zoneSchema.querySelector('[id$="-img"]');
@@ -2825,6 +2831,25 @@ const Stock = (() => {
   }
 
   /**
+   * Convertit les lignes Supabase sections en structure {standard, custom}
+   */
+  function _sectionsFromRows(rows) {
+    const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat'];
+    const map = {};
+    rows.forEach(r => {
+      if (!map[r.famille]) map[r.famille] = { famille: r.famille, sections: [] };
+      const dims = typeof r.dims === 'string' ? JSON.parse(r.dims) : (r.dims || {});
+      const sec = { famille: r.famille, serie: r.serie, desig: r.desig, pml: r.pml, fabrication: r.fabrication || null, ...dims };
+      if (r.serie === 'CHS') {
+        const ep = sec.e ?? sec.t;
+        if (sec.d !== undefined && ep !== undefined) sec.di = Math.round((sec.d - 2 * ep) * 10) / 10;
+      }
+      map[r.famille].sections.push(sec);
+    });
+    return { standard: ORDRE.map(f => map[f]).filter(Boolean), custom: [] };
+  }
+
+  /**
    * Remplit un select avec les types de sections disponibles
    * @param {HTMLSelectElement} sel
    */
@@ -2876,12 +2901,10 @@ const Stock = (() => {
    */
   function _getDims(type, desig) {
     if (!_sections?.standard) return null;
-    // type = série (ex: "IPE A"), desig = taille (ex: "140")
-    // sections.json stocke desig complet = "IPE A 140"
     const desigComplete = `${type} ${desig}`;
-    for (const famille of _sections.standard) {
-      const section = famille.sections.find(s => s.serie === type && s.desig === desigComplete);
-      if (section) return section;
+    for (const groupe of _sections.standard) {
+      const sec = groupe.sections.find(s => s.serie === type && s.desig === desigComplete);
+      if (sec) return sec.famille ? sec : { famille: groupe.famille, ...sec };
     }
     return null;
   }
@@ -2897,13 +2920,50 @@ const Stock = (() => {
       return;
     }
     const rows = [];
-    if (dims.h   !== undefined) rows.push(['h — Hauteur',       `${dims.h} mm`]);
-    if (dims.b   !== undefined) rows.push(['b — Largeur',       `${dims.b} mm`]);
-    if (dims.tw  !== undefined) rows.push(['tw — Ép. âme',      `${dims.tw} mm`]);
-    if (dims.tf  !== undefined) rows.push(['tf — Ép. aile',     `${dims.tf} mm`]);
-    if (dims.r   !== undefined) rows.push(['r — Congé',         `${dims.r} mm`]);
-    if (dims.pml !== undefined) rows.push(['Poids/ml',          `${dims.pml} kg/m`]);
-    if (dims.A   !== undefined) rows.push(['Section',           `${dims.A} cm²`]);
+    const fam = dims.famille || '';
+    const ser = dims.serie   || '';
+
+    if (fam === 'Profilés creux') {
+      if (dims.fabrication) rows.push(['Façonnage', dims.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
+      if (ser === 'CHS') {
+        if (dims.d  !== undefined) rows.push(['de — Diamètre ext.', `${dims.d} mm`]);
+        if (dims.di !== undefined) rows.push(['di — Diamètre int.', `${dims.di} mm`]);
+        const ep = dims.e ?? dims.t;
+        if (ep !== undefined) rows.push(['t — Épaisseur', `${ep} mm`]);
+      } else if (ser === 'RHS') {
+        if (dims.a  !== undefined) rows.push(['h — Hauteur',     `${dims.a} mm`]);
+        if (dims.b  !== undefined) rows.push(['b — Largeur',     `${dims.b} mm`]);
+        const ep = dims.e ?? dims.t;
+        if (ep !== undefined) rows.push(['t — Épaisseur', `${ep} mm`]);
+        if (dims.ri !== undefined) rows.push(['ri — Rayon int.', `${dims.ri} mm`]);
+        if (dims.re !== undefined) rows.push(['re — Rayon ext.', `${dims.re} mm`]);
+      } else { // SHS
+        if (dims.a  !== undefined) rows.push(['h — Hauteur',     `${dims.a} mm`]);
+        const ep = dims.e ?? dims.t;
+        if (ep !== undefined) rows.push(['t — Épaisseur', `${ep} mm`]);
+        if (dims.ri !== undefined) rows.push(['ri — Rayon int.', `${dims.ri} mm`]);
+        if (dims.re !== undefined) rows.push(['re — Rayon ext.', `${dims.re} mm`]);
+      }
+    } else if (fam === 'Cornière') {
+      if (ser === 'L inégale') {
+        if (dims.a  !== undefined) rows.push(['h — Hauteur',       `${dims.a} mm`]);
+        if (dims.b  !== undefined) rows.push(['b — Largeur',       `${dims.b} mm`]);
+        if (dims.t  !== undefined) rows.push(['t — Épaisseur',     `${dims.t} mm`]);
+        if (dims.r1 !== undefined) rows.push(['r1 — Rayon int.',   `${dims.r1} mm`]);
+      } else {
+        if (dims.a  !== undefined) rows.push(['h — Largeur d\'aile', `${dims.a} mm`]);
+        if (dims.t  !== undefined) rows.push(['t — Épaisseur',       `${dims.t} mm`]);
+        if (dims.r1 !== undefined) rows.push(['r1 — Rayon int.',     `${dims.r1} mm`]);
+      }
+    } else {
+      if (dims.h   !== undefined) rows.push(['h — Hauteur',    `${dims.h} mm`]);
+      if (dims.b   !== undefined) rows.push(['b — Largeur',    `${dims.b} mm`]);
+      if (dims.tw  !== undefined) rows.push(['tw — Ép. âme',   `${dims.tw} mm`]);
+      if (dims.tf  !== undefined) rows.push(['tf — Ép. aile',  `${dims.tf} mm`]);
+      if (dims.r   !== undefined) rows.push(['r — Congé',      `${dims.r} mm`]);
+    }
+    if (dims.pml !== undefined) rows.push(['Poids/ml', `${dims.pml} kg/m`]);
+    if (dims.A   !== undefined) rows.push(['Section',  `${dims.A} cm²`]);
 
     el.innerHTML = rows.map(r =>
       `<div class="dim-row"><span class="dim-label">${r[0]}</span><span class="dim-val">${r[1]}</span></div>`
