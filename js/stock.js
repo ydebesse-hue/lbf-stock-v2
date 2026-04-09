@@ -2273,30 +2273,42 @@ const Stock = (() => {
         'L égale':   '../assets/profils/Le.png',
         'L inégale': '../assets/profils/Li.png',
         'Plat':      '../assets/profils/Plat.png',
-        'SHS':          '../assets/profils/SHS chaud.png',
-        'SHS chaud':    '../assets/profils/SHS chaud.png',
-        'SHS froid':    '../assets/profils/SHS froid.png',
-        'RHS':          '../assets/profils/RHS chaud.png',
-        'RHS chaud':    '../assets/profils/RHS chaud.png',
-        'RHS froid':    '../assets/profils/RHS froid.png',
-        'CHS':          '../assets/profils/CHS chaud.png',
-        'CHS chaud':    '../assets/profils/CHS chaud.png',
-        'CHS froid':    '../assets/profils/CHS froid.png',
+        'SHS':       '../assets/profils/SHS chaud.png',
+        'SHS chaud': '../assets/profils/SHS chaud.png',
+        'SHS froid': '../assets/profils/SHS froid.png',
+        'RHS':       '../assets/profils/RHS chaud.png',
+        'RHS chaud': '../assets/profils/RHS chaud.png',
+        'RHS froid': '../assets/profils/RHS froid.png',
+        'CHS':       '../assets/profils/CHS chaud.png',
+        'CHS chaud': '../assets/profils/CHS chaud.png',
+        'CHS froid': '../assets/profils/CHS froid.png',
       };
       const fab    = sec?.fabrication;
       const imgKey = fab ? `${type} ${fab}` : type;
       const imgSrc = PHOTOS[imgKey] || PHOTOS[type] || null;
-      const svgFallback = `<div style="padding:10px;">${profilSvgCote(sec || { serie: type }, 180, 180)}</div>`;
+
+      const showSvg = () => {
+        svgZone.innerHTML = profilSvgCote(sec || { serie: type }, 190, 190);
+      };
+
       if (imgSrc) {
-        svgZone.innerHTML = `<img src="${imgSrc}" alt="${type}" data-zoom="0"
-          style="max-width:100%;max-height:220px;object-fit:contain;display:block;
-                 margin:0 auto;cursor:zoom-in;transition:max-height .2s;"
-          onclick="this.dataset.zoom=this.dataset.zoom==='1'?'0':'1';
-                   this.style.maxHeight=this.dataset.zoom==='1'?'400px':'220px';
-                   this.style.cursor=this.dataset.zoom==='1'?'zoom-out':'zoom-in';"
-          onerror="this.parentNode.innerHTML=${JSON.stringify(svgFallback)}">`;
+        // Utiliser DOM API pour éviter les problèmes d'échappement dans onerror HTML
+        svgZone.innerHTML = '';
+        const img = document.createElement('img');
+        img.src   = imgSrc;
+        img.alt   = type;
+        img.dataset.zoom = '0';
+        img.style.cssText = 'max-width:100%;max-height:200px;object-fit:contain;display:block;margin:0 auto;cursor:zoom-in;transition:max-height .2s;';
+        img.onclick = () => {
+          const zoomed = img.dataset.zoom === '1';
+          img.dataset.zoom     = zoomed ? '0' : '1';
+          img.style.maxHeight  = zoomed ? '200px' : '380px';
+          img.style.cursor     = zoomed ? 'zoom-in' : 'zoom-out';
+        };
+        img.onerror = showSvg;
+        svgZone.appendChild(img);
       } else {
-        svgZone.innerHTML = svgFallback;
+        showSvg();
       }
     }
 
