@@ -2287,8 +2287,11 @@ const Stock = (() => {
       const imgKey = fab ? `${type} ${fab}` : type;
       const imgSrc = PHOTOS[imgKey] || PHOTOS[type] || null;
 
-      const showSvg = () => {
-        svgZone.innerHTML = profilSvgCote(sec || { serie: type }, 190, 190);
+      const showSvg = (evt) => {
+        const failedSrc = evt?.target?.src || imgSrc || '?';
+        svgZone.innerHTML =
+          `<div style="font-size:9px;color:#c00;word-break:break-all;margin-bottom:4px;">⚠ ${failedSrc}</div>` +
+          profilSvgCote(sec || { serie: type }, 190, 190);
       };
 
       if (imgSrc) {
