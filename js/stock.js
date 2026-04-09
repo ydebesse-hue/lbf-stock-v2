@@ -2287,28 +2287,19 @@ const Stock = (() => {
       const imgKey = fab ? `${type} ${fab}` : type;
       const imgSrc = PHOTOS[imgKey] || PHOTOS[type] || null;
 
-      const showSvg = (evt) => {
-        const failedSrc = evt?.target?.src || imgSrc || '?';
-        svgZone.innerHTML =
-          `<div style="font-size:9px;color:#c00;word-break:break-all;margin-bottom:4px;">⚠ ${failedSrc}</div>` +
-          profilSvgCote(sec || { serie: type }, 190, 190);
+      const showSvg = () => {
+        svgZone.innerHTML = profilSvgCote(sec || { serie: type }, 190, 190);
       };
 
       if (imgSrc) {
-        // Insérer l'img sans src d'abord, puis attacher onerror, puis affecter src
-        // (évite tout problème de timing avec les caches navigateur)
+        // Insérer sans src, attacher onerror, puis affecter src en dernier
         svgZone.innerHTML = `<img alt="${type}" data-zoom="0"
-          style="max-width:100%;max-height:200px;object-fit:contain;display:block;margin:0 auto;cursor:zoom-in;transition:max-height .2s;">`;
+          style="max-width:100%;max-height:220px;object-fit:contain;display:block;margin:0 auto;cursor:zoom-in;transition:max-height .2s;">`;
         const imgEl = svgZone.querySelector('img');
         if (imgEl) {
-          imgEl.onerror = showSvg;
-          imgEl.onclick = () => {
-            const z = imgEl.dataset.zoom === '1';
-            imgEl.dataset.zoom    = z ? '0' : '1';
-            imgEl.style.maxHeight = z ? '200px' : '380px';
-            imgEl.style.cursor    = z ? 'zoom-in' : 'zoom-out';
-          };
-          imgEl.src = imgSrc;  // src affecté en dernier, après onerror
+          imgEl.onerror  = showSvg;
+          imgEl.onclick  = () => profilZoomImage(imgEl);
+          imgEl.src = imgSrc;
         }
       } else {
         showSvg();

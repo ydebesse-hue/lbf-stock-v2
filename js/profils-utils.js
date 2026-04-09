@@ -187,3 +187,52 @@ function profilDimsTableau(s) {
       <span class="dim-val">${val}</span>
     </div>`).join('');
 }
+
+/* ══════════════════════════════════════════════
+   ZOOM IMAGE (overlay plein écran)
+══════════════════════════════════════════════ */
+
+/**
+ * Toggle zoom plein écran sur une image de profil
+ * @param {HTMLImageElement} img
+ */
+function profilZoomImage(img) {
+  const zoomed = img.dataset.zoom === '1';
+
+  if (zoomed) {
+    img.dataset.zoom = '0';
+    img.style.cursor = 'zoom-in';
+    const overlay = document.getElementById('profil-zoom-overlay');
+    if (overlay) overlay.remove();
+    return;
+  }
+
+  img.dataset.zoom = '1';
+  img.style.cursor = 'zoom-out';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'profil-zoom-overlay';
+  overlay.style.cssText =
+    'position:fixed;inset:0;background:rgba(0,0,0,.75);' +
+    'display:flex;align-items:center;justify-content:center;z-index:9999;cursor:zoom-out;';
+  overlay.onclick = () => profilZoomImage(img);
+
+  const grande = document.createElement('img');
+  grande.src   = img.src;
+  grande.alt   = img.alt;
+  grande.style.cssText =
+    'max-width:90vw;max-height:85vh;object-fit:contain;display:block;' +
+    'border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.6);';
+  overlay.appendChild(grande);
+
+  const btnFermer = document.createElement('button');
+  btnFermer.textContent = '✕';
+  btnFermer.style.cssText =
+    'position:fixed;top:16px;right:16px;background:rgba(255,255,255,.15);' +
+    'border:none;color:#fff;font-size:22px;cursor:pointer;border-radius:50%;' +
+    'width:36px;height:36px;display:flex;align-items:center;justify-content:center;';
+  btnFermer.onclick = (e) => { e.stopPropagation(); profilZoomImage(img); };
+  overlay.appendChild(btnFermer);
+
+  document.body.appendChild(overlay);
+}

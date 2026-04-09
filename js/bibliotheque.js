@@ -374,7 +374,7 @@ function mfImageHtml(src, serie) {
   return `<img src="${src}" alt="${serie}" data-serie="${serie}" data-zoom="0"
     style="max-width:100%; max-height:220px; object-fit:contain; display:block;
            margin:0 auto; cursor:zoom-in; transition:max-height .2s;"
-    onclick="mfZoomImage(this)"
+    onclick="profilZoomImage(this)"
     onerror="this.parentNode.innerHTML='<span style=color:#ccc;font-size:11px>Image non disponible</span>'">`;
 }
 
