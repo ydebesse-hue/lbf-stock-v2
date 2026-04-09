@@ -2254,13 +2254,50 @@ const Stock = (() => {
     if (badgeNorme) badgeNorme.textContent = info.norme;
     if (descNorme)  descNorme.textContent  = info.desc;
 
-    /* SVG coté + dimensions */
+    /* Image PNG ou SVG coté + dimensions */
     const sec = _getDims(type, desig);
     const svgZone = m.querySelector('.detail-svg-zone');
     if (svgZone) {
-      svgZone.innerHTML = `
-        <div class="schema-titre">Schéma coté ${type} ${desig}</div>
-        ${profilSvgCote(sec || { serie: type }, 180, 180)}`;
+      const PHOTOS = {
+        'IPE':       '../assets/profils/IPE.png',
+        'IPE A':     '../assets/profils/IPEA.png',
+        'IPE AA':    '../assets/profils/IPEAA.png',
+        'IPE O':     '../assets/profils/IPEO.png',
+        'IPN':       '../assets/profils/IPN.png',
+        'HEA':       '../assets/profils/HEA.png',
+        'HEA A':     '../assets/profils/HEAA.png',
+        'HEB':       '../assets/profils/HEB.png',
+        'HEM':       '../assets/profils/HEM.png',
+        'UPN':       '../assets/profils/UPN.png',
+        'UPE':       '../assets/profils/UPE.png',
+        'L égale':   '../assets/profils/Le.png',
+        'L inégale': '../assets/profils/Li.png',
+        'Plat':      '../assets/profils/Plat.png',
+        'SHS':          '../assets/profils/SHS chaud.png',
+        'SHS chaud':    '../assets/profils/SHS chaud.png',
+        'SHS froid':    '../assets/profils/SHS froid.png',
+        'RHS':          '../assets/profils/RHS chaud.png',
+        'RHS chaud':    '../assets/profils/RHS chaud.png',
+        'RHS froid':    '../assets/profils/RHS froid.png',
+        'CHS':          '../assets/profils/CHS chaud.png',
+        'CHS chaud':    '../assets/profils/CHS chaud.png',
+        'CHS froid':    '../assets/profils/CHS froid.png',
+      };
+      const fab    = sec?.fabrication;
+      const imgKey = fab ? `${type} ${fab}` : type;
+      const imgSrc = PHOTOS[imgKey] || PHOTOS[type] || null;
+      const svgFallback = `<div style="padding:10px;">${profilSvgCote(sec || { serie: type }, 180, 180)}</div>`;
+      if (imgSrc) {
+        svgZone.innerHTML = `<img src="${imgSrc}" alt="${type}" data-zoom="0"
+          style="max-width:100%;max-height:220px;object-fit:contain;display:block;
+                 margin:0 auto;cursor:zoom-in;transition:max-height .2s;"
+          onclick="this.dataset.zoom=this.dataset.zoom==='1'?'0':'1';
+                   this.style.maxHeight=this.dataset.zoom==='1'?'400px':'220px';
+                   this.style.cursor=this.dataset.zoom==='1'?'zoom-out':'zoom-in';"
+          onerror="this.parentNode.innerHTML=${JSON.stringify(svgFallback)}">`;
+      } else {
+        svgZone.innerHTML = svgFallback;
+      }
     }
 
     const dimsZone = m.querySelector('.detail-dims-zone');
