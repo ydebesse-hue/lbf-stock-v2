@@ -2292,14 +2292,14 @@ const Stock = (() => {
       };
 
       if (imgSrc) {
-        // Insérer sans src, attacher onerror, puis affecter src en dernier
+        // Pattern identique à mfImageHtml() dans la bibliothèque
         svgZone.innerHTML = `<img alt="${type}" data-zoom="0"
-          style="max-width:100%;max-height:220px;object-fit:contain;display:block;margin:0 auto;cursor:zoom-in;transition:max-height .2s;">`;
+          style="max-width:100%;max-height:220px;object-fit:contain;display:block;margin:0 auto;cursor:zoom-in;transition:max-height .2s;"
+          onclick="profilZoomImage(this)">`;
         const imgEl = svgZone.querySelector('img');
         if (imgEl) {
-          imgEl.onerror  = showSvg;
-          imgEl.onclick  = () => profilZoomImage(imgEl);
-          imgEl.src = imgSrc;
+          imgEl.onerror = showSvg;
+          imgEl.src     = imgSrc;
         }
       } else {
         showSvg();
