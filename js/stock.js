@@ -2254,72 +2254,21 @@ const Stock = (() => {
     if (badgeNorme) badgeNorme.textContent = info.norme;
     if (descNorme)  descNorme.textContent  = info.desc;
 
-    /* Image de la section — avec fallback SVG si fichier absent */
-    const zoneVisuel = m.querySelector('#fiche-visuel');
-    if (zoneVisuel) {
-      // type = série directe (ex: "IPE", "IPE A", "HEA A", "L égale"...)
-      // Correspondance série → fichier image dans assets/profils/
-      const SERIES_IMAGES = {
-        'IPE':       'IPE.png',
-        'IPE A':     'IPEA.png',
-        'IPE O':     'IPEO.png',
-        'IPE 750':   'IPE750.png',
-        'IPN':       'IPN.png',
-        'HEA':       'HEA.png',
-        'HEA A':     'HEAA.png',
-        'HEB':       'HEB.png',
-        'HEM':       'HEM.png',
-        'UPN':       'UPN.png',
-        'UPE':       'UPE.png',
-        'L égale':   'Le.png',
-        'L inégale': 'Li.png',
-        'SHS':       'SHS chaud.png',
-        'RHS':       'RHS chaud.png',
-        'CHS':       'CHS chaud.png',
-      };
-
-      const nomFichier = SERIES_IMAGES[type] || null;
-
-      const img   = zoneVisuel.querySelector('#fiche-img');
-      const svgEl = zoneVisuel.querySelector('#fiche-svg');
-
-      if (nomFichier && img) {
-        // Afficher l'image — masquer le SVG
-        img.src = `../assets/profils/${nomFichier}`;
-        img.alt = `Section ${desig}`;
-        img.style.display  = 'block';
-        img.style.cursor   = 'zoom-in';
-        img.dataset.zoom   = '0';
-        img.onclick        = () => _zoomImage(img);
-        if (svgEl) svgEl.style.display = 'none';
-
-        // Fallback SVG si l'image ne charge pas
-        img.onerror = function() {
-          this.style.display = 'none';
-          if (svgEl) {
-            while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
-            _dessinerSVGComplet(svgEl, type);
-            svgEl.style.display = 'block';
-          }
-        };
-      } else {
-        // Pas d'image disponible — garder le SVG généré
-        if (img) img.style.display = 'none';
-        if (svgEl) {
-          while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
-          _dessinerSVGComplet(svgEl, type);
-          svgEl.style.display = 'block';
-        }
-      }
+    /* SVG coté + dimensions */
+    const sec = _getDims(type, desig);
+    const svgZone = m.querySelector('.detail-svg-zone');
+    if (svgZone) {
+      svgZone.innerHTML = `
+        <div class="schema-titre">Schéma coté ${type} ${desig}</div>
+        ${profilSvgCote(sec || { serie: type }, 180, 180)}`;
     }
 
-    /* Label schéma */
-    const schemaLabel = m.querySelector('#fiche-schema-label');
-    if (schemaLabel) schemaLabel.textContent = `${desig}`;
-
-    /* Dimensions */
-    const dimsList = m.querySelector('#fiche-dims-list');
-    if (dimsList) _rendreDimsList(dimsList, _getDims(type, desig));
+    const dimsZone = m.querySelector('.detail-dims-zone');
+    if (dimsZone) {
+      dimsZone.innerHTML = sec
+        ? profilDimsTableau(sec)
+        : '<div style="color:#aaa;font-size:12px">Dimensions non disponibles</div>';
+    }
 
     /* Inventaire rapide depuis le stock courant */
     const stockInfo = m.querySelector('#fiche-stock-info');

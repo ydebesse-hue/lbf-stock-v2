@@ -1036,7 +1036,7 @@ function biblioSelectionnerDesig(idxGlobal) {
     if (imgSrc) {
       imgZone.innerHTML = mfImageHtml(imgSrc, imgKey);
     } else {
-      imgZone.innerHTML = `<div style="padding:10px;">${biblioSvgCote({ famille: MfEtat.famJson, ...s }, 180, 160)}</div>`;
+      imgZone.innerHTML = `<div style="padding:10px;">${profilSvgCote({ famille: MfEtat.famJson, ...s }, 180, 160)}</div>`;
     }
   }
 
@@ -1252,13 +1252,13 @@ function biblioOuvrirFiche(idSec) {
   if (svgZone) {
     svgZone.innerHTML = `
       <div class="schema-titre">Schéma coté ${section.famille} ${section.desig}</div>
-      ${biblioSvgCote(section, 180, 180)}`;
+      ${profilSvgCote(section, 180, 180)}`;
   }
 
   // Tableau des dimensions
   const dimsZone = modale.querySelector('.detail-dims-zone');
   if (dimsZone) {
-    dimsZone.innerHTML = biblioDimsTableau(section);
+    dimsZone.innerHTML = profilDimsTableau(section);
   }
 
   modale.classList.add('open');
