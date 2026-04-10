@@ -2901,7 +2901,10 @@ const Stock = (() => {
     if (!_sections?.standard) return null;
     const desigComplete = `${type} ${desig}`;
     for (const groupe of _sections.standard) {
-      const sec = groupe.sections.find(s => s.serie === type && s.desig === desigComplete);
+      // Accepte les deux formats : avec préfixe série ('RHS 60x40x3') ou sans ('60x40x3')
+      const sec = groupe.sections.find(s =>
+        s.serie === type && (s.desig === desigComplete || s.desig === desig)
+      );
       if (sec) return sec.famille ? sec : { famille: groupe.famille, ...sec };
     }
     return null;

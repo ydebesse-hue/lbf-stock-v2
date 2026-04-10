@@ -137,10 +137,12 @@ function profilDimsTableau(s) {
   if (fam === 'Profilés creux' || ['SHS','RHS','CHS'].includes(ser)) {
     if (s.fabrication) lignes.push(['Façonnage', s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
     if (ser === 'CHS') {
-      if (s.d   !== undefined) lignes.push(['de — Diamètre ext.', `${s.d} mm`]);
-      if (s.di  !== undefined) lignes.push(['di — Diamètre int.', `${s.di} mm`]);
       const ep = s.e ?? s.t;
-      if (ep    !== undefined) lignes.push(['t — Épaisseur',      `${ep} mm`]);
+      const di = s.di ?? (s.d !== undefined && ep !== undefined
+        ? Math.round((s.d - 2 * ep) * 10) / 10 : undefined);
+      if (s.d  !== undefined) lignes.push(['de — Diamètre ext.', `${s.d} mm`]);
+      if (di   !== undefined) lignes.push(['di — Diamètre int.', `${di} mm`]);
+      if (ep   !== undefined) lignes.push(['t — Épaisseur',      `${ep} mm`]);
     } else if (ser === 'RHS') {
       if (s.a   !== undefined) lignes.push(['h — Hauteur',     `${s.a} mm`]);
       if (s.b   !== undefined) lignes.push(['b — Largeur',     `${s.b} mm`]);
