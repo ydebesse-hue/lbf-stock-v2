@@ -1166,17 +1166,17 @@
         </div>
 
         <!-- Schéma SVG + dimensions -->
-        <div id="ap-schema" class="schema-zone" style="display:none">
-          <div class="schema-svg-zone" id="ap-visuel">
-            <div class="schema-titre" id="ap-schema-label">—</div>
+        <div id="ap-schema" class="schema-zone" style="display:none; flex-direction:column; gap:10px;">
+          <div class="schema-titre" id="ap-schema-label">—</div>
+          <div id="ap-visuel" style="text-align:center;">
             <img id="ap-img" src="" alt=""
-                 style="display:none; width:160px; height:160px; object-fit:contain;
+                 style="display:none; max-width:130px; max-height:130px; object-fit:contain;
                         border:1px solid var(--gris-clair); border-radius:3px;
                         background:#f7f7f7; cursor:zoom-in;">
-            <svg id="ap-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
+            <svg id="ap-svg" width="130" height="130" viewBox="0 0 130 130"></svg>
           </div>
-          <div class="schema-dims">
-            <h4>Caractéristiques</h4>
+          <div class="schema-dims" style="border-top:1px solid var(--gris-bord); padding-top:8px;">
+            <h4 style="margin-bottom:6px;">Caractéristiques</h4>
             <div id="ap-dims-list">
               <div style="color:#aaa;font-size:12px">Sélectionnez une désignation</div>
             </div>

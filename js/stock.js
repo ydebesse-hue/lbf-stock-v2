@@ -1374,37 +1374,33 @@ const Stock = (() => {
     const img   = zoneSchema.querySelector('[id$="-img"]');
     const svgEl = zoneSchema.querySelector('svg');
 
-    if (nomFichier && img) {
-      img.src          = `../assets/profils/${nomFichier}`;
-      img.alt          = `${type} ${desig}`;
-      img.dataset.zoom = '0';
-      img.style.cursor = 'zoom-in';
-      img.style.display = 'block';
-      img.onclick      = () => _zoomImage(img);
-      if (svgEl) svgEl.style.display = 'none';
-
-      img.onerror = function() {
-        this.style.display = 'none';
-        if (svgEl) {
-          while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
-          _dessinerSVGComplet(svgEl, type);
-          svgEl.style.display = 'block';
-        }
-      };
-    } else {
+    const showSvgAp = () => {
       if (img) img.style.display = 'none';
       if (svgEl) {
-        while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
-        _dessinerSVGComplet(svgEl, type);
+        svgEl.innerHTML = profilSvgCote({ serie: type }, 130, 130);
         svgEl.style.display = 'block';
       }
+    };
+
+    if (nomFichier && img) {
+      if (svgEl) svgEl.style.display = 'none';
+      img.alt          = `${type} ${desig}`;
+      img.dataset.zoom = '0';
+      img.style.cssText = 'display:block;max-width:130px;max-height:130px;object-fit:contain;cursor:zoom-in;border:1px solid var(--gris-clair);border-radius:3px;background:#f7f7f7;';
+      img.onclick  = () => profilZoomImage(img);
+      img.onerror  = showSvgAp;
+      img.src      = `../assets/profils/${nomFichier}`;
+    } else {
+      showSvgAp();
     }
 
     // Dimensions
     const dimsList = zoneSchema.querySelector('[id$="-dims-list"]');
     if (dimsList) {
       const dims = _getDims(type, desig);
-      _rendreDimsList(dimsList, dims);
+      dimsList.innerHTML = dims
+        ? profilDimsTableau(dims)
+        : '<div style="color:#aaa;font-size:12px">Non disponible</div>';
       m.dataset.poidsml = dims ? dims.pml : '';
     }
 
