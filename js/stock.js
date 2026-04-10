@@ -2899,11 +2899,13 @@ const Stock = (() => {
    */
   function _getDims(type, desig) {
     if (!_sections?.standard) return null;
-    const desigComplete = `${type} ${desig}`;
+    // Normaliser × (U+00D7 Supabase) et x (ASCII sections.json) pour comparaison fiable
+    const norm = s => s.replace(/×/g, 'x');
+    const desigN         = norm(desig);
+    const desigCompleteN = norm(`${type} ${desig}`);
     for (const groupe of _sections.standard) {
-      // Accepte les deux formats : avec préfixe série ('RHS 60x40x3') ou sans ('60x40x3')
       const sec = groupe.sections.find(s =>
-        s.serie === type && (s.desig === desigComplete || s.desig === desig)
+        s.serie === type && (norm(s.desig) === desigCompleteN || norm(s.desig) === desigN)
       );
       if (sec) return sec.famille ? sec : { famille: groupe.famille, ...sec };
     }
