@@ -1315,7 +1315,7 @@ const Stock = (() => {
     selDesig.innerHTML = '<option value="">— Choisir —</option>';
 
     if (!type) {
-      const schema = m.querySelector('[id$="-schema"]');
+      const schema = m.querySelector('div[id$="-schema"]');
       if (schema) schema.style.display = 'none';
       return;
     }
@@ -1363,7 +1363,7 @@ const Stock = (() => {
     const type  = m.querySelector(selTypeId)?.value;
     const desig = m.querySelector(selDesigId)?.value;
 
-    const zoneSchema  = m.querySelector('[id$="-schema"]');
+    const zoneSchema  = m.querySelector('div[id$="-schema"]');
     const btnToggle   = m.querySelector('#ap-toggle-schema');
     if (!zoneSchema || !type || !desig) {
       if (zoneSchema)  zoneSchema.style.display = 'none';
@@ -1392,27 +1392,24 @@ const Stock = (() => {
       'SHS': 'SHS chaud.png', 'RHS': 'RHS chaud.png', 'CHS': 'CHS chaud.png',
     };
     const nomFichier = SERIES_IMAGES[type] || null;
-    const img   = zoneSchema.querySelector('[id$="-img"]');
-    const svgEl = zoneSchema.querySelector('svg');
+    const visuel = zoneSchema.querySelector('[id$="-visuel"]');
 
-    const showSvgAp = () => {
-      if (img) img.style.display = 'none';
-      if (svgEl) {
-        svgEl.innerHTML = profilSvgCote({ serie: type }, 130, 130);
-        svgEl.style.display = 'block';
+    if (visuel) {
+      if (nomFichier) {
+        visuel.innerHTML = `<img alt="${type} ${desig}" data-zoom="0"
+          style="max-width:130px;max-height:130px;object-fit:contain;display:block;margin:0 auto;
+                 cursor:zoom-in;border:1px solid var(--gris-clair);border-radius:3px;background:#f7f7f7;"
+          onclick="profilZoomImage(this)">`;
+        const imgEl = visuel.querySelector('img');
+        if (imgEl) {
+          imgEl.onerror = () => {
+            visuel.innerHTML = profilSvgCote({ serie: type }, 130, 130);
+          };
+          imgEl.src = `../assets/profils/${nomFichier}`;
+        }
+      } else {
+        visuel.innerHTML = profilSvgCote({ serie: type }, 130, 130);
       }
-    };
-
-    if (nomFichier && img) {
-      if (svgEl) svgEl.style.display = 'none';
-      img.alt          = `${type} ${desig}`;
-      img.dataset.zoom = '0';
-      img.style.cssText = 'display:block;max-width:130px;max-height:130px;object-fit:contain;cursor:zoom-in;border:1px solid var(--gris-clair);border-radius:3px;background:#f7f7f7;';
-      img.onclick  = () => profilZoomImage(img);
-      img.onerror  = showSvgAp;
-      img.src      = `../assets/profils/${nomFichier}`;
-    } else {
-      showSvgAp();
     }
 
     // Dimensions
