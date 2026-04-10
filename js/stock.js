@@ -1349,13 +1349,21 @@ const Stock = (() => {
     const type  = m.querySelector(selTypeId)?.value;
     const desig = m.querySelector(selDesigId)?.value;
 
-    const zoneSchema = m.querySelector('[id$="-schema"]');
+    const zoneSchema  = m.querySelector('[id$="-schema"]');
+    const btnToggle   = m.querySelector('#ap-toggle-schema');
     if (!zoneSchema || !type || !desig) {
-      if (zoneSchema) zoneSchema.style.display = 'none';
+      if (zoneSchema)  zoneSchema.style.display = 'none';
+      if (btnToggle)   btnToggle.style.display  = 'none';
       return;
     }
 
-    zoneSchema.style.display = 'flex';
+    // Afficher le bouton toggle, garder le schéma masqué par défaut
+    zoneSchema.style.display = 'none';
+    const btnToggle = m.querySelector('#ap-toggle-schema');
+    if (btnToggle) {
+      btnToggle.style.display = 'block';
+      btnToggle.textContent   = '▶ Voir schéma et caractéristiques';
+    }
 
     // Libellé
     const label = zoneSchema.querySelector('[id$="-schema-label"]');
