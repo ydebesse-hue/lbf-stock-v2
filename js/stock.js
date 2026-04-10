@@ -1359,7 +1359,6 @@ const Stock = (() => {
 
     // Afficher le bouton toggle, garder le schéma masqué par défaut
     zoneSchema.style.display = 'none';
-    const btnToggle = m.querySelector('#ap-toggle-schema');
     if (btnToggle) {
       btnToggle.style.display = 'block';
       btnToggle.textContent   = '▶ Voir schéma et caractéristiques';
