@@ -1117,6 +1117,20 @@ const Stock = (() => {
         });
       });
 
+      // Bouton toggle schéma
+      const btnToggleSchemaAP = mAP.querySelector('#ap-toggle-schema');
+      if (btnToggleSchemaAP) {
+        btnToggleSchemaAP.addEventListener('click', () => {
+          const zoneSchema = mAP.querySelector('#ap-schema');
+          if (!zoneSchema) return;
+          const open = zoneSchema.style.display !== 'none';
+          zoneSchema.style.display = open ? 'none' : 'flex';
+          btnToggleSchemaAP.textContent = open
+            ? '▶ Voir schéma et caractéristiques'
+            : '▼ Masquer schéma et caractéristiques';
+        });
+      }
+
       // Bouton "+ Ajouter une référence"
       const btnAjLigne = mAP.querySelector('#ap-cmd-ajouter-ligne');
       if (btnAjLigne) btnAjLigne.addEventListener('click', () => {
