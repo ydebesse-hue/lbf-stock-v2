@@ -160,6 +160,62 @@
       color: var(--or);
       font-weight: bold;
     }
+    .barre-admin {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f7f7f8;
+      border-bottom: 1px solid var(--gris-bord);
+      padding: 6px 20px;
+      font-size: 12px;
+    }
+    .barre-admin-label {
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-right: 4px;
+    }
+    .btn-admin {
+      background: #fff;
+      border: 1px solid var(--gris-bord);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #444;
+      transition: border-color .15s, background .15s;
+    }
+    .btn-admin:hover { border-color: var(--rouge); color: var(--rouge); background: #fff5f5; }
+    /* Import modal */
+    .import-dropzone {
+      border: 2px dashed #ccc;
+      border-radius: 6px;
+      padding: 28px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      margin-bottom: 12px;
+    }
+    .import-dropzone.drag-over { border-color: var(--rouge); background: #fff5f5; }
+    .import-dropzone label { cursor: pointer; color: var(--rouge); font-weight: 600; font-size: 14px; }
+    .import-resume {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .import-erreur {
+      color: var(--rouge);
+      font-size: 13px;
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      background: #fff0f0;
+      border-radius: 4px;
+      border-left: 3px solid var(--rouge);
+    }
     .alerte-nb {
       display: inline-flex;
       align-items: center;
@@ -1036,6 +1092,17 @@
     ⚠&nbsp; <span class="alerte-nb">0</span>&nbsp; élément(s) en attente de validation
   </div>
 
+  <!-- Barre outils admin (export / import) -->
+  <div class="barre-admin" data-require="can_validate">
+    <span class="barre-admin-label">Admin :</span>
+    <button id="btn-exporter" class="btn-admin" title="Télécharger le stock au format CSV (Excel)">
+      ⬇ Exporter CSV
+    </button>
+    <button id="btn-importer" class="btn-admin" title="Restaurer le stock depuis un fichier CSV">
+      ⬆ Importer CSV
+    </button>
+  </div>
+
   <!-- ── SOUS-ONGLETS ─────────────────────────────────────────── -->
   <div class="sous-onglets">
     <button class="sous-onglet actif" data-onglet="profils">Profilés</button>
@@ -1892,6 +1959,47 @@
 
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris btn-fermer-hist">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE IMPORT CSV (admin)
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-import" class="modale-bg" role="dialog" aria-modal="true" aria-label="Import CSV">
+    <div class="modale">
+      <div class="modale-titre">Importer une sauvegarde CSV</div>
+
+      <!-- Zone dépôt fichier -->
+      <div class="import-dropzone" id="import-dropzone">
+        <input type="file" id="import-fichier" accept=".csv" style="display:none;">
+        <div style="font-size:28px;margin-bottom:8px;">📄</div>
+        <label for="import-fichier">Choisir un fichier CSV</label>
+        <div style="margin-top:6px;font-size:12px;color:#888;">ou glisser-déposer ici</div>
+        <div id="import-nom-fichier" style="margin-top:10px;font-size:12px;color:#555;font-weight:600;min-height:16px;"></div>
+      </div>
+
+      <!-- Résumé après analyse -->
+      <div id="import-resume" class="import-resume" style="display:none;"></div>
+
+      <!-- Avertissement fusion -->
+      <div id="import-avertissement" class="note-statut note-statut-attente" style="display:none;">
+        ⚠ Les éléments du fichier CSV seront fusionnés avec le stock actuel
+        (même ID = écrasement, ID absent = ajout). Les éléments non présents dans le CSV
+        sont conservés.
+      </div>
+
+      <!-- Erreur parsing -->
+      <div id="import-erreur" class="import-erreur" style="display:none;"></div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" id="import-btn-annuler">Annuler</button>
+        <button id="import-btn-analyser" class="btn-modale btn-modale-rouge" disabled>
+          Analyser le fichier
+        </button>
+        <button id="import-btn-confirmer" class="btn-modale btn-modale-rouge" style="display:none;">
+          ✔ Importer
+        </button>
       </div>
     </div>
   </div>

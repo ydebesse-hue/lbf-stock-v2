@@ -981,6 +981,12 @@ const Stock = (() => {
     const ra = document.getElementById('btn-reset-archivees');
     if (ra) ra.addEventListener('click', () => { _resetFiltres('archivees'); _filtrer(); });
 
+    // Export / Import CSV (admin)
+    const btnExp = document.getElementById('btn-exporter');
+    if (btnExp) btnExp.addEventListener('click', _exporterCSV);
+    const btnImp = document.getElementById('btn-importer');
+    if (btnImp) btnImp.addEventListener('click', _ouvrirImport);
+
     // Boutons ajout → ouvrir modales
     // Focus ligne au clic cellule
     const zoneTab = document.getElementById('tableau-stock');
@@ -1243,6 +1249,57 @@ const Stock = (() => {
     if (mHist) {
       const btnFermer = mHist.querySelector('.btn-fermer-hist');
       if (btnFermer) btnFermer.addEventListener('click', () => _fermerModale('m-historique-barre'));
+    }
+
+    // ── Modale import CSV ─────────────────────────────────────
+    const mImport = document.getElementById('m-import');
+    if (mImport) {
+      // Fermeture fond + bouton annuler
+      mImport.addEventListener('click', e => { if (e.target === mImport) _fermerModale('m-import'); });
+      const btnAnnuler = mImport.querySelector('#import-btn-annuler');
+      if (btnAnnuler) btnAnnuler.addEventListener('click', () => _fermerModale('m-import'));
+
+      // Sélection fichier → activer bouton Analyser
+      const fichierInput = mImport.querySelector('#import-fichier');
+      if (fichierInput) {
+        fichierInput.addEventListener('change', () => {
+          const nom = fichierInput.files[0]?.name || '';
+          mImport.querySelector('#import-nom-fichier').textContent = nom;
+          mImport.querySelector('#import-btn-analyser').disabled = !nom;
+          // Réinitialiser l'état d'analyse si on change de fichier
+          mImport.querySelector('#import-resume').style.display        = 'none';
+          mImport.querySelector('#import-avertissement').style.display = 'none';
+          mImport.querySelector('#import-erreur').style.display        = 'none';
+          mImport.querySelector('#import-btn-confirmer').style.display = 'none';
+          mImport.querySelector('#import-btn-analyser').style.display  = '';
+          _importData = null;
+        });
+      }
+
+      // Drag & drop sur la zone
+      const dropzone = mImport.querySelector('#import-dropzone');
+      if (dropzone) {
+        dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+        dropzone.addEventListener('drop', e => {
+          e.preventDefault();
+          dropzone.classList.remove('drag-over');
+          const f = e.dataTransfer.files[0];
+          if (f && fichierInput) {
+            // Affecter le fichier glissé à l'input
+            const dt = new DataTransfer();
+            dt.items.add(f);
+            fichierInput.files = dt.files;
+            fichierInput.dispatchEvent(new Event('change'));
+          }
+        });
+      }
+
+      // Boutons Analyser / Confirmer
+      const btnAnalyser  = mImport.querySelector('#import-btn-analyser');
+      const btnConfirmer = mImport.querySelector('#import-btn-confirmer');
+      if (btnAnalyser)  btnAnalyser.addEventListener('click',  _analyserImport);
+      if (btnConfirmer) btnConfirmer.addEventListener('click', _confirmerImport);
     }
   }
 
@@ -3267,6 +3324,265 @@ const Stock = (() => {
 
 
   /* ──────────────────────────────────────────────────────────────
+     EXPORT / IMPORT CSV (admin)
+     ────────────────────────────────────────────────────────────── */
+
+  /** Colonnes du CSV (ordre fixe, couvre profilés et tôles) */
+  const CSV_CHAMPS = [
+    'id', 'categorie',
+    'section_type', 'designation', 'longueur_m', 'poids_ml', 'poids_barre_kg',
+    'classe_acier', 'ref_commande', 'fournisseur',
+    'epaisseur_mm', 'largeur_mm', 'longueur_mm', 'quantite',
+    'poids_unitaire_kg', 'poids_total_kg',
+    'chantier_origine', 'lieu_stockage', 'disponibilite', 'chantier_affectation',
+    'statut', 'date_ajout', 'ajoute_par', 'valide_par', 'date_validation', 'commentaire',
+  ];
+
+  /**
+   * Exporte tout le stock (hors archivées) en fichier CSV téléchargeable.
+   * Séparateur ";" et BOM UTF-8 pour compatibilité Excel.
+   */
+  function _exporterCSV() {
+    if (!Auth.hasRight('can_validate')) return;
+
+    const SEP = ';';
+    const esc = v => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return (s.includes(SEP) || s.includes('"') || s.includes('\n'))
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
+    };
+
+    const elements = _data.barres.filter(b => b.statut !== 'archivee');
+    const lignes   = [CSV_CHAMPS.join(SEP)];
+    for (const b of elements) {
+      lignes.push(CSV_CHAMPS.map(c => esc(b[c])).join(SEP));
+    }
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const blob = new Blob(['\uFEFF' + lignes.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const lien = Object.assign(document.createElement('a'), {
+      href: url, download: `stock-lbf-${dateStr}.csv`,
+    });
+    document.body.appendChild(lien);
+    lien.click();
+    lien.remove();
+    URL.revokeObjectURL(url);
+
+    _notif(`Export réussi — ${elements.length} élément(s) téléchargé(s)`, 'succes');
+  }
+
+  /** Données parsées en attente de confirmation d'import */
+  let _importData = null;
+
+  /** Ouvre la modale d'import et réinitialise son état */
+  function _ouvrirImport() {
+    if (!Auth.hasRight('can_validate')) return;
+    _importData = null;
+
+    const m = document.getElementById('m-import');
+    if (!m) return;
+
+    const fi = m.querySelector('#import-fichier');
+    if (fi) fi.value = '';
+    m.querySelector('#import-nom-fichier').textContent    = '';
+    m.querySelector('#import-resume').style.display       = 'none';
+    m.querySelector('#import-avertissement').style.display = 'none';
+    m.querySelector('#import-erreur').style.display       = 'none';
+    m.querySelector('#import-btn-analyser').disabled      = true;
+    m.querySelector('#import-btn-analyser').style.display = '';
+    m.querySelector('#import-btn-confirmer').style.display = 'none';
+
+    _ouvrirModale('m-import');
+  }
+
+  /**
+   * Analyse le fichier CSV sélectionné.
+   * Parse, valide les lignes, affiche le résumé et active le bouton Importer.
+   */
+  function _analyserImport() {
+    const m = document.getElementById('m-import');
+    if (!m) return;
+
+    const fi = m.querySelector('#import-fichier');
+    if (!fi?.files[0]) return;
+
+    const afficherErreur = msg => {
+      const el = m.querySelector('#import-erreur');
+      el.innerHTML = msg;
+      el.style.display = 'block';
+    };
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        let texte = e.target.result;
+        // Retirer BOM éventuel
+        if (texte.charCodeAt(0) === 0xFEFF) texte = texte.slice(1);
+
+        // ── Parser CSV (séparateur ; avec support guillemets)
+        const parseRow = line => {
+          const cells = [];
+          let inQ = false, cell = '';
+          for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (inQ) {
+              if (c === '"' && line[i + 1] === '"') { cell += '"'; i++; }
+              else if (c === '"') inQ = false;
+              else cell += c;
+            } else if (c === '"') {
+              inQ = true;
+            } else if (c === ';') {
+              cells.push(cell); cell = '';
+            } else {
+              cell += c;
+            }
+          }
+          cells.push(cell);
+          return cells;
+        };
+
+        const lignesBrutes = texte.split(/\r?\n/).filter(l => l.trim());
+        if (lignesBrutes.length < 2) {
+          afficherErreur('Le fichier est vide ou ne contient pas de données.');
+          return;
+        }
+
+        const headers = parseRow(lignesBrutes[0]);
+        if (!headers.includes('id') || !headers.includes('categorie')) {
+          afficherErreur('Format invalide — colonnes "id" et "categorie" introuvables.<br>Utilisez un fichier exporté depuis cette application.');
+          return;
+        }
+
+        // ── Convertir chaque ligne en objet
+        const nb   = (v, def = null) => { const n = parseFloat(v);  return isNaN(n) ? def : n; };
+        const ni   = (v, def = null) => { const n = parseInt(v, 10); return isNaN(n) ? def : n; };
+        const str  = (v, def = null) => (v && String(v).trim()) ? String(v).trim() : def;
+
+        const valides = [];
+        const erreurs = [];
+
+        for (let i = 1; i < lignesBrutes.length; i++) {
+          const cells = parseRow(lignesBrutes[i]);
+          const row   = {};
+          headers.forEach((h, j) => { row[h] = cells[j] ?? ''; });
+
+          const id  = str(row.id);
+          const cat = str(row.categorie);
+
+          if (!id)                         { erreurs.push(`Ligne ${i + 1} : ID manquant`); continue; }
+          if (!['profil','tole'].includes(cat)) { erreurs.push(`Ligne ${i + 1} (${id}) : catégorie invalide`); continue; }
+
+          const base = {
+            id, categorie: cat,
+            chantier_origine:    str(row.chantier_origine),
+            lieu_stockage:       str(row.lieu_stockage),
+            disponibilite:       str(row.disponibilite, 'disponible'),
+            chantier_affectation: str(row.chantier_affectation),
+            statut:              str(row.statut, 'valide'),
+            date_ajout:          str(row.date_ajout),
+            ajoute_par:          str(row.ajoute_par),
+            valide_par:          str(row.valide_par),
+            date_validation:     str(row.date_validation),
+            commentaire:         str(row.commentaire),
+          };
+
+          if (cat === 'profil') {
+            valides.push({
+              ...base,
+              section_type:    str(row.section_type),
+              designation:     str(row.designation),
+              longueur_m:      nb(row.longueur_m),
+              poids_ml:        nb(row.poids_ml),
+              poids_barre_kg:  nb(row.poids_barre_kg),
+              classe_acier:    str(row.classe_acier),
+              ref_commande:    str(row.ref_commande),
+              fournisseur:     str(row.fournisseur),
+            });
+          } else {
+            valides.push({
+              ...base,
+              epaisseur_mm:      nb(row.epaisseur_mm),
+              largeur_mm:        nb(row.largeur_mm),
+              longueur_mm:       nb(row.longueur_mm),
+              quantite:          ni(row.quantite, 1),
+              poids_unitaire_kg: nb(row.poids_unitaire_kg),
+              poids_total_kg:    nb(row.poids_total_kg),
+            });
+          }
+        }
+
+        if (!valides.length) {
+          afficherErreur('Aucune ligne valide trouvée dans le fichier.' +
+            (erreurs.length ? `<br>${erreurs.slice(0, 3).join('<br>')}` : ''));
+          return;
+        }
+
+        _importData = valides;
+
+        // Résumé
+        const nbProfils = valides.filter(b => b.categorie === 'profil').length;
+        const nbToles   = valides.filter(b => b.categorie === 'tole').length;
+        const resumeEl  = m.querySelector('#import-resume');
+        resumeEl.innerHTML =
+          `<strong>Fichier analysé :</strong><br>` +
+          `&nbsp;• ${nbProfils} profilé(s)<br>` +
+          `&nbsp;• ${nbToles} tôle(s)<br>` +
+          `&nbsp;• <strong>Total : ${valides.length} élément(s)</strong>` +
+          (erreurs.length
+            ? `<br><span style="color:var(--rouge)">⚠ ${erreurs.length} ligne(s) ignorée(s)</span>`
+            : '');
+        resumeEl.style.display = 'block';
+
+        m.querySelector('#import-erreur').style.display        = 'none';
+        m.querySelector('#import-avertissement').style.display = 'block';
+        m.querySelector('#import-btn-analyser').style.display  = 'none';
+        m.querySelector('#import-btn-confirmer').style.display = '';
+
+      } catch (ex) {
+        afficherErreur('Erreur lors de la lecture : ' + ex.message);
+      }
+    };
+    reader.readAsText(fi.files[0], 'UTF-8');
+  }
+
+  /**
+   * Importe (upsert) tous les éléments parsés dans Supabase / localStorage.
+   */
+  async function _confirmerImport() {
+    if (!_importData?.length || !Auth.hasRight('can_validate')) return;
+
+    const m = document.getElementById('m-import');
+    const btnOk = m?.querySelector('#import-btn-confirmer');
+    if (btnOk) { btnOk.disabled = true; btnOk.textContent = 'Import en cours…'; }
+
+    let ok = 0, err = 0;
+    for (const element of _importData) {
+      try {
+        await _persisterElement(element);
+        ok++;
+      } catch (e) {
+        console.warn('[Import] Erreur sur', element.id, e);
+        err++;
+      }
+    }
+
+    _importData = null;
+    _fermerModale('m-import');
+    _peuplerFiltres();
+    _filtrer();
+    _majAlerteAttente();
+
+    const msg = err === 0
+      ? `Import réussi — ${ok} élément(s) chargé(s)`
+      : `Import partiel — ${ok} importé(s), ${err} erreur(s)`;
+    _notif(msg, err === 0 ? 'succes' : 'erreur');
+  }
+
+
+  /* ──────────────────────────────────────────────────────────────
      API PUBLIQUE
      ────────────────────────────────────────────────────────────── */
   return {
@@ -3279,6 +3595,8 @@ const Stock = (() => {
     refuserElement,
     getSelection,
     ouvrirHistoriqueBarre,
+    exporterCSV: _exporterCSV,
+    ouvrirImport: _ouvrirImport,
   };
 
 })();
