@@ -89,6 +89,21 @@ function profilSvgCote(section, w, h) {
       break;
     }
 
+    case 'Barres rondes': {
+      const cx = w / 2, cy = h / 2, ro = Math.min(w, h) / 2 - 18;
+      inner += e('circle', { cx, cy, r: ro, fill: F, stroke: S, 'stroke-width': 1.5 });
+      inner += fleche(cx - ro, cy, cx + ro, cy, 'd', cx, cy - 6);
+      break;
+    }
+
+    case 'Barres carrées': {
+      const sw = 90, ox = (w - sw) / 2, oy = (h - sw) / 2;
+      inner += e('rect', { x: ox, y: oy, width: sw, height: sw, fill: F, stroke: S, 'stroke-width': 1.5 });
+      inner += fleche(12, oy, 12, oy + sw, 'a', 5, h / 2, '-90');
+      inner += fleche(ox, h - 5, ox + sw, h - 5, 'a', ox + sw / 2, h - 1);
+      break;
+    }
+
     case 'Profilés creux': {
       if (section.serie === 'CHS') {
         const cx = w / 2, cy = h / 2, ro = Math.min(w, h) / 2 - 18, ep = (section.e ?? section.t) || 4;
@@ -158,6 +173,16 @@ function profilDimsTableau(s) {
       if (s.re  !== undefined) lignes.push(['re — Rayon ext.', `${s.re} mm`]);
     }
     if (s.pml !== undefined) lignes.push(['Poids/ml', `${s.pml} kg/m`]);
+
+  } else if (fam === 'Barres rondes' || ser === 'Rond') {
+    if (s.d   !== undefined) lignes.push(['d — Diamètre', `${s.d} mm`]);
+    if (s.pml !== undefined) lignes.push(['Poids/ml',     `${s.pml} kg/m`]);
+    if (s.A   !== undefined) lignes.push(['Section',      `${s.A} cm²`]);
+
+  } else if (fam === 'Barres carrées' || ser === 'Carré') {
+    if (s.a   !== undefined) lignes.push(['a — Côté',  `${s.a} mm`]);
+    if (s.pml !== undefined) lignes.push(['Poids/ml',  `${s.pml} kg/m`]);
+    if (s.A   !== undefined) lignes.push(['Section',   `${s.A} cm²`]);
 
   } else if (fam === 'Cornière' || ['L égale','L inégale'].includes(ser)) {
     if (ser === 'L inégale') {

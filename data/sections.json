@@ -3351,6 +3351,342 @@
           "pml": 31.4
         }
       ]
+    },
+    {
+      "famille": "Barres rondes",
+      "type": "barre_ronde",
+      "norme": "EN 10060",
+      "sections": [
+        {
+          "serie": "Rond",
+          "desig": "Rond 10",
+          "d": 10,
+          "pml": 0.617,
+          "A": 0.79
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 12",
+          "d": 12,
+          "pml": 0.888,
+          "A": 1.13
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 14",
+          "d": 14,
+          "pml": 1.208,
+          "A": 1.54
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 16",
+          "d": 16,
+          "pml": 1.578,
+          "A": 2.01
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 18",
+          "d": 18,
+          "pml": 1.998,
+          "A": 2.54
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 20",
+          "d": 20,
+          "pml": 2.466,
+          "A": 3.14
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 22",
+          "d": 22,
+          "pml": 2.984,
+          "A": 3.8
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 25",
+          "d": 25,
+          "pml": 3.853,
+          "A": 4.91
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 28",
+          "d": 28,
+          "pml": 4.834,
+          "A": 6.16
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 30",
+          "d": 30,
+          "pml": 5.549,
+          "A": 7.07
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 32",
+          "d": 32,
+          "pml": 6.313,
+          "A": 8.04
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 35",
+          "d": 35,
+          "pml": 7.553,
+          "A": 9.62
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 38",
+          "d": 38,
+          "pml": 8.903,
+          "A": 11.34
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 40",
+          "d": 40,
+          "pml": 9.865,
+          "A": 12.57
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 45",
+          "d": 45,
+          "pml": 12.485,
+          "A": 15.9
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 50",
+          "d": 50,
+          "pml": 15.413,
+          "A": 19.63
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 55",
+          "d": 55,
+          "pml": 18.65,
+          "A": 23.76
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 60",
+          "d": 60,
+          "pml": 22.195,
+          "A": 28.27
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 65",
+          "d": 65,
+          "pml": 26.049,
+          "A": 33.18
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 70",
+          "d": 70,
+          "pml": 30.21,
+          "A": 38.48
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 75",
+          "d": 75,
+          "pml": 34.68,
+          "A": 44.18
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 80",
+          "d": 80,
+          "pml": 39.458,
+          "A": 50.27
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 90",
+          "d": 90,
+          "pml": 49.94,
+          "A": 63.62
+        },
+        {
+          "serie": "Rond",
+          "desig": "Rond 100",
+          "d": 100,
+          "pml": 61.654,
+          "A": 78.54
+        }
+      ]
+    },
+    {
+      "famille": "Barres carrées",
+      "type": "barre_carree",
+      "norme": "EN 10058",
+      "sections": [
+        {
+          "serie": "Carré",
+          "desig": "Carré 10",
+          "a": 10,
+          "pml": 0.785,
+          "A": 1.0
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 12",
+          "a": 12,
+          "pml": 1.13,
+          "A": 1.44
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 14",
+          "a": 14,
+          "pml": 1.539,
+          "A": 1.96
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 16",
+          "a": 16,
+          "pml": 2.01,
+          "A": 2.56
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 18",
+          "a": 18,
+          "pml": 2.543,
+          "A": 3.24
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 20",
+          "a": 20,
+          "pml": 3.14,
+          "A": 4.0
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 22",
+          "a": 22,
+          "pml": 3.799,
+          "A": 4.84
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 25",
+          "a": 25,
+          "pml": 4.906,
+          "A": 6.25
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 28",
+          "a": 28,
+          "pml": 6.154,
+          "A": 7.84
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 30",
+          "a": 30,
+          "pml": 7.065,
+          "A": 9.0
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 32",
+          "a": 32,
+          "pml": 8.038,
+          "A": 10.24
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 35",
+          "a": 35,
+          "pml": 9.616,
+          "A": 12.25
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 40",
+          "a": 40,
+          "pml": 12.56,
+          "A": 16.0
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 45",
+          "a": 45,
+          "pml": 15.896,
+          "A": 20.25
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 50",
+          "a": 50,
+          "pml": 19.625,
+          "A": 25.0
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 55",
+          "a": 55,
+          "pml": 23.746,
+          "A": 30.25
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 60",
+          "a": 60,
+          "pml": 28.26,
+          "A": 36.0
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 65",
+          "a": 65,
+          "pml": 33.166,
+          "A": 42.25
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 70",
+          "a": 70,
+          "pml": 38.465,
+          "A": 49.0
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 80",
+          "a": 80,
+          "pml": 50.24,
+          "A": 64.0
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 90",
+          "a": 90,
+          "pml": 63.585,
+          "A": 81.0
+        },
+        {
+          "serie": "Carré",
+          "desig": "Carré 100",
+          "a": 100,
+          "pml": 78.5,
+          "A": 100.0
+        }
+      ]
     }
   ],
   "custom": []

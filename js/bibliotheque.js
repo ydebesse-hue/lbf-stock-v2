@@ -71,7 +71,7 @@ async function biblioInit(profil) {
  * @returns {{ standard: Array }}
  */
 function _rowsToStandard(rows) {
-  const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat'];
+  const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat', 'Barres rondes', 'Barres carrées'];
   const map = {};
   rows.forEach(r => {
     if (!map[r.famille]) {
@@ -170,6 +170,24 @@ function biblioRendreGrille() {
       famJson:'Plat',
       series: [
         { serie:'Plat', photo:'../assets/profils/Plat.png' }
+      ]
+    },
+    {
+      id:     'Barres rondes',
+      titre:  'Barres rondes pleines',
+      norme:  'EN 10060',
+      famJson:'Barres rondes',
+      series: [
+        { serie:'Rond', photo:'../assets/profils/Rond.png' }
+      ]
+    },
+    {
+      id:     'Barres carrées',
+      titre:  'Barres carrées pleines',
+      norme:  'EN 10058',
+      famJson:'Barres carrées',
+      series: [
+        { serie:'Carré', photo:'../assets/profils/Carre.png' }
       ]
     }
   ];
@@ -306,7 +324,8 @@ function biblioOuvrirModaleSerie(serie, famId) {
   const MAP_FAM = {
     'IPE': 'Profilés I', 'HE': 'Profilés H',
     'U':   'Profilés U', 'Cornière': 'Cornière',
-    'Profilés creux': 'Profilés creux', 'Plat': 'Plat'
+    'Profilés creux': 'Profilés creux', 'Plat': 'Plat',
+    'Barres rondes': 'Barres rondes', 'Barres carrées': 'Barres carrées'
   };
   const famJson = MAP_FAM[famId] || famId;
   const famStd  = Biblio.data.standard.find(f => f.famille === famJson);
@@ -794,7 +813,9 @@ const MF_PHOTOS = {
   'RHS froid':    '../assets/profils/RHS froid.png',
   'CHS':          '../assets/profils/CHS chaud.png',
   'CHS chaud':    '../assets/profils/CHS chaud.png',
-  'CHS froid':    '../assets/profils/CHS froid.png'
+  'CHS froid':    '../assets/profils/CHS froid.png',
+  'Rond':         '../assets/profils/Rond.png',
+  'Carré':        '../assets/profils/Carre.png'
 };
 
 /**
@@ -811,7 +832,9 @@ function biblioOuvrirModaleFamille(famId, serieActive) {
     'U':               'Profilés U',
     'Cornière':        'Cornière',
     'Profilés creux':  'Profilés creux',
-    'Plat':            'Plat'
+    'Plat':            'Plat',
+    'Barres rondes':   'Barres rondes',
+    'Barres carrées':  'Barres carrées'
   };
   const MAP_TITRE = {
     'IPE':             'Famille IPE · IPN',
@@ -819,7 +842,9 @@ function biblioOuvrirModaleFamille(famId, serieActive) {
     'U':               'Famille UPN · UPE',
     'Cornière':        'Famille Cornière',
     'Profilés creux':  'Famille Profilés creux — SHS · RHS · CHS',
-    'Plat':            'Famille Plat'
+    'Plat':            'Famille Plat',
+    'Barres rondes':   'Barres rondes pleines',
+    'Barres carrées':  'Barres carrées pleines'
   };
 
   const famJson = MAP_FAM[famId] || famId;
@@ -846,11 +871,13 @@ function biblioOuvrirModaleFamille(famId, serieActive) {
   const _norme = famStd ? (famStd.norme || '') : '';
 const _desc  = famStd ? (famStd.description || famStd.desc || '') : '';
 const _descMap = {
-  'Profilés I': 'Profilé en I à ailes parallèles',
-  'Profilés H': 'Profilé en H à larges ailes',
-  'Profilés U': 'Profilé en U',
-  'Cornière':   'Cornière à ailes égales ou inégales',
-  'Plat':       'Plat laminé à chaud',
+  'Profilés I':    'Profilé en I à ailes parallèles',
+  'Profilés H':    'Profilé en H à larges ailes',
+  'Profilés U':    'Profilé en U',
+  'Cornière':      'Cornière à ailes égales ou inégales',
+  'Plat':          'Plat laminé à chaud',
+  'Barres rondes': 'Barre ronde pleine laminée à chaud',
+  'Barres carrées':'Barre carrée pleine laminée à chaud',
 };
 const _descFin = _desc || _descMap[MfEtat.famJson] || '';
 m.querySelector('#mf-norme').innerHTML =
@@ -1133,6 +1160,18 @@ function _colonnesFamille(famille, serie) {
         { key:'e',   label:'e mm'  },
         { key:'pml', label:'kg/m'  },
       ];
+    case 'Barres rondes':
+      return [
+        { key:'d',   label:'d mm'  },
+        { key:'pml', label:'kg/m'  },
+        { key:'A',   label:'A cm²' },
+      ];
+    case 'Barres carrées':
+      return [
+        { key:'a',   label:'a mm'  },
+        { key:'pml', label:'kg/m'  },
+        { key:'A',   label:'A cm²' },
+      ];
     default:
       return [
         { key:'h',   label:'h mm'  },
@@ -1185,6 +1224,18 @@ function _dimsSection(s, famille) {
         ['b — Largeur',     (s.b  ||'—')+' mm'],
         ['e — Épaisseur',   (s.e  ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
+      ];
+    case 'Barres rondes':
+      return [
+        ['d — Diamètre',    (s.d  ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+        ['Section',         (s.A  ||'—')+' cm²'],
+      ];
+    case 'Barres carrées':
+      return [
+        ['a — Côté',        (s.a  ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+        ['Section',         (s.A  ||'—')+' cm²'],
       ];
     case 'Profilés creux':
       if (s.serie === 'CHS') return [
@@ -1741,6 +1792,14 @@ function nsChampsDims(famille) {
            + f('e','e — Épaisseur (mm)','10')
            + f('pml','Poids/ml (kg/m)','7.85');
 
+    case 'Barres rondes':
+      return f('d','d — Diamètre (mm)','20')
+           + f('pml','Poids/ml (kg/m)','2.47');
+
+    case 'Barres carrées':
+      return f('a','a — Côté (mm)','20')
+           + f('pml','Poids/ml (kg/m)','3.14');
+
     default:
       return f('h','h — Hauteur (mm)','')
            + f('b','b — Largeur (mm)','')
@@ -1765,6 +1824,7 @@ function nsLireDims() {
     a:   lire('a'),
     t:   lire('t'),
     e:   lire('e'),
+    d:   lire('d'),
     pml: lire('pml')
   };
 }
@@ -1773,7 +1833,7 @@ function nsLireDims() {
  * Vide les champs de dimensions
  */
 function nsViderDims() {
-  const ids = ['h','b','tw','tf','r','a','t','e','pml'];
+  const ids = ['h','b','tw','tf','r','a','t','e','d','pml'];
   ids.forEach(id => {
     const el = document.getElementById(`ns-${id}`);
     if (el) el.value = '';
@@ -1796,6 +1856,7 @@ function nsRemplirDims(section) {
   remplir('a',   section.a);
   remplir('t',   section.t);
   remplir('e',   section.e);
+  remplir('d',   section.d);
   remplir('pml', section.pml);
 }
 

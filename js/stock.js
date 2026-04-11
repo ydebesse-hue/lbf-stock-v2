@@ -1447,6 +1447,7 @@ const Stock = (() => {
       'UPN': 'UPN.png', 'UPE': 'UPE.png',
       'L égale': 'Le.png', 'L inégale': 'Li.png',
       'SHS': 'SHS chaud.png', 'RHS': 'RHS chaud.png', 'CHS': 'CHS chaud.png',
+      'Rond': 'Rond.png', 'Carré': 'Carre.png',
     };
     const nomFichier = SERIES_IMAGES[type] || null;
     const visuel = zoneSchema.querySelector('[id$="-visuel"]');
@@ -2903,7 +2904,7 @@ const Stock = (() => {
    * Convertit les lignes Supabase sections en structure {standard, custom}
    */
   function _sectionsFromRows(rows) {
-    const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat'];
+    const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat', 'Barres rondes', 'Barres carrées'];
     const map = {};
     rows.forEach(r => {
       if (!map[r.famille]) map[r.famille] = { famille: r.famille, sections: [] };
