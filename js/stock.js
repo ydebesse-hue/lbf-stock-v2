@@ -110,15 +110,26 @@ const Stock = (() => {
       const compteur = nums.length ? Math.max(...nums) : 0;
       _data = { barres, compteur };
 
-      // Charger les sections depuis Supabase, fallback sections.json
+      // Charger les sections — sections.json toujours en base, Supabase complète
+      let sectionsJson = null;
+      try {
+        const repSec = await fetch('../data/sections.json');
+        if (repSec.ok) sectionsJson = await repSec.json();
+      } catch(e2) { /* ignoré */ }
+
       try {
         const rows = await window.SB.lire('sections', { order: 'sort_order' });
         _sections = _sectionsFromRows(rows);
+        // Ajouter les familles absentes de Supabase depuis sections.json
+        if (sectionsJson) {
+          sectionsJson.standard.forEach(famJson => {
+            if (!_sections.standard.find(f => f.famille === famJson.famille)) {
+              _sections.standard.push(famJson);
+            }
+          });
+        }
       } catch(e) {
-        try {
-          const repSec = await fetch('../data/sections.json');
-          if (repSec.ok) _sections = await repSec.json();
-        } catch(e2) { /* sections optionnelles */ }
+        _sections = sectionsJson || { standard: [], custom: [] };
       }
 
       // Charger les demandes en attente depuis Supabase

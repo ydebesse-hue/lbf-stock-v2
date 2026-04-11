@@ -39,20 +39,28 @@ const Biblio = {
 async function biblioInit(profil) {
   Biblio.profil = profil || 'consultation';
 
+  // Toujours charger sections.json — source de vérité pour les sections standard
+  let sectionsJson = null;
+  try {
+    const rep = await fetch('../data/sections.json');
+    if (rep.ok) sectionsJson = await rep.json();
+  } catch (e) { /* ignoré */ }
+
   try {
     // Chargement depuis Supabase
     const rows = await window.SB.lire('sections', { order: 'sort_order' });
     Biblio.data = _rowsToStandard(rows);
+    // Compléter avec les familles absentes de Supabase (ex: nouvelles familles)
+    if (sectionsJson) {
+      sectionsJson.standard.forEach(famJson => {
+        if (!Biblio.data.standard.find(f => f.famille === famJson.famille)) {
+          Biblio.data.standard.push(famJson);
+        }
+      });
+    }
   } catch (e) {
     console.warn('Supabase indisponible — fallback sections.json :', e);
-    try {
-      const rep = await fetch('../data/sections.json');
-      if (!rep.ok) throw new Error('sections.json introuvable');
-      Biblio.data = await rep.json();
-    } catch (e2) {
-      console.warn('sections.json non accessible — données de démo utilisées');
-      Biblio.data = SECTIONS_DEMO;
-    }
+    Biblio.data = sectionsJson || SECTIONS_DEMO;
   }
 
   // Charger les sections custom depuis localStorage
