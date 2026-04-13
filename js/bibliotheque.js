@@ -6,6 +6,20 @@
 
 'use strict';
 
+/**
+ * Échappe les caractères HTML dangereux dans une valeur utilisateur.
+ * À utiliser partout où des données externes sont insérées via innerHTML.
+ */
+function _e(val) {
+  if (val == null) return '';
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /* ══════════════════════════════════════════════
    ÉTAT GLOBAL DU MODULE
 ══════════════════════════════════════════════ */
@@ -220,8 +234,8 @@ function biblioRendreGrille() {
     const sep = document.createElement('div');
     sep.className = 'biblio-sep-famille';
     sep.innerHTML = `
-      <div class="bsf-titre">${fam.titre}</div>
-      <div class="bsf-norme">${fam.norme}</div>`;
+      <div class="bsf-titre">${_e(fam.titre)}</div>
+      <div class="bsf-norme">${_e(fam.norme)}</div>`;
     conteneur.appendChild(sep);
 
     // ── Grille de cartes série ──
@@ -287,8 +301,8 @@ function biblioCreerCarteSerie(sr, fam) {
 
   carte.innerHTML = `
     <div class="cs-header">
-      <span class="cs-titre">${sr.serie}</span>
-      <span class="cs-count">${sr.nbDesig} réf.</span>
+      <span class="cs-titre">${_e(sr.serie)}</span>
+      <span class="cs-count">${_e(String(sr.nbDesig))} réf.</span>
     </div>
     ${visuelHtml}
     <div class="cs-footer">
@@ -340,8 +354,8 @@ const _desc  = famStd.description || famStd.desc || '';
 m.querySelector('#mf-norme').innerHTML =
   `<span style="background:var(--vert);color:white;font-family:Impact;font-size:11px;
     letter-spacing:1px;padding:2px 8px;border-radius:2px;text-transform:uppercase;
-    margin-right:8px;">${_norme}</span>
-   <span style="font-size:12px;color:#888;">${_desc}</span>`;
+    margin-right:8px;">${_e(_norme)}</span>
+   <span style="font-size:12px;color:#888;">${_e(_desc)}</span>`;
   m.querySelector('#mf-dims').innerHTML          = '';
  m.querySelector('#mf-desig-label').textContent  = 'Dimensions normalisées';
 m.querySelector('#mf-desig-label').style.color  = 'var(--noir)';
@@ -469,7 +483,7 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
   secsFiltrees.forEach((s, i) => {
     const idxGlobal = MfEtat.sections.indexOf(s);
     tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
-    tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
+    tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${_e(s.desig)}</td>`;
     colonnes.forEach(c => {
       const val = c.fmt ? c.fmt(s[c.key]) : (s[c.key] !== undefined ? s[c.key] : '—');
       tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val}</td>`;
@@ -610,8 +624,8 @@ function biblioCreerCarteDesig(section) {
   carte.innerHTML = `
     <div class="carte-header">
       <div class="carte-titre">
-        <span class="carte-famille">${section.famille}</span>
-        <span class="carte-desig">${section.desig}</span>
+        <span class="carte-famille">${_e(section.famille)}</span>
+        <span class="carte-desig">${_e(section.desig)}</span>
       </div>
       ${badgeHtml}
     </div>
@@ -881,8 +895,8 @@ const _descMap = {
 const _descFin = _descMap[famId] || '';
 m.querySelector('#mf-norme').innerHTML =
   `<span style="background:var(--vert);color:white;font-family:Impact;font-size:11px;
-    letter-spacing:1px;padding:2px 8px;border-radius:2px;text-transform:uppercase;">${norme}</span>
-   <span style="font-size:12px;color:#888;">${_descFin}</span>`;
+    letter-spacing:1px;padding:2px 8px;border-radius:2px;text-transform:uppercase;">${_e(norme)}</span>
+   <span style="font-size:12px;color:#888;">${_e(_descFin)}</span>`;
   m.querySelector('#mf-dims').innerHTML          = '';
   m.querySelector('#mf-desig-label').textContent = '← Sélectionnez une ligne';
   m.querySelector('#mf-img-zone').innerHTML      = '<span style="color:#ccc;font-size:12px;">—</span>';
@@ -927,7 +941,7 @@ function mfRendreAccordeon(m, groupes, famJson) {
     header.className = 'mf-groupe-header';
     header.innerHTML = `
       <span class="mf-groupe-titre">
-        ${grp.serie}
+        ${_e(grp.serie)}
         <span class="mf-groupe-count">${grp.secs.length} désignation(s)</span>
       </span>
       <span class="mf-groupe-fleche ouvert" id="${groupeId}-fleche">▶</span>`;
@@ -953,7 +967,7 @@ function mfRendreAccordeon(m, groupes, famJson) {
       // Indice global dans toutes les sections
       const idxGlobal = MfEtat.sections.indexOf(s);
       tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
-      tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
+      tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${_e(s.desig)}</td>`;
       colonnes.forEach(c => {
         const val = c.fmt ? c.fmt(s[c.key]) : (s[c.key] !== undefined ? s[c.key] : '—');
         tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val}</td>`;
@@ -1313,7 +1327,7 @@ function biblioOuvrirFiche(idSec) {
   const svgZone = modale.querySelector('.detail-svg-zone');
   if (svgZone) {
     svgZone.innerHTML = `
-      <div class="schema-titre">Schéma coté ${section.famille} ${section.desig}</div>
+      <div class="schema-titre">Schéma coté ${_e(section.famille)} ${_e(section.desig)}</div>
       ${profilSvgCote(section, 180, 180)}`;
   }
 
@@ -1890,11 +1904,11 @@ function nsUpdateRecap() {
   const desig   = modale.querySelector('#ns-desig')  .value || '—';
 
   recap.innerHTML = `
-    <div class="dim-row"><span class="dim-label">Famille</span>   <span class="dim-val">${famille}</span></div>
-    <div class="dim-row"><span class="dim-label">Désignation</span><span class="dim-val">${desig}</span></div>
-    <div class="dim-row"><span class="dim-label">h</span>          <span class="dim-val">${getVal('h')}</span></div>
-    <div class="dim-row"><span class="dim-label">b</span>          <span class="dim-val">${getVal('b')}</span></div>
-    <div class="dim-row"><span class="dim-label">Poids/ml</span>   <span class="dim-val">${getVal('pml')}</span></div>`;
+    <div class="dim-row"><span class="dim-label">Famille</span>   <span class="dim-val">${_e(famille)}</span></div>
+    <div class="dim-row"><span class="dim-label">Désignation</span><span class="dim-val">${_e(desig)}</span></div>
+    <div class="dim-row"><span class="dim-label">h</span>          <span class="dim-val">${_e(getVal('h'))}</span></div>
+    <div class="dim-row"><span class="dim-label">b</span>          <span class="dim-val">${_e(getVal('b'))}</span></div>
+    <div class="dim-row"><span class="dim-label">Poids/ml</span>   <span class="dim-val">${_e(getVal('pml'))}</span></div>`;
 }
 
 /* ══════════════════════════════════════════════
