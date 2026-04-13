@@ -172,29 +172,13 @@ function biblioRendreGrille() {
       ]
     },
     {
-      id:     'Plat',
-      titre:  'Plat',
-      norme:  'EN 10058',
-      famJson:'Plat',
+      id:          'Barres pleines',
+      titre:       'Barres pleines — Plat · Rond · Carré',
+      norme:       'EN 10058 / EN 10060',
+      famJsonList: ['Plat', 'Barres rondes', 'Barres carrées'],
       series: [
-        { serie:'Plat', photo:'../assets/profils/Plat.png' }
-      ]
-    },
-    {
-      id:     'Barres rondes',
-      titre:  'Barres rondes pleines',
-      norme:  'EN 10060',
-      famJson:'Barres rondes',
-      series: [
-        { serie:'Rond', photo:'../assets/profils/Rond.png' }
-      ]
-    },
-    {
-      id:     'Barres carrées',
-      titre:  'Barres carrées pleines',
-      norme:  'EN 10058',
-      famJson:'Barres carrées',
-      series: [
+        { serie:'Plat',  photo:'../assets/profils/Plat.png'  },
+        { serie:'Rond',  photo:'../assets/profils/Rond.png'  },
         { serie:'Carré', photo:'../assets/profils/Carre.png' }
       ]
     }
@@ -208,13 +192,18 @@ function biblioRendreGrille() {
     // Filtre famille toolbar
     if (famFiltree && fam.id !== famFiltree) return;
 
-    // Récupérer les sections de cette famille dans sections.json
-    const famStd = Biblio.data.standard.find(f => f.famille === fam.famJson);
-    if (!famStd) return;
+    // Récupérer les sections — supporte famJsonList (multi) ou famJson (mono)
+    const fjList = fam.famJsonList || (fam.famJson ? [fam.famJson] : []);
+    const toutesLesSecs = [];
+    fjList.forEach(fjn => {
+      const fs = Biblio.data.standard.find(f => f.famille === fjn);
+      if (fs) toutesLesSecs.push(...fs.sections);
+    });
+    if (!toutesLesSecs.length) return;
 
     // Pour chaque série : compter les désignations correspondantes
     const seriesAvecCount = fam.series.map(sr => {
-      const secs = famStd.sections.filter(s => {
+      const secs = toutesLesSecs.filter(s => {
         if (s.serie !== sr.serie) return false;
         if (rech) return s.desig.toLowerCase().includes(rech);
         return true;
@@ -329,15 +318,10 @@ function biblioOuvrirModaleSerie(serie, famId) {
   const m = document.getElementById('m-famille');
   if (!m) return;
 
-  const MAP_FAM = {
-    'IPE': 'Profilés I', 'HE': 'Profilés H',
-    'U':   'Profilés U', 'Cornière': 'Cornière',
-    'Profilés creux': 'Profilés creux', 'Plat': 'Plat',
-    'Barres rondes': 'Barres rondes', 'Barres carrées': 'Barres carrées'
-  };
-  const famJson = MAP_FAM[famId] || famId;
-  const famStd  = Biblio.data.standard.find(f => f.famille === famJson);
+  // Trouver la famille qui contient cette série (supporte les groupes multi-famille)
+  const famStd = Biblio.data.standard.find(f => f.sections.some(s => s.serie === serie));
   if (!famStd) return;
+  const famJson = famStd.famille;
 
   // Filtrer uniquement les sections de cette série
   const sections = famStd.sections.filter(s => s.serie === serie);
@@ -467,7 +451,9 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
   const accordeon = m.querySelector('#mf-accordeon');
   if (!accordeon) return;
 
-  const colonnes = _colonnesFamille(famJson, serie);
+  // Cherche la famille réelle de cette série
+  const famJsonSerie = _famJsonPourSerie(serie) || famJson;
+  const colonnes = _colonnesFamille(famJsonSerie, serie);
 
   // En-tête tableau
   let thHtml = '<thead><tr>';
@@ -835,30 +821,39 @@ function biblioOuvrirModaleFamille(famId, serieActive) {
   if (!m) return;
 
   const MAP_FAM = {
-    'IPE':             'Profilés I',
-    'HE':              'Profilés H',
-    'U':               'Profilés U',
-    'Cornière':        'Cornière',
-    'Profilés creux':  'Profilés creux',
-    'Plat':            'Plat',
-    'Barres rondes':   'Barres rondes',
-    'Barres carrées':  'Barres carrées'
+    'IPE':            'Profilés I',
+    'HE':             'Profilés H',
+    'U':              'Profilés U',
+    'Cornière':       'Cornière',
+    'Profilés creux': 'Profilés creux'
+  };
+  // Groupes multi-famille
+  const MULTI_FAM = {
+    'Barres pleines': ['Plat', 'Barres rondes', 'Barres carrées']
   };
   const MAP_TITRE = {
-    'IPE':             'Famille IPE · IPN',
-    'HE':              'Famille HEA · HEB · HEM',
-    'U':               'Famille UPN · UPE',
-    'Cornière':        'Famille Cornière',
-    'Profilés creux':  'Famille Profilés creux — SHS · RHS · CHS',
-    'Plat':            'Famille Plat',
-    'Barres rondes':   'Barres rondes pleines',
-    'Barres carrées':  'Barres carrées pleines'
+    'IPE':            'Famille IPE · IPN',
+    'HE':             'Famille HEA · HEB · HEM',
+    'U':              'Famille UPN · UPE',
+    'Cornière':       'Famille Cornière',
+    'Profilés creux': 'Famille Profilés creux — SHS · RHS · CHS',
+    'Barres pleines': 'Barres pleines — Plat · Rond · Carré'
   };
 
-  const famJson = MAP_FAM[famId] || famId;
-  const famStd  = Biblio.data.standard.find(f => f.famille === famJson);
-  const toutes  = famStd ? famStd.sections : Biblio.data.custom.filter(s => s.famille === famId);
-  const norme   = famStd ? famStd.norme : '';
+  // Collecter les sections (multi-famille ou mono)
+  let toutes = [], norme = '';
+  if (MULTI_FAM[famId]) {
+    MULTI_FAM[famId].forEach(fjn => {
+      const f = Biblio.data.standard.find(fs => fs.famille === fjn);
+      if (f) { toutes.push(...f.sections); if (!norme) norme = f.norme; }
+    });
+  } else {
+    const famJson = MAP_FAM[famId] || famId;
+    const famStd  = Biblio.data.standard.find(f => f.famille === famJson);
+    toutes = famStd ? famStd.sections : Biblio.data.custom.filter(s => s.famille === famId);
+    norme  = famStd ? famStd.norme : '';
+  }
+  const famJson = MULTI_FAM[famId] ? MULTI_FAM[famId][0] : (MAP_FAM[famId] || famId);
 
   // Regrouper par série
   const groupesMap = {};
@@ -876,21 +871,17 @@ function biblioOuvrirModaleFamille(famId, serieActive) {
   MfEtat.groupes  = groupes;
 
   m.querySelector('#mf-titre').textContent       = MAP_TITRE[famId] || famId;
-  const _norme = famStd ? (famStd.norme || '') : '';
-const _desc  = famStd ? (famStd.description || famStd.desc || '') : '';
 const _descMap = {
   'Profilés I':    'Profilé en I à ailes parallèles',
   'Profilés H':    'Profilé en H à larges ailes',
   'Profilés U':    'Profilé en U',
   'Cornière':      'Cornière à ailes égales ou inégales',
-  'Plat':          'Plat laminé à chaud',
-  'Barres rondes': 'Barre ronde pleine laminée à chaud',
-  'Barres carrées':'Barre carrée pleine laminée à chaud',
+  'Barres pleines':'Barres pleines laminées à chaud — Plat, Rond, Carré',
 };
-const _descFin = _desc || _descMap[MfEtat.famJson] || '';
+const _descFin = _descMap[famId] || '';
 m.querySelector('#mf-norme').innerHTML =
   `<span style="background:var(--vert);color:white;font-family:Impact;font-size:11px;
-    letter-spacing:1px;padding:2px 8px;border-radius:2px;text-transform:uppercase;">${_norme}</span>
+    letter-spacing:1px;padding:2px 8px;border-radius:2px;text-transform:uppercase;">${norme}</span>
    <span style="font-size:12px;color:#888;">${_descFin}</span>`;
   m.querySelector('#mf-dims').innerHTML          = '';
   m.querySelector('#mf-desig-label').textContent = '← Sélectionnez une ligne';
@@ -926,7 +917,9 @@ function mfRendreAccordeon(m, groupes, famJson) {
   conteneur.innerHTML = '';
 
   groupes.forEach((grp, gi) => {
-    const colonnes = _colonnesFamille(famJson, grp.serie);
+    // Cherche la famille réelle de cette série (utile pour les groupes multi-famille)
+    const famJsonGrp = _famJsonPourSerie(grp.serie) || famJson;
+    const colonnes = _colonnesFamille(famJsonGrp, grp.serie);
     const groupeId = `mfg-${gi}`;
 
     // En-tête groupe
@@ -1071,18 +1064,28 @@ function biblioSelectionnerDesig(idxGlobal) {
     if (imgSrc) {
       imgZone.innerHTML = mfImageHtml(imgSrc, imgKey);
     } else {
-      imgZone.innerHTML = `<div style="padding:10px;">${profilSvgCote({ famille: MfEtat.famJson, ...s }, 180, 160)}</div>`;
+      const famPourSvg = _famJsonPourSerie(s.serie) || MfEtat.famJson;
+      imgZone.innerHTML = `<div style="padding:10px;">${profilSvgCote({ famille: famPourSvg, ...s }, 180, 160)}</div>`;
     }
   }
 
   // Dimensions
-  const dims = _dimsSection(s, MfEtat.famJson);
+  const famPourDims = _famJsonPourSerie(s.serie) || MfEtat.famJson;
+  const dims = _dimsSection(s, famPourDims);
   m.querySelector('#mf-dims').innerHTML = dims.map(d =>
     `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:12px;">
       <span style="color:#666;">${d[0]}</span>
       <span style="font-weight:bold;">${d[1]}</span>
     </div>`
   ).join('');
+}
+
+/**
+ * Retourne la famille JSON pour une série donnée (utile pour les groupes multi-famille)
+ */
+function _famJsonPourSerie(serie) {
+  const f = Biblio.data.standard.find(fam => fam.sections.some(s => s.serie === serie));
+  return f ? f.famille : null;
 }
 
 /**
