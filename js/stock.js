@@ -256,6 +256,7 @@ const Stock = (() => {
     // Persister dans Supabase
     try {
       await window.SB.upsert('stock', element);
+      return true; // ✅ sauvegardé en base
     } catch(e) {
       console.warn('[Stock] Supabase indisponible, fallback localStorage :', e);
       // Fallback localStorage
@@ -263,6 +264,7 @@ const Stock = (() => {
       const idx = local.barres.findIndex(b => b.id === element.id);
       if (idx !== -1) { local.barres[idx] = element; } else { local.barres.push(element); }
       _sauvegarderLocal(local);
+      return false; // ⚠ sauvegardé localement uniquement
     }
   }
 
@@ -287,12 +289,14 @@ const Stock = (() => {
   async function _persisterDemande(demande) {
     try {
       await window.SB.upsert('demandes', demande);
+      return true; // ✅ sauvegardé en base
     } catch(e) {
       console.warn('[Stock] Supabase indisponible, fallback localStorage demande :', e);
       const store = _chargerDemandes();
       store.demandes.push(demande);
       store.compteur = (store.compteur || 0) + 1;
       try { localStorage.setItem(CLE_DEMANDES, JSON.stringify(store)); } catch {}
+      return false; // ⚠ sauvegardé localement uniquement
     }
   }
 
@@ -1578,7 +1582,7 @@ const Stock = (() => {
       commentaire,
     };
 
-    await _persisterElement(barre);
+    const enLigne = await _persisterElement(barre);
     await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null);
 
     _fermerModale('m-ajout-profil');
@@ -1589,7 +1593,7 @@ const Stock = (() => {
     const msg = isAdmin
       ? `Profilé ${type} ${desig} ajouté (${nouvelleId})`
       : `Profilé ${type} ${desig} soumis pour validation`;
-    _notif(msg, isAdmin ? 'succes' : 'info');
+    _notif(msg + (enLigne ? '' : ' — ⚠ mode hors ligne'), isAdmin ? (enLigne ? 'succes' : 'alerte') : 'info');
   }
 
   /**
@@ -1620,6 +1624,7 @@ const Stock = (() => {
 
     // Résumé par ligne pour affichage post-soumission
     const resumeLignes = [];
+    let toutEnLigne = true;
 
     for (const ligne of lignes) {
       const type     = ligne.querySelector('.cmd-type')?.value?.trim();
@@ -1660,7 +1665,8 @@ const Stock = (() => {
           commentaire: '',
         };
 
-        await _persisterElement(barre);
+        const ok = await _persisterElement(barre);
+        if (!ok) toutEnLigne = false;
         await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, chantier || null, session?.identifiant || null, null, refCmd || null);
         idsLigne.push(nouvelleId);
       }
@@ -1672,6 +1678,8 @@ const Stock = (() => {
     _peuplerFiltres();
     _filtrer();
     _majAlerteAttente();
+
+    if (!toutEnLigne) _notif('⚠ Sauvegarde en mode hors ligne — données non synchronisées', 'alerte');
 
     // Afficher le résumé interactif
     _afficherResumeReception(resumeLignes, chantier, refCmd, fournisseur);
@@ -1930,7 +1938,7 @@ const Stock = (() => {
       commentaire
     };
 
-    await _persisterElement(tole);
+    const enLigne = await _persisterElement(tole);
     _fermerModale('m-ajout-tole');
     _peuplerFiltres();
     _filtrer();
@@ -1939,7 +1947,7 @@ const Stock = (() => {
     const msg = isAdmin
       ? `Tôle ${ep}mm ajoutée (${nouvelleId})`
       : `Tôle ${ep}mm soumise pour validation`;
-    _notif(msg, isAdmin ? 'succes' : 'info');
+    _notif(msg + (enLigne ? '' : ' — ⚠ mode hors ligne'), isAdmin ? (enLigne ? 'succes' : 'alerte') : 'info');
   }
 
 
@@ -2087,7 +2095,7 @@ const Stock = (() => {
         modifie_par: session?.identifiant || 'inconnu'
       };
 
-      await _persisterElement(modif);
+      var _enLigneModif = await _persisterElement(modif);
 
       const longAvant = original.longueur_m;
       if (estArchivage) {
@@ -2138,7 +2146,7 @@ const Stock = (() => {
         modifie_par: session?.identifiant || 'inconnu'
       };
 
-      await _persisterElement(modif);
+      _enLigneModif = await _persisterElement(modif);
     }
 
     // Réafficher la zone correcte
@@ -2154,10 +2162,11 @@ const Stock = (() => {
 
     // Message adapté selon le type d'opération
     const estArch = categorie === 'profil' && parseFloat(m.querySelector('#mod-longueur')?.value) === 0;
-    const msg = estArch
+    const msgBase = estArch
       ? 'Barre archivée'
       : (isAdmin ? 'Modification enregistrée' : 'Modification soumise pour validation');
-    _notif(msg, 'succes');
+    const typeNotif = _enLigneModif ? 'succes' : 'alerte';
+    _notif(msgBase + (_enLigneModif ? '' : ' — ⚠ mode hors ligne'), typeNotif);
   }
 
 
@@ -2236,9 +2245,9 @@ const Stock = (() => {
       demande_par: Auth.getSession()?.identifiant || 'visiteur'
     };
 
-    await _persisterDemande(demande);
+    const enLigne = await _persisterDemande(demande);
     _fermerModale('m-demande');
-    _notif(`Demande ${demande.id} envoyée — en attente de validation admin`, 'info');
+    _notif(`Demande ${demande.id} envoyée — en attente de validation admin` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'info' : 'alerte');
   }
 
 
@@ -2592,7 +2601,7 @@ const Stock = (() => {
       date_validation: _dateAujourdhui()
     };
 
-    await _persisterElement(valide);
+    const enLigne = await _persisterElement(valide);
 
     // Enregistrer la validation dans l'historique (profilés uniquement)
     if (el.categorie === 'profil') {
@@ -2610,7 +2619,7 @@ const Stock = (() => {
     _filtrer();
     _majAlerteAttente();
 
-    _notif(`${id} validé avec succès`, 'succes');
+    _notif(`${id} validé` + (enLigne ? ' avec succès' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
   }
 
   /**
@@ -2635,6 +2644,7 @@ const Stock = (() => {
     };
 
     // Persister la demande mise à jour dans Supabase
+    let enLigne = true;
     try {
       await window.SB.upsert('demandes', demMAJ);
     } catch(e) {
@@ -2643,6 +2653,7 @@ const Stock = (() => {
       const idx = store.demandes.findIndex(d => d.id === idDem);
       if (idx !== -1) { store.demandes[idx] = demMAJ; } else { store.demandes.push(demMAJ); }
       try { localStorage.setItem(CLE_DEMANDES, JSON.stringify(store)); } catch {}
+      enLigne = false;
     }
 
     // Mettre à jour la barre → affectée au chantier demandé
@@ -2656,7 +2667,8 @@ const Stock = (() => {
         date_modif: _dateAujourdhui(),
         modifie_par: session?.identifiant || 'admin'
       };
-      await _persisterElement(barreMAJ);
+      const ok = await _persisterElement(barreMAJ);
+      if (!ok) enLigne = false;
 
       // Enregistrer l'affectation dans l'historique (profilés uniquement)
       if (barre.categorie === 'profil') {
@@ -2682,7 +2694,7 @@ const Stock = (() => {
     _fermerModale('m-valider-demande');
     _filtrer();
     _majAlerteAttente();
-    _notif(`Demande ${idDem} validée — barre affectée à "${dem.chantier_demande}"`, 'succes');
+    _notif(`Demande ${idDem} validée — barre affectée à "${dem.chantier_demande}"` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
   }
 
   /**
@@ -3251,11 +3263,12 @@ const Stock = (() => {
     if (!id) return;
 
     // Supprimer de Supabase
+    let enLigne = true;
     try {
       await window.SB.supprimer('stock', id);
     } catch(e) {
       console.warn('[Stock] Supabase indisponible, suppression locale :', e);
-      // Fallback : marquer comme "refuse" en localStorage pour simuler la suppression
+      // Fallback : marquer comme supprimé en localStorage
       const local = _chargerLocal();
       const idx = local.barres.findIndex(b => b.id === id);
       if (idx !== -1) {
@@ -3265,6 +3278,7 @@ const Stock = (() => {
         local.barres.push({ id, _supprime: true });
       }
       _sauvegarderLocal(local);
+      enLigne = false;
     }
 
     // Supprimer de _data en mémoire
@@ -3274,7 +3288,7 @@ const Stock = (() => {
     _peuplerFiltres();
     _filtrer();
     _majAlerteAttente();
-    _notif(`Élément ${id} supprimé du stock`, 'succes');
+    _notif(`Élément ${id} supprimé` + (enLigne ? ' du stock' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
   }
 
 
@@ -3570,15 +3584,10 @@ const Stock = (() => {
     const btnOk = m?.querySelector('#import-btn-confirmer');
     if (btnOk) { btnOk.disabled = true; btnOk.textContent = 'Import en cours…'; }
 
-    let ok = 0, err = 0;
+    let ok = 0, horsLigne = 0;
     for (const element of _importData) {
-      try {
-        await _persisterElement(element);
-        ok++;
-      } catch (e) {
-        console.warn('[Import] Erreur sur', element.id, e);
-        err++;
-      }
+      const enLigne = await _persisterElement(element);
+      if (enLigne) { ok++; } else { horsLigne++; }
     }
 
     _importData = null;
@@ -3587,10 +3596,13 @@ const Stock = (() => {
     _filtrer();
     _majAlerteAttente();
 
-    const msg = err === 0
+    const total = ok + horsLigne;
+    const msg = horsLigne === 0
       ? `Import réussi — ${ok} élément(s) chargé(s)`
-      : `Import partiel — ${ok} importé(s), ${err} erreur(s)`;
-    _notif(msg, err === 0 ? 'succes' : 'erreur');
+      : ok === 0
+        ? `Import hors ligne — ${horsLigne} élément(s) sauvegardé(s) localement`
+        : `Import partiel — ${ok} en base, ${horsLigne} hors ligne`;
+    _notif(msg, horsLigne === 0 ? 'succes' : 'alerte');
   }
 
 
