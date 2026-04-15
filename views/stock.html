@@ -1121,6 +1121,18 @@
     .syn-nb  { font-size: 16px; font-weight: bold; margin-left: auto; }
     .syn-lien { font-size: 11px; color: #2980b9; cursor: pointer; text-decoration: underline; white-space: nowrap; }
     .syn-lien:hover { color: var(--rouge); }
+    .syn-sous-nav {
+      display: flex; gap: 4px; margin-bottom: 16px;
+      border-bottom: 2px solid var(--gris-clair); padding-bottom: 0;
+    }
+    .syn-tab {
+      padding: 6px 18px; background: none; border: none;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      font-family: Tahoma; font-size: 13px; color: #888;
+      cursor: pointer; transition: color .15s;
+    }
+    .syn-tab:hover { color: #444; }
+    .syn-tab.actif { color: var(--vert); border-bottom-color: var(--vert); font-weight: bold; }
     .syn-attente-badge {
       background: #e67e22; color: white;
       border-radius: 10px; padding: 1px 9px;
@@ -1184,7 +1196,7 @@
   </div>
 
   <!-- ── TOOLBAR PROFILÉS ─────────────────────────────────────── -->
-  <div class="toolbar" id="toolbar-profils">
+  <div class="toolbar" id="toolbar-profils" style="display:none">
     <button id="btn-ajout-profil" class="btn-action btn-rouge" data-require="can_add">+ Profilé</button>
 
     <span class="toolbar-label" style="margin-left:4px">Filtrer :</span>
@@ -2078,10 +2090,10 @@
     </div>
   </div>
 
-  <script src="../js/supabase.js?v=20260417"></script>
-  <script src="../auth/auth.js?v=20260417"></script>
-  <script src="../js/profils-utils.js?v=20260417"></script>
-  <script src="../js/stock.js?v=20260417"></script>
+  <script src="../js/supabase.js?v=20260418"></script>
+  <script src="../auth/auth.js?v=20260418"></script>
+  <script src="../js/profils-utils.js?v=20260418"></script>
+  <script src="../js/stock.js?v=20260418"></script>
 
 </body>
 </html>

@@ -75,6 +75,7 @@ const Stock = (() => {
   let _data      = null;        // données fusionnées (stock.json + localStorage)
   let _sections  = null;        // données de sections.json (pour les modales)
   let _onglet    = 'synthese';   // onglet actif
+  let _synTab    = 'profils';    // sous-onglet actif dans Synthèse
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
@@ -895,114 +896,68 @@ const Stock = (() => {
     const profilsAffectes = barres.filter(b => b.categorie === 'profil' && b.statut === 'valide' && b.disponibilite === 'affecte');
     const profilsAttente  = barres.filter(b => b.categorie === 'profil' && b.statut === 'en_attente');
     const tolesDispo      = barres.filter(b => b.categorie === 'tole'   && b.statut === 'valide' && b.disponibilite === 'disponible');
+    const tolesAffectees  = barres.filter(b => b.categorie === 'tole'   && b.statut === 'valide' && b.disponibilite === 'affecte');
     const tolesAttente    = barres.filter(b => b.categorie === 'tole'   && b.statut === 'en_attente');
 
-    // Métriques
-    const mlDispo      = profilsDispo.reduce((s, b)    => s + (b.longueur_m    || 0), 0);
-    const mlAffectes   = profilsAffectes.reduce((s, b) => s + (b.longueur_m    || 0), 0);
-    const mlAttente    = profilsAttente.reduce((s, b)  => s + (b.longueur_m    || 0), 0);
+    // Métriques globales
+    const mlDispo      = profilsDispo.reduce((s, b)    => s + (b.longueur_m     || 0), 0);
+    const mlAffectes   = profilsAffectes.reduce((s, b) => s + (b.longueur_m     || 0), 0);
+    const mlAttente    = profilsAttente.reduce((s, b)  => s + (b.longueur_m     || 0), 0);
     const poidsProfils = profilsDispo.reduce((s, b)    => s + (b.poids_barre_kg || 0), 0);
     const poidsToles   = tolesDispo.reduce((s, b)      => s + (b.poids_total_kg || 0), 0);
     const nbAttente    = profilsAttente.length + tolesAttente.length;
-
-    // Grouper profilés dispo par type puis par désignation
-    const parType = {};
-    profilsDispo.forEach(b => {
-      const t = b.section_type || '?';
-      const d = b.designation  || '?';
-      if (!parType[t]) parType[t] = { nb: 0, ml: 0, poids: 0, desigs: {} };
-      parType[t].nb++;
-      parType[t].ml    += b.longueur_m     || 0;
-      parType[t].poids += b.poids_barre_kg || 0;
-      if (!parType[t].desigs[d]) parType[t].desigs[d] = { nb: 0, ml: 0, poids: 0 };
-      parType[t].desigs[d].nb++;
-      parType[t].desigs[d].ml    += b.longueur_m     || 0;
-      parType[t].desigs[d].poids += b.poids_barre_kg || 0;
-    });
-    const lignesType = Object.entries(parType).sort((a, b) => b[1].ml - a[1].ml);
-    const mlMax = lignesType.length ? lignesType[0][1].ml : 1;
-
-    // Épaisseurs tôles
-    const epMin = tolesDispo.length ? Math.min(...tolesDispo.map(b => b.epaisseur_mm)) : null;
-    const epMax = tolesDispo.length ? Math.max(...tolesDispo.map(b => b.epaisseur_mm)) : null;
 
     // Formatage français
     const fmt  = (n, d = 1) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
     const fmtT = (kg)       => kg >= 1000 ? `${fmt(kg / 1000)} t` : `${fmt(kg, 0)} kg`;
 
-    // Lignes du tableau types + sous-lignes désignation
-    const rowsType = lignesType.map(([type, d]) => {
-      const pct = Math.round((d.ml / mlMax) * 100);
-      const desigsSorted = Object.entries(d.desigs)
-        .sort((a, b) => b[1].ml - a[1].ml);
-      const sousLignes = desigsSorted.map(([desig, sd]) => `
-        <tr class="syn-sous-ligne">
-          <td style="padding-left:28px;color:#666">${_e(type)} <strong>${_e(desig)}</strong></td>
-          <td class="r" style="color:#888">${sd.nb}</td>
-          <td class="r" style="color:#888">${fmt(sd.ml)} m</td>
-          <td class="r" style="color:#888">${fmtT(sd.poids)}</td>
-          <td></td>
-        </tr>`).join('');
-      return `<tr class="syn-type-row" data-syn-action="voir-type" data-syn-type="${_e(type)}">
-        <td><span class="syn-type-chip">${_e(type)}</span></td>
-        <td class="r">${d.nb}</td>
-        <td class="r">${fmt(d.ml)} m</td>
-        <td class="r">${fmtT(d.poids)}</td>
-        <td><div class="syn-bar"><div class="syn-bar-fill" style="width:${pct}%"></div></div></td>
-      </tr>${sousLignes}`;
-    }).join('');
+    // ── Contenu sous-onglet Profilés ──────────────────────────────
+    const _contenuProfils = () => {
+      const parType = {};
+      profilsDispo.forEach(b => {
+        const t = b.section_type || '?';
+        const d = b.designation  || '?';
+        if (!parType[t]) parType[t] = { nb: 0, ml: 0, poids: 0, desigs: {} };
+        parType[t].nb++;
+        parType[t].ml    += b.longueur_m     || 0;
+        parType[t].poids += b.poids_barre_kg || 0;
+        if (!parType[t].desigs[d]) parType[t].desigs[d] = { nb: 0, ml: 0, poids: 0 };
+        parType[t].desigs[d].nb++;
+        parType[t].desigs[d].ml    += b.longueur_m     || 0;
+        parType[t].desigs[d].poids += b.poids_barre_kg || 0;
+      });
+      const lignesType = Object.entries(parType).sort((a, b) => b[1].ml - a[1].ml);
+      const mlMax = lignesType.length ? lignesType[0][1].ml : 1;
 
-    const totalRow = lignesType.length > 1 ? `<tr class="syn-total">
-      <td>Total</td>
-      <td class="r">${profilsDispo.length}</td>
-      <td class="r">${fmt(mlDispo)} m</td>
-      <td class="r">${fmtT(poidsProfils)}</td>
-      <td></td>
-    </tr>` : '';
+      const rowsType = lignesType.map(([type, d]) => {
+        const pct = Math.round((d.ml / mlMax) * 100);
+        const sousLignes = Object.entries(d.desigs)
+          .sort((a, b) => b[1].ml - a[1].ml)
+          .map(([desig, sd]) => `
+            <tr class="syn-sous-ligne">
+              <td style="padding-left:28px;color:#666">${_e(type)} <strong>${_e(desig)}</strong></td>
+              <td class="r" style="color:#888">${sd.nb}</td>
+              <td class="r" style="color:#888">${fmt(sd.ml)} m</td>
+              <td class="r" style="color:#888">${fmtT(sd.poids)}</td>
+              <td></td>
+            </tr>`).join('');
+        return `<tr class="syn-type-row" data-syn-action="voir-type" data-syn-type="${_e(type)}">
+          <td><span class="syn-type-chip">${_e(type)}</span></td>
+          <td class="r">${d.nb}</td>
+          <td class="r">${fmt(d.ml)} m</td>
+          <td class="r">${fmtT(d.poids)}</td>
+          <td><div class="syn-bar"><div class="syn-bar-fill" style="width:${pct}%"></div></div></td>
+        </tr>${sousLignes}`;
+      }).join('');
 
-    const blocAttente = nbAttente > 0 ? `
-      <div class="syn-section-titre">À valider</div>
-      <div class="syn-card">
-        ${profilsAttente.length ? `<div class="syn-repartition-row">
-          <span>${profilsAttente.length} profilé${profilsAttente.length > 1 ? 's' : ''} en attente</span>
-          <span class="syn-attente-badge">${profilsAttente.length}</span>
-          <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils" data-syn-dispo="en_attente">Voir →</span>
-        </div>` : ''}
-        ${tolesAttente.length ? `<div class="syn-repartition-row" style="border-bottom:none">
-          <span>${tolesAttente.length} tôle${tolesAttente.length > 1 ? 's' : ''} en attente</span>
-          <span class="syn-attente-badge">${tolesAttente.length}</span>
-          <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles">Voir →</span>
-        </div>` : ''}
-      </div>` : '';
+      const totalRow = lignesType.length > 1 ? `<tr class="syn-total">
+        <td>Total</td><td class="r">${profilsDispo.length}</td>
+        <td class="r">${fmt(mlDispo)} m</td><td class="r">${fmtT(poidsProfils)}</td><td></td>
+      </tr>` : '';
 
-    zone.innerHTML = `
-    <div class="syn-page">
-      <div class="syn-kpi-grid">
-        <div class="syn-kpi k-vert">
-          <div class="syn-kpi-lbl">Profilés disponibles</div>
-          <div class="syn-kpi-val">${profilsDispo.length}</div>
-          <div class="syn-kpi-sub">barres validées</div>
-        </div>
-        <div class="syn-kpi k-bleu">
-          <div class="syn-kpi-lbl">Métrage linéaire dispo</div>
-          <div class="syn-kpi-val">${fmt(mlDispo)} m</div>
-          <div class="syn-kpi-sub">profilés disponibles</div>
-        </div>
-        <div class="syn-kpi k-bleu">
-          <div class="syn-kpi-lbl">Poids total dispo</div>
-          <div class="syn-kpi-val">${fmtT(poidsProfils + poidsToles)}</div>
-          <div class="syn-kpi-sub">profilés + tôles</div>
-        </div>
-        <div class="syn-kpi k-orange">
-          <div class="syn-kpi-lbl">En attente validation</div>
-          <div class="syn-kpi-val">${nbAttente}</div>
-          <div class="syn-kpi-sub">éléments à valider</div>
-        </div>
-      </div>
-
-      <div class="syn-cols2">
+      return `<div class="syn-cols2">
         <div>
-          <div class="syn-section-titre">Profilés disponibles par type — cliquer pour filtrer</div>
+          <div class="syn-section-titre">Par type — cliquer pour filtrer</div>
           <div class="syn-card" style="padding:0;overflow:hidden">
             <table class="syn-table">
               <thead><tr>
@@ -1017,28 +972,9 @@ const Stock = (() => {
             </table>
           </div>
         </div>
-
         <div>
-          <div class="syn-section-titre">Tôles disponibles</div>
-          <div class="syn-card" style="margin-bottom:16px">
-            <div class="syn-mini-grid">
-              <div class="syn-mini-card">
-                <div class="l">Références</div>
-                <div class="v">${tolesDispo.length}</div>
-              </div>
-              <div class="syn-mini-card">
-                <div class="l">Poids total</div>
-                <div class="v">${fmtT(poidsToles)}</div>
-              </div>
-              <div class="syn-mini-card">
-                <div class="l">Épaisseur</div>
-                <div class="v">${tolesDispo.length ? `${epMin}–${epMax} mm` : '—'}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="syn-section-titre">Répartition profilés</div>
-          <div class="syn-card" style="margin-bottom:16px">
+          <div class="syn-section-titre">Répartition</div>
+          <div class="syn-card">
             <div class="syn-repartition-row">
               <span>Disponible</span>
               <span class="syn-nb" style="color:var(--vert)">${profilsDispo.length}</span>
@@ -1058,10 +994,119 @@ const Stock = (() => {
               <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils" data-syn-dispo="en_attente">Voir →</span>
             </div>
           </div>
+        </div>
+      </div>`;
+    };
 
-          ${blocAttente}
+    // ── Contenu sous-onglet Tôles ─────────────────────────────────
+    const _contenuToles = () => {
+      const parEp = {};
+      tolesDispo.forEach(b => {
+        const ep = b.epaisseur_mm;
+        if (!parEp[ep]) parEp[ep] = { nb: 0, poids: 0, dims: [] };
+        parEp[ep].nb++;
+        parEp[ep].poids += b.poids_total_kg || 0;
+        parEp[ep].dims.push(`${b.largeur_mm}×${b.longueur_mm}`);
+      });
+      const lignesEp = Object.entries(parEp)
+        .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+      const poidsMax = lignesEp.length ? Math.max(...lignesEp.map(([, d]) => d.poids)) : 1;
+
+      const rowsEp = lignesEp.map(([ep, d]) => {
+        const pct   = Math.round((d.poids / poidsMax) * 100);
+        const uniqDims = [...new Set(d.dims)].slice(0, 3).join(', ');
+        return `<tr class="syn-type-row" data-syn-action="voir-dispo" data-syn-onglet="toles">
+          <td><span class="syn-type-chip">${_e(String(ep))} mm</span></td>
+          <td class="r">${d.nb}</td>
+          <td style="color:#888;font-size:12px">${_e(uniqDims)}${d.dims.length > 3 ? '…' : ''}</td>
+          <td class="r">${fmtT(d.poids)}</td>
+          <td><div class="syn-bar"><div class="syn-bar-fill" style="width:${pct}%;background:#2980b9"></div></div></td>
+        </tr>`;
+      }).join('');
+
+      const poidsTolesTot = tolesDispo.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
+      const pAfft = tolesAffectees.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
+      const totalRow = lignesEp.length > 1 ? `<tr class="syn-total">
+        <td>Total</td><td class="r">${tolesDispo.length}</td><td></td>
+        <td class="r">${fmtT(poidsTolesTot)}</td><td></td>
+      </tr>` : '';
+
+      return `<div class="syn-cols2">
+        <div>
+          <div class="syn-section-titre">Par épaisseur</div>
+          <div class="syn-card" style="padding:0;overflow:hidden">
+            <table class="syn-table">
+              <thead><tr>
+                <th>Épaisseur</th><th class="r">Réf.</th>
+                <th>Dimensions (mm)</th><th class="r">Poids</th>
+                <th style="width:70px"></th>
+              </tr></thead>
+              <tbody>
+                ${rowsEp || '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">Aucune tôle disponible</td></tr>'}
+                ${totalRow}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="syn-section-titre">Répartition</div>
+          <div class="syn-card">
+            <div class="syn-repartition-row">
+              <span>Disponible</span>
+              <span class="syn-nb" style="color:var(--vert)">${tolesDispo.length}</span>
+              <span style="color:#888;font-size:12px">${fmtT(poidsTolesTot)}</span>
+              <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles">Voir →</span>
+            </div>
+            <div class="syn-repartition-row">
+              <span>Affecté chantier</span>
+              <span class="syn-nb" style="color:var(--rouge)">${tolesAffectees.length}</span>
+              <span style="color:#888;font-size:12px">${fmtT(pAfft)}</span>
+              <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="affecte">Voir →</span>
+            </div>
+            <div class="syn-repartition-row" style="border-bottom:none">
+              <span>En attente valid.</span>
+              <span class="syn-nb" style="color:#e67e22">${tolesAttente.length}</span>
+              <span style="color:#888;font-size:12px">—</span>
+              <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="en_attente">Voir →</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    };
+
+    // ── Rendu final ───────────────────────────────────────────────
+    const estProfils = _synTab !== 'toles';
+    zone.innerHTML = `
+    <div class="syn-page">
+      <div class="syn-kpi-grid">
+        <div class="syn-kpi k-vert">
+          <div class="syn-kpi-lbl">Profilés disponibles</div>
+          <div class="syn-kpi-val">${profilsDispo.length}</div>
+          <div class="syn-kpi-sub">${fmt(mlDispo)} m · ${fmtT(poidsProfils)}</div>
+        </div>
+        <div class="syn-kpi k-bleu">
+          <div class="syn-kpi-lbl">Tôles disponibles</div>
+          <div class="syn-kpi-val">${tolesDispo.length}</div>
+          <div class="syn-kpi-sub">${fmtT(poidsToles)}</div>
+        </div>
+        <div class="syn-kpi k-bleu">
+          <div class="syn-kpi-lbl">Poids total dispo</div>
+          <div class="syn-kpi-val">${fmtT(poidsProfils + poidsToles)}</div>
+          <div class="syn-kpi-sub">profilés + tôles</div>
+        </div>
+        <div class="syn-kpi k-orange">
+          <div class="syn-kpi-lbl">En attente validation</div>
+          <div class="syn-kpi-val">${nbAttente}</div>
+          <div class="syn-kpi-sub">${profilsAttente.length} profilé${profilsAttente.length > 1 ? 's' : ''} · ${tolesAttente.length} tôle${tolesAttente.length > 1 ? 's' : ''}</div>
         </div>
       </div>
+
+      <div class="syn-sous-nav">
+        <button class="syn-tab${estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="profils">Profilés</button>
+        <button class="syn-tab${!estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="toles">Tôles</button>
+      </div>
+
+      ${estProfils ? _contenuProfils() : _contenuToles()}
     </div>`;
   }
 
@@ -1170,7 +1215,10 @@ const Stock = (() => {
         const onglet  = el.dataset.synOnglet || 'profils';
         const type    = el.dataset.synType   || '';
         const dispo   = el.dataset.synDispo  || '';
-        if (action === 'voir-type') {
+        if (action === 'changer-syn-tab') {
+          _synTab = el.dataset.synTab;
+          _rendreSynthese();
+        } else if (action === 'voir-type') {
           _basculerOnglet(onglet);
           const selType = document.getElementById('p-type');
           if (selType && type) { selType.value = type; _peuplerDesignations(type); }
