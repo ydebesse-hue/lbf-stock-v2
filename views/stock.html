@@ -1097,14 +1097,19 @@
     .syn-table td.r { text-align: right; color: #444; font-variant-numeric: tabular-nums; }
     .syn-table tr:last-child td { border-bottom: none; }
     .syn-table .syn-total td { font-weight: bold; background: #f9f9f9; border-top: 1px solid var(--gris-clair); }
-    .syn-table .syn-type-row { cursor: pointer; }
-    .syn-table .syn-type-row:hover td { background: #f0f5f0; }
-    .syn-table .syn-type-row.expanded td { background: #e8f0e8; }
+    .syn-table .syn-type-row.expanded td { background: #f0f5f0; }
     .syn-toggle-icon {
-      display: inline-block; width: 14px; font-size: 10px;
-      color: #aaa; margin-right: 4px; transition: color .15s;
+      display: inline-block; width: 18px; font-size: 10px;
+      color: #aaa; margin-right: 2px; cursor: pointer;
+      padding: 2px 3px; border-radius: 3px; transition: color .15s, background .12s;
     }
-    .syn-type-row.expanded .syn-toggle-icon { color: var(--vert); }
+    .syn-toggle-icon:hover { background: #e0e8e0; color: var(--vert); }
+    .syn-type-chip {
+      display: inline-block; background: var(--noir); color: white;
+      padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: bold;
+      cursor: pointer; transition: background .12s;
+    }
+    .syn-type-chip:hover { background: var(--vert); }
     .syn-sous-ligne { cursor: pointer; }
     .syn-sous-ligne td { background: #fafafa; }
     .syn-sous-ligne:hover td { background: #eef3ee; }
@@ -1117,10 +1122,6 @@
       transition: background .12s;
     }
     .syn-voir-btn:hover { background: #e8f0fb; color: var(--rouge); }
-    .syn-type-chip {
-      display: inline-block; background: var(--noir); color: white;
-      padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: bold;
-    }
     .syn-bar      { height: 5px; background: #eee; border-radius: 3px; margin-top: 3px; }
     .syn-bar-fill { height: 5px; background: var(--vert); border-radius: 3px; }
     .syn-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -2107,10 +2108,10 @@
     </div>
   </div>
 
-  <script src="../js/supabase.js?v=20260420"></script>
-  <script src="../auth/auth.js?v=20260420"></script>
-  <script src="../js/profils-utils.js?v=20260420"></script>
-  <script src="../js/stock.js?v=20260420"></script>
+  <script src="../js/supabase.js?v=20260421"></script>
+  <script src="../auth/auth.js?v=20260421"></script>
+  <script src="../js/profils-utils.js?v=20260421"></script>
+  <script src="../js/stock.js?v=20260421"></script>
 
 </body>
 </html>
