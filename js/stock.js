@@ -1423,6 +1423,9 @@ const Stock = (() => {
       o.value = d; o.textContent = d;
       selDesig.appendChild(o);
     });
+
+    // Mettre à jour le schéma/poids : désignation vient d'être réinitialisée
+    _apMajSchema(m, selTypeId, selDesigId);
   }
 
   /**
@@ -1440,6 +1443,8 @@ const Stock = (() => {
     if (!zoneSchema || !type || !desig) {
       if (zoneSchema)  zoneSchema.style.display = 'none';
       if (btnToggle)   btnToggle.style.display  = 'none';
+      m.dataset.poidsml = '';
+      _apMajPoids(m);
       return;
     }
 
