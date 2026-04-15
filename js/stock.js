@@ -934,19 +934,30 @@ const Stock = (() => {
         const sousLignes = Object.entries(d.desigs)
           .sort((a, b) => b[1].ml - a[1].ml)
           .map(([desig, sd]) => `
-            <tr class="syn-sous-ligne">
-              <td style="padding-left:28px;color:#666">${_e(type)} <strong>${_e(desig)}</strong></td>
-              <td class="r" style="color:#888">${sd.nb}</td>
-              <td class="r" style="color:#888">${fmt(sd.ml)} m</td>
-              <td class="r" style="color:#888">${fmtT(sd.poids)}</td>
+            <tr class="syn-sous-ligne" data-syn-parent="${_e(type)}" style="display:none">
+              <td class="syn-sous-cell">
+                <span class="syn-sous-indent">└</span>
+                ${_e(type)} <strong>${_e(desig)}</strong>
+              </td>
+              <td class="r syn-sous-val">${sd.nb}</td>
+              <td class="r syn-sous-val">${fmt(sd.ml)} m</td>
+              <td class="r syn-sous-val">${fmtT(sd.poids)}</td>
               <td></td>
             </tr>`).join('');
-        return `<tr class="syn-type-row" data-syn-action="voir-type" data-syn-type="${_e(type)}">
-          <td><span class="syn-type-chip">${_e(type)}</span></td>
+        return `<tr class="syn-type-row" data-syn-action="toggle-type" data-syn-type-group="${_e(type)}">
+          <td>
+            <span class="syn-toggle-icon">▶</span>
+            <span class="syn-type-chip">${_e(type)}</span>
+          </td>
           <td class="r">${d.nb}</td>
           <td class="r">${fmt(d.ml)} m</td>
           <td class="r">${fmtT(d.poids)}</td>
-          <td><div class="syn-bar"><div class="syn-bar-fill" style="width:${pct}%"></div></div></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="syn-bar" style="flex:1"><div class="syn-bar-fill" style="width:${pct}%"></div></div>
+              <span class="syn-voir-btn" data-syn-action="voir-type" data-syn-type="${_e(type)}" title="Voir dans le stock">→</span>
+            </div>
+          </td>
         </tr>${sousLignes}`;
       }).join('');
 
@@ -957,7 +968,7 @@ const Stock = (() => {
 
       return `<div class="syn-cols2">
         <div>
-          <div class="syn-section-titre">Par type — cliquer pour filtrer</div>
+          <div class="syn-section-titre">Par type — ▶ pour développer · → pour filtrer</div>
           <div class="syn-card" style="padding:0;overflow:hidden">
             <table class="syn-table">
               <thead><tr>
@@ -1218,6 +1229,14 @@ const Stock = (() => {
         if (action === 'changer-syn-tab') {
           _synTab = el.dataset.synTab;
           _rendreSynthese();
+        } else if (action === 'toggle-type') {
+          const grp      = el.dataset.synTypeGroup;
+          const expanded = el.classList.toggle('expanded');
+          const icon     = el.querySelector('.syn-toggle-icon');
+          if (icon) icon.textContent = expanded ? '▼' : '▶';
+          zsyn.querySelectorAll(`[data-syn-parent="${CSS.escape(grp)}"]`).forEach(tr => {
+            tr.style.display = expanded ? '' : 'none';
+          });
         } else if (action === 'voir-type') {
           _basculerOnglet(onglet);
           const selType = document.getElementById('p-type');
