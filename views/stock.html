@@ -1054,6 +1054,75 @@
       .sel-filtre { font-size: 11px; padding: 5px 6px; }
       .form-cols2, .form-cols3 { grid-template-columns: 1fr; }
       .modale { padding: 16px; }
+      .syn-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .syn-cols2    { grid-template-columns: 1fr; }
+    }
+
+    /* ── SYNTHÈSE ──────────────────────────────────────────────── */
+    .syn-page { padding: 16px 20px; }
+    .syn-kpi-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 12px; margin-bottom: 20px;
+    }
+    .syn-kpi {
+      background: white; border-radius: 4px; padding: 14px 16px;
+      border-top: 3px solid var(--gris-bord);
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .syn-kpi.k-vert   { border-top-color: var(--vert); }
+    .syn-kpi.k-bleu   { border-top-color: #2980b9; }
+    .syn-kpi.k-orange { border-top-color: #e67e22; }
+    .syn-kpi-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: #888; margin-bottom: 5px; }
+    .syn-kpi-val { font-size: 22px; font-weight: bold; color: var(--noir); line-height: 1; }
+    .syn-kpi-sub { font-size: 11px; color: #aaa; margin-top: 3px; }
+    .syn-cols2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+    .syn-section-titre {
+      font-size: 11px; font-weight: bold; text-transform: uppercase;
+      letter-spacing: .5px; color: #666;
+      border-bottom: 1px solid var(--gris-clair);
+      padding-bottom: 6px; margin-bottom: 10px;
+    }
+    .syn-card {
+      background: white; border-radius: 4px; padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 14px;
+    }
+    .syn-table { width: 100%; border-collapse: collapse; }
+    .syn-table th {
+      text-align: left; padding: 7px 12px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+      color: #777; border-bottom: 1px solid var(--gris-clair); font-weight: bold;
+    }
+    .syn-table th.r { text-align: right; }
+    .syn-table td   { padding: 8px 12px; border-bottom: 1px solid #f4f4f4; }
+    .syn-table td.r { text-align: right; color: #444; font-variant-numeric: tabular-nums; }
+    .syn-table tr:last-child td { border-bottom: none; }
+    .syn-table .syn-total td { font-weight: bold; background: #f9f9f9; border-top: 1px solid var(--gris-clair); }
+    .syn-table tbody tr:not(.syn-total):hover td { background: #f5f5f5; cursor: pointer; }
+    .syn-type-chip {
+      display: inline-block; background: var(--noir); color: white;
+      padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: bold;
+    }
+    .syn-bar      { height: 5px; background: #eee; border-radius: 3px; margin-top: 3px; }
+    .syn-bar-fill { height: 5px; background: var(--vert); border-radius: 3px; }
+    .syn-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .syn-mini-card {
+      background: #f7f7f7; border-radius: 4px; padding: 10px 12px;
+      border-left: 3px solid #2980b9;
+    }
+    .syn-mini-card .v { font-size: 18px; font-weight: bold; color: var(--noir); }
+    .syn-mini-card .l { font-size: 11px; color: #888; margin-bottom: 2px; }
+    .syn-repartition-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid #f4f4f4; gap: 8px;
+    }
+    .syn-repartition-row:last-child { border-bottom: none; }
+    .syn-nb  { font-size: 16px; font-weight: bold; margin-left: auto; }
+    .syn-lien { font-size: 11px; color: #2980b9; cursor: pointer; text-decoration: underline; white-space: nowrap; }
+    .syn-lien:hover { color: var(--rouge); }
+    .syn-attente-badge {
+      background: #e67e22; color: white;
+      border-radius: 10px; padding: 1px 9px;
+      font-size: 12px; font-weight: bold;
     }
   </style>
 </head>
@@ -1109,6 +1178,7 @@
     <button class="sous-onglet actif" data-onglet="profils">Profilés</button>
     <button class="sous-onglet"       data-onglet="toles">Tôles</button>
     <button class="sous-onglet"       data-onglet="archivees">Archivées</button>
+    <button class="sous-onglet"       data-onglet="synthese">Synthèse</button>
   </div>
 
   <!-- ── TOOLBAR PROFILÉS ─────────────────────────────────────── -->
@@ -1200,6 +1270,7 @@
     <div class="pied-tableau">
       <span id="stock-compteur"></span>
     </div>
+    <div id="zone-synthese" style="display:none"></div>
   </div>
 
 
@@ -2005,10 +2076,10 @@
     </div>
   </div>
 
-  <script src="../js/supabase.js?v=20260415"></script>
-  <script src="../auth/auth.js?v=20260415"></script>
-  <script src="../js/profils-utils.js?v=20260415"></script>
-  <script src="../js/stock.js?v=20260415"></script>
+  <script src="../js/supabase.js?v=20260416"></script>
+  <script src="../auth/auth.js?v=20260416"></script>
+  <script src="../js/profils-utils.js?v=20260416"></script>
+  <script src="../js/stock.js?v=20260416"></script>
 
 </body>
 </html>
