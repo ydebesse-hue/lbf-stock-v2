@@ -1097,7 +1097,9 @@
     .syn-table td.r { text-align: right; color: #444; font-variant-numeric: tabular-nums; }
     .syn-table tr:last-child td { border-bottom: none; }
     .syn-table .syn-total td { font-weight: bold; background: #f9f9f9; border-top: 1px solid var(--gris-clair); }
-    .syn-table tbody tr:not(.syn-total):hover td { background: #f5f5f5; cursor: pointer; }
+    .syn-table .syn-type-row:hover td { background: #f5f5f5; cursor: pointer; }
+    .syn-sous-ligne td { background: #fafafa; font-size: 12px; padding-top: 5px !important; padding-bottom: 5px !important; }
+    .syn-sous-ligne:last-of-type td { border-bottom: 2px solid var(--gris-clair); }
     .syn-type-chip {
       display: inline-block; background: var(--noir); color: white;
       padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: bold;
@@ -1175,10 +1177,10 @@
 
   <!-- ── SOUS-ONGLETS ─────────────────────────────────────────── -->
   <div class="sous-onglets">
-    <button class="sous-onglet actif" data-onglet="profils">Profilés</button>
+    <button class="sous-onglet actif" data-onglet="synthese">Synthèse</button>
+    <button class="sous-onglet"       data-onglet="profils">Profilés</button>
     <button class="sous-onglet"       data-onglet="toles">Tôles</button>
     <button class="sous-onglet"       data-onglet="archivees">Archivées</button>
-    <button class="sous-onglet"       data-onglet="synthese">Synthèse</button>
   </div>
 
   <!-- ── TOOLBAR PROFILÉS ─────────────────────────────────────── -->
@@ -1262,15 +1264,15 @@
 
   <!-- ── TABLEAU PRINCIPAL ─────────────────────────────────────── -->
   <div class="zone-tableau">
-    <div id="tableau-stock">
+    <div id="tableau-stock" style="display:none">
       <div style="padding:30px; text-align:center; color:#aaa; font-style:italic;">
         Chargement du stock…
       </div>
     </div>
-    <div class="pied-tableau">
+    <div class="pied-tableau" style="display:none">
       <span id="stock-compteur"></span>
     </div>
-    <div id="zone-synthese" style="display:none"></div>
+    <div id="zone-synthese"></div>
   </div>
 
 
@@ -2076,10 +2078,10 @@
     </div>
   </div>
 
-  <script src="../js/supabase.js?v=20260416"></script>
-  <script src="../auth/auth.js?v=20260416"></script>
-  <script src="../js/profils-utils.js?v=20260416"></script>
-  <script src="../js/stock.js?v=20260416"></script>
+  <script src="../js/supabase.js?v=20260417"></script>
+  <script src="../auth/auth.js?v=20260417"></script>
+  <script src="../js/profils-utils.js?v=20260417"></script>
+  <script src="../js/stock.js?v=20260417"></script>
 
 </body>
 </html>

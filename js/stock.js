@@ -74,7 +74,7 @@ const Stock = (() => {
 
   let _data      = null;        // données fusionnées (stock.json + localStorage)
   let _sections  = null;        // données de sections.json (pour les modales)
-  let _onglet    = 'profils';   // onglet actif
+  let _onglet    = 'synthese';   // onglet actif
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
@@ -905,14 +905,19 @@ const Stock = (() => {
     const poidsToles   = tolesDispo.reduce((s, b)      => s + (b.poids_total_kg || 0), 0);
     const nbAttente    = profilsAttente.length + tolesAttente.length;
 
-    // Grouper profilés dispo par type
+    // Grouper profilés dispo par type puis par désignation
     const parType = {};
     profilsDispo.forEach(b => {
       const t = b.section_type || '?';
-      if (!parType[t]) parType[t] = { nb: 0, ml: 0, poids: 0 };
+      const d = b.designation  || '?';
+      if (!parType[t]) parType[t] = { nb: 0, ml: 0, poids: 0, desigs: {} };
       parType[t].nb++;
       parType[t].ml    += b.longueur_m     || 0;
       parType[t].poids += b.poids_barre_kg || 0;
+      if (!parType[t].desigs[d]) parType[t].desigs[d] = { nb: 0, ml: 0, poids: 0 };
+      parType[t].desigs[d].nb++;
+      parType[t].desigs[d].ml    += b.longueur_m     || 0;
+      parType[t].desigs[d].poids += b.poids_barre_kg || 0;
     });
     const lignesType = Object.entries(parType).sort((a, b) => b[1].ml - a[1].ml);
     const mlMax = lignesType.length ? lignesType[0][1].ml : 1;
@@ -925,16 +930,26 @@ const Stock = (() => {
     const fmt  = (n, d = 1) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
     const fmtT = (kg)       => kg >= 1000 ? `${fmt(kg / 1000)} t` : `${fmt(kg, 0)} kg`;
 
-    // Lignes du tableau types
+    // Lignes du tableau types + sous-lignes désignation
     const rowsType = lignesType.map(([type, d]) => {
       const pct = Math.round((d.ml / mlMax) * 100);
-      return `<tr data-syn-action="voir-type" data-syn-type="${_e(type)}">
+      const desigsSorted = Object.entries(d.desigs)
+        .sort((a, b) => b[1].ml - a[1].ml);
+      const sousLignes = desigsSorted.map(([desig, sd]) => `
+        <tr class="syn-sous-ligne">
+          <td style="padding-left:28px;color:#666">${_e(type)} <strong>${_e(desig)}</strong></td>
+          <td class="r" style="color:#888">${sd.nb}</td>
+          <td class="r" style="color:#888">${fmt(sd.ml)} m</td>
+          <td class="r" style="color:#888">${fmtT(sd.poids)}</td>
+          <td></td>
+        </tr>`).join('');
+      return `<tr class="syn-type-row" data-syn-action="voir-type" data-syn-type="${_e(type)}">
         <td><span class="syn-type-chip">${_e(type)}</span></td>
         <td class="r">${d.nb}</td>
         <td class="r">${fmt(d.ml)} m</td>
         <td class="r">${fmtT(d.poids)}</td>
         <td><div class="syn-bar"><div class="syn-bar-fill" style="width:${pct}%"></div></div></td>
-      </tr>`;
+      </tr>${sousLignes}`;
     }).join('');
 
     const totalRow = lignesType.length > 1 ? `<tr class="syn-total">
