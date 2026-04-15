@@ -934,7 +934,9 @@ const Stock = (() => {
         const sousLignes = Object.entries(d.desigs)
           .sort((a, b) => b[1].ml - a[1].ml)
           .map(([desig, sd]) => `
-            <tr class="syn-sous-ligne" data-syn-parent="${_e(type)}" style="display:none">
+            <tr class="syn-sous-ligne" data-syn-parent="${_e(type)}"
+                data-syn-action="voir-desig" data-syn-type="${_e(type)}" data-syn-desig="${_e(desig)}"
+                style="display:none" title="Filtrer ${_e(type)} ${_e(desig)}">
               <td class="syn-sous-cell">
                 <span class="syn-sous-indent">└</span>
                 ${_e(type)} <strong>${_e(desig)}</strong>
@@ -942,7 +944,7 @@ const Stock = (() => {
               <td class="r syn-sous-val">${sd.nb}</td>
               <td class="r syn-sous-val">${fmt(sd.ml)} m</td>
               <td class="r syn-sous-val">${fmtT(sd.poids)}</td>
-              <td></td>
+              <td><span class="syn-voir-btn">→</span></td>
             </tr>`).join('');
         return `<tr class="syn-type-row" data-syn-action="toggle-type" data-syn-type-group="${_e(type)}">
           <td>
@@ -1237,6 +1239,14 @@ const Stock = (() => {
           zsyn.querySelectorAll(`[data-syn-parent="${CSS.escape(grp)}"]`).forEach(tr => {
             tr.style.display = expanded ? '' : 'none';
           });
+        } else if (action === 'voir-desig') {
+          const desig = el.dataset.synDesig || '';
+          _basculerOnglet('profils');
+          const selType  = document.getElementById('p-type');
+          const selDesig = document.getElementById('p-desig');
+          if (selType && type) { selType.value = type; _peuplerDesignations(type); }
+          if (selDesig && desig) selDesig.value = desig;
+          _filtrer();
         } else if (action === 'voir-type') {
           _basculerOnglet(onglet);
           const selType = document.getElementById('p-type');
