@@ -1111,6 +1111,21 @@
     .syn-table tr:last-child td { border-bottom: none; }
     .syn-table .syn-total td { font-weight: bold; background: #f9f9f9; border-top: 1px solid var(--gris-clair); }
     .syn-table .syn-type-row.expanded td { background: #f0f5f0; }
+    .syn-table-title-row th {
+      background: #f7f7f7; padding: 7px 12px;
+      font-size: 12px; font-weight: bold; color: #444;
+      border-bottom: 1px solid #e8e8e8;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .syn-table-title-row th { display: revert; }
+    .syn-scope-btn {
+      float: right; font-size: 11px; font-weight: normal;
+      color: var(--vert); cursor: pointer; padding: 1px 7px;
+      border: 1px solid var(--vert); border-radius: 10px;
+      background: white; transition: background .12s, color .12s;
+      user-select: none;
+    }
+    .syn-scope-btn:hover { background: var(--vert); color: white; }
     .syn-toggle-icon {
       display: inline-block; width: 18px; font-size: 10px;
       color: #aaa; margin-right: 2px; cursor: pointer;
@@ -2156,7 +2171,7 @@
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
-  <script src="../js/stock.js?v=20260428"></script>
+  <script src="../js/stock.js?v=20260429"></script>
 
 </body>
 </html>

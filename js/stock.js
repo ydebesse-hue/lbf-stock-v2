@@ -77,8 +77,9 @@ const Stock = (() => {
 
   let _data      = null;        // données fusionnées (stock.json + localStorage)
   let _sections  = null;        // données de sections.json (pour les modales)
-  let _onglet    = 'synthese';   // onglet actif
-  let _synTab    = 'profils';    // sous-onglet actif dans Synthèse
+  let _onglet        = 'synthese';   // onglet actif
+  let _synTab        = 'profils';    // sous-onglet actif dans Synthèse
+  let _synProfilsTous = false;       // false = disponibles seulement, true = dispo + affectés
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
@@ -933,8 +934,11 @@ const Stock = (() => {
 
     // ── Contenu sous-onglet Profilés ──────────────────────────────
     const _contenuProfils = () => {
+      const sourceType = _synProfilsTous
+        ? [...profilsDispo, ...profilsAffectes]
+        : profilsDispo;
       const parType = {};
-      profilsDispo.forEach(b => {
+      sourceType.forEach(b => {
         const t = b.section_type || '?';
         const d = b.designation  || '?';
         if (!parType[t]) parType[t] = { nb: 0, ml: 0, poids: 0, desigs: {} };
@@ -1014,22 +1018,45 @@ const Stock = (() => {
         </tr>${sousLignes}`;
       }).join('');
 
+      const nbTotal2   = sourceType.length;
+      const mlTotal2   = sourceType.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const poidsTotal2 = sourceType.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
       const totalRow = lignesType.length > 1 ? `<tr class="syn-total">
-        <td>Total</td><td class="r">${profilsDispo.length}</td>
-        <td class="r">${fmt(mlDispo)} m</td><td class="r">${fmtT(poidsProfils)}</td>
+        <td>Total</td><td class="r">${nbTotal2}</td>
+        <td class="r">${fmt(mlTotal2)} m</td><td class="r">${fmtT(poidsTotal2)}</td>
       </tr>` : '';
 
+      const scopeLabel = _synProfilsTous ? 'Tous' : 'Disponibles';
+      const scopeNext  = _synProfilsTous ? 'Disponibles' : 'Tous';
       return `
         ${cartes}
-        <div class="syn-section-titre">Par type — ▶ pour développer · clic chip pour filtrer</div>
         <div class="syn-card" style="padding:0;overflow:hidden">
           <table class="syn-table">
-            <thead><tr>
-              <th>Type</th><th class="r">Barres</th>
-              <th class="r">ML total</th><th class="r">Poids</th>
-            </tr></thead>
+            <colgroup>
+              <col style="width:auto">
+              <col style="width:58px">
+              <col style="width:88px">
+              <col style="width:78px">
+            </colgroup>
+            <thead>
+              <tr class="syn-table-title-row">
+                <th colspan="4">
+                  Par type
+                  <span class="syn-scope-btn" data-syn-action="toggle-profils-scope"
+                        title="Basculer le périmètre">
+                    ${scopeLabel} ▾
+                  </span>
+                </th>
+              </tr>
+              <tr>
+                <th>Type</th>
+                <th class="r">Barres</th>
+                <th class="r">ML</th>
+                <th class="r">Poids</th>
+              </tr>
+            </thead>
             <tbody>
-              ${rowsType || '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">Aucun profilé disponible</td></tr>'}
+              ${rowsType || `<tr><td colspan="4" style="color:#aaa;text-align:center;padding:14px">Aucun profilé ${_synProfilsTous ? '' : 'disponible'}</td></tr>`}
               ${totalRow}
             </tbody>
           </table>
@@ -1236,6 +1263,9 @@ const Stock = (() => {
         const dispo   = el.dataset.synDispo  || '';
         if (action === 'changer-syn-tab') {
           _synTab = el.dataset.synTab;
+          _rendreSynthese();
+        } else if (action === 'toggle-profils-scope') {
+          _synProfilsTous = !_synProfilsTous;
           _rendreSynthese();
         } else if (action === 'toggle-type') {
           const grp      = el.dataset.synTypeGroup;
