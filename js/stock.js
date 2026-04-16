@@ -477,7 +477,7 @@ const Stock = (() => {
       case 'type':        return item.section_type     || '';
       case 'designation': return item.designation      || '';
       case 'longueur':    return item.longueur_m       || 0;
-      case 'poids':       return item.poids_barre_kg   || item.poids_unitaire_kg || 0;
+      case 'poids':       return item.categorie === 'profil' ? _poidsEffectifProfil(item) : (item.poids_unitaire_kg || 0);
       case 'chantier':    return item.chantier_affectation || '';
       case 'lieu':        return item.lieu_stockage    || '';
       case 'dispo':       return item.disponibilite    || '';
@@ -562,10 +562,8 @@ const Stock = (() => {
       case 'longueur':
         return b.longueur_m.toFixed(2);
       case 'poids': {
-        const p = b.poids_barre_kg
-          ? b.poids_barre_kg.toFixed(1)
-          : (b.poids_ml && b.longueur_m ? (b.poids_ml * b.longueur_m).toFixed(1) : '—');
-        return p;
+        const p = _poidsEffectifProfil(b);
+        return p > 0 ? p.toFixed(1) : '—';
       }
       case 'classe':
         return b.classe_acier
@@ -627,9 +625,8 @@ const Stock = (() => {
       h += `<tr><td colspan="10" class="vide">Aucune barre archivée.</td></tr>`;
     } else {
       data.forEach(b => {
-        const poids = b.poids_barre_kg
-          ? b.poids_barre_kg.toFixed(1)
-          : (b.poids_ml && b.longueur_m ? (b.poids_ml * b.longueur_m).toFixed(1) : '—');
+        const poidsEff = _poidsEffectifProfil(b);
+        const poids = poidsEff > 0 ? poidsEff.toFixed(1) : '—';
         const dateAjout = b.date_ajout
           ? new Date(b.date_ajout).toLocaleDateString('fr-FR')
           : '—';
@@ -719,6 +716,17 @@ const Stock = (() => {
     return h + '</tbody></table>';
   }
 
+
+  /* ──────────────────────────────────────────────────────────────
+     HELPERS CALCUL
+     ────────────────────────────────────────────────────────────── */
+
+  /** Poids effectif d'un profilé — poids_barre_kg prioritaire, sinon poids_ml × longueur */
+  function _poidsEffectifProfil(b) {
+    if (b.poids_barre_kg > 0) return b.poids_barre_kg;
+    if (b.poids_ml > 0 && b.longueur_m > 0) return Math.round(b.poids_ml * b.longueur_m * 10) / 10;
+    return 0;
+  }
 
   /* ──────────────────────────────────────────────────────────────
      BADGES ET BOUTONS LIGNE
@@ -913,7 +921,7 @@ const Stock = (() => {
     const mlDispo      = profilsDispo.reduce((s, b)    => s + (b.longueur_m     || 0), 0);
     const mlAffectes   = profilsAffectes.reduce((s, b) => s + (b.longueur_m     || 0), 0);
     const mlAttente    = profilsAttente.reduce((s, b)  => s + (b.longueur_m     || 0), 0);
-    const poidsProfils = profilsDispo.reduce((s, b)    => s + (b.poids_barre_kg || 0), 0);
+    const poidsProfils = profilsDispo.reduce((s, b)    => s + _poidsEffectifProfil(b), 0);
     const poidsToles   = tolesDispo.reduce((s, b)      => s + (b.poids_total_kg || 0), 0);
     const nbAttente    = profilsAttente.length + tolesAttente.length;
 
@@ -929,12 +937,12 @@ const Stock = (() => {
         const d = b.designation  || '?';
         if (!parType[t]) parType[t] = { nb: 0, ml: 0, poids: 0, desigs: {} };
         parType[t].nb++;
-        parType[t].ml    += b.longueur_m     || 0;
-        parType[t].poids += b.poids_barre_kg || 0;
+        parType[t].ml    += b.longueur_m || 0;
+        parType[t].poids += _poidsEffectifProfil(b);
         if (!parType[t].desigs[d]) parType[t].desigs[d] = { nb: 0, ml: 0, poids: 0 };
         parType[t].desigs[d].nb++;
-        parType[t].desigs[d].ml    += b.longueur_m     || 0;
-        parType[t].desigs[d].poids += b.poids_barre_kg || 0;
+        parType[t].desigs[d].ml    += b.longueur_m || 0;
+        parType[t].desigs[d].poids += _poidsEffectifProfil(b);
       });
       const lignesType = Object.entries(parType).sort((a, b) => b[1].ml - a[1].ml);
       const mlMax = lignesType.length ? lignesType[0][1].ml : 1;
@@ -942,8 +950,8 @@ const Stock = (() => {
       const mlAffectes   = profilsAffectes.reduce((s, b) => s + (b.longueur_m || 0), 0);
       const mlAttente    = profilsAttente.reduce((s, b)  => s + (b.longueur_m || 0), 0);
       const mlTotal      = mlDispo + mlAffectes + mlAttente;
-      const poidsAffectes = profilsAffectes.reduce((s, b) => s + (b.poids_barre_kg || 0), 0);
-      const poidsAttente  = profilsAttente.reduce((s, b)  => s + (b.poids_barre_kg || 0), 0);
+      const poidsAffectes = profilsAffectes.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const poidsAttente  = profilsAttente.reduce((s, b)  => s + _poidsEffectifProfil(b), 0);
       const poidsTotal    = poidsProfils + poidsAffectes + poidsAttente;
       const nbTotal       = profilsDispo.length + profilsAffectes.length + profilsAttente.length;
 
@@ -2950,7 +2958,8 @@ const Stock = (() => {
     const typeOp  = el.date_modif ? 'Modification' : 'Ajout';
 
     if (el.categorie === 'profil') {
-      const poids = el.poids_barre_kg ? `${el.poids_barre_kg.toFixed(1)} kg` : '—';
+      const poidsP = _poidsEffectifProfil(el);
+      const poids = poidsP > 0 ? `${poidsP.toFixed(1)} kg` : '—';
       recap.innerHTML = `
         <div class="dim-row"><span class="dim-label">Opération</span><span class="dim-val">${typeOp}</span></div>
         <div class="dim-row"><span class="dim-label">Référence</span><span class="dim-val">${_e(el.id)}</span></div>
