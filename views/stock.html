@@ -428,6 +428,19 @@
     .btn-inline-carte { background: #e8f0fe; color: #1a56c4; }
     .btn-inline-carte:hover { background: #c8d8f8; }
 
+    /* ── Édition inline ──────────────────────────────────────── */
+    td.cell-editable { cursor: text; }
+    td.cell-editable:not(.editing):hover { background: rgba(39,174,96,.08) !important; }
+    td.cell-editable:not(.editing):hover::after { content: ' ✏'; font-size: 10px; color: #aaa; }
+    td.cell-editable.editing { padding: 2px 3px !important; }
+    .cell-inline-input {
+      width: 100%; box-sizing: border-box;
+      border: 1.5px solid var(--vert); border-radius: 3px;
+      padding: 3px 5px; font-size: 12px; font-family: Tahoma;
+      background: #fff; outline: none; min-width: 60px;
+    }
+    select.cell-inline-input { cursor: pointer; }
+
     .btn-ligne {
       padding: 4px 7px;
       font-size: 11px;
@@ -2143,7 +2156,7 @@
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
-  <script src="../js/stock.js?v=20260425"></script>
+  <script src="../js/stock.js?v=20260426"></script>
 
 </body>
 </html>

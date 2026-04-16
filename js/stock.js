@@ -64,6 +64,9 @@ const Stock = (() => {
   /** Colonnes visibles en mode "Essentiel" */
   const COLS_ESSENTIELLES = new Set(['id','type','designation','longueur','dispo','chantier','lieu']);
 
+  /** Colonnes éditables inline dans le tableau profilés */
+  const COLS_EDITABLES_PROFIL = new Set(['longueur', 'lieu', 'dispo', 'chantier', 'commentaire']);
+
   /** Clé localStorage pour le mode de vue du tableau profilés */
   const CLE_VUE_PROFILS = 'lbf-stock-vue-profils';
 
@@ -532,10 +535,11 @@ const Stock = (() => {
     } else {
       data.forEach(b => {
         const attente = b.statut === 'en_attente';
-        h += `<tr${attente ? ' class="ligne-attente"' : ''}>`;
+        h += `<tr${attente ? ' class="ligne-attente"' : ''} data-id="${_e(b.id)}">`;
         COLS_PROFILS.forEach(c => {
           if (!vis[c.key]) return;
-          h += `<td class="col-p-${c.key}">${_cellProfil(c.key, b)}</td>`;
+          const ed = modif && COLS_EDITABLES_PROFIL.has(c.key);
+          h += `<td class="col-p-${c.key}${ed ? ' cell-editable' : ''}"${ed ? ` data-field="${c.key}"` : ''}>${_cellProfil(c.key, b)}</td>`;
         });
         h += `<td class="col-p-hist"><button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Historique">📋</button></td>`;
         h += `<td class="col-p-actions">${_actionsLigneProfil(b, modif, admin)}</td>`;
@@ -687,20 +691,26 @@ const Stock = (() => {
           ? new Date(t.date_ajout).toLocaleDateString('fr-FR')
           : '—';
 
-        h += `<tr${attente ? ' class="ligne-attente"' : ''}>`;
+        h += `<tr${attente ? ' class="ligne-attente"' : ''} data-id="${_e(t.id)}">`;
         h += `<td class="td-id"><span class="chip-id">${_e(t.id)}</span></td>`;
-        h += `<td><strong>${t.epaisseur_mm} mm</strong></td>`;
+        h += modif
+          ? `<td class="cell-editable" data-field="epaisseur"><strong>${t.epaisseur_mm} mm</strong></td>`
+          : `<td><strong>${t.epaisseur_mm} mm</strong></td>`;
         h += `<td>${dims}</td>`;
-        h += `<td>${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`;
+        h += modif
+          ? `<td class="cell-editable" data-field="quantite">${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`
+          : `<td>${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`;
         h += `<td>${t.poids_unitaire_kg.toFixed(1)} <span style="color:#999;font-size:11px">(tot.&nbsp;${t.poids_total_kg.toFixed(1)})</span></td>`;
-        h += `<td>${_e(t.lieu_stockage)}
-          <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(t.lieu_stockage)}')" title="Voir sur le plan">📍</button>
-        </td>`;
+        h += modif
+          ? `<td class="cell-editable" data-field="lieu">${_e(t.lieu_stockage)} <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(t.lieu_stockage)}')" title="Voir sur le plan">📍</button></td>`
+          : `<td>${_e(t.lieu_stockage)} <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(t.lieu_stockage)}')" title="Voir sur le plan">📍</button></td>`;
         h += `<td>${dateAjout}</td>`;
         h += `<td>${_e(t.chantier_origine)}${t.chantier_affectation
           ? ` <span class="chip-chantier" title="Affecté à : ${_e(t.chantier_affectation)}">→ ${_e(t.chantier_affectation)}</span>`
           : ''}</td>`;
-        h += `<td>${_badgeDispo(t)}</td>`;
+        h += modif
+          ? `<td class="cell-editable" data-field="dispo">${_badgeDispo(t)}</td>`
+          : `<td>${_badgeDispo(t)}</td>`;
         h += `<td class="td-actions">${_actionsLigneTole(t, modif, admin)}</td>`;
         h += `</tr>`;
       });
@@ -1297,10 +1307,14 @@ const Stock = (() => {
     const zoneTab = document.getElementById('tableau-stock');
     if (zoneTab) {
       zoneTab.addEventListener('click', e => {
+        if (e.target.closest('button')) return;
+        const tdEd = e.target.closest('td.cell-editable');
+        if (tdEd) {
+          if (!tdEd.classList.contains('editing')) _activerEditionInline(tdEd);
+          return;
+        }
         const td = e.target.closest('td');
         if (!td) return;
-        // Ne pas activer si clic sur un bouton dans la cellule
-        if (e.target.closest('button')) return;
         const tr = td.closest('tr');
         if (!tr || tr.closest('thead')) return;
         const deja = tr.classList.contains('ligne-focus');
@@ -2249,6 +2263,155 @@ const Stock = (() => {
   /* ──────────────────────────────────────────────────────────────
      MODALE MODIFICATION
      ────────────────────────────────────────────────────────────── */
+
+  /* ──────────────────────────────────────────────────────────────
+     ÉDITION INLINE
+     ────────────────────────────────────────────────────────────── */
+
+  function _activerEditionInline(td) {
+    const tr    = td.closest('tr');
+    const id    = tr?.dataset.id;
+    const field = td.dataset.field;
+    if (!id || !field) return;
+    const item = _parId(id);
+    if (!item) return;
+
+    td.classList.add('editing');
+    const originalHtml = td.innerHTML;
+
+    let ctrl;
+    if (field === 'lieu' || field === 'dispo') {
+      ctrl = document.createElement('select');
+      ctrl.className = 'cell-inline-input';
+      if (field === 'lieu') {
+        ctrl.innerHTML = '<option value="">— Choisir —</option>'
+          + LIEUX.map(l => `<option value="${_e(l)}"${item.lieu_stockage === l ? ' selected' : ''}>${_e(l)}</option>`).join('');
+      } else {
+        ctrl.innerHTML = `
+          <option value="disponible"${item.disponibilite === 'disponible' ? ' selected' : ''}>Disponible</option>
+          <option value="affecte"${item.disponibilite === 'affecte' ? ' selected' : ''}>Affecté</option>`;
+      }
+    } else {
+      ctrl = document.createElement('input');
+      ctrl.className = 'cell-inline-input';
+      if (field === 'longueur') {
+        ctrl.type = 'number'; ctrl.step = '0.01'; ctrl.min = '0';
+        ctrl.value = item.longueur_m ?? '';
+      } else if (field === 'epaisseur') {
+        ctrl.type = 'number'; ctrl.step = '0.5'; ctrl.min = '1';
+        ctrl.value = item.epaisseur_mm ?? '';
+      } else if (field === 'quantite') {
+        ctrl.type = 'number'; ctrl.min = '1'; ctrl.step = '1';
+        ctrl.value = item.quantite ?? 1;
+      } else if (field === 'chantier') {
+        ctrl.type = 'text';
+        ctrl.value = item.chantier_affectation ?? '';
+        ctrl.placeholder = 'Chantier…';
+      } else if (field === 'commentaire') {
+        ctrl.type = 'text';
+        ctrl.value = item.commentaire ?? '';
+        ctrl.placeholder = 'Commentaire…';
+      }
+    }
+
+    const annuler = () => {
+      td.innerHTML = originalHtml;
+      td.classList.remove('editing');
+    };
+
+    let sauvegarde = false;
+    const sauvegarder = () => {
+      if (sauvegarde) return;
+      sauvegarde = true;
+      td.classList.remove('editing');
+      _sauvegarderInline(id, field, ctrl.value, item.categorie);
+    };
+
+    ctrl.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); sauvegarder(); }
+      if (e.key === 'Escape') { e.preventDefault(); annuler(); }
+    });
+    if (ctrl.tagName === 'SELECT') {
+      ctrl.addEventListener('change', sauvegarder);
+    } else {
+      ctrl.addEventListener('blur', sauvegarder);
+    }
+
+    td.innerHTML = '';
+    td.appendChild(ctrl);
+    ctrl.focus();
+    if (ctrl.select) ctrl.select();
+  }
+
+  async function _sauvegarderInline(id, field, rawVal, categorie) {
+    const original = _parId(id);
+    if (!original) return;
+    const session = Auth.getSession();
+    const isAdmin = Auth.hasRight('can_validate');
+
+    let patch = {};
+    if (categorie === 'profil') {
+      if (field === 'longueur') {
+        const longueur = parseFloat(rawVal);
+        if (isNaN(longueur) || longueur < 0) { _filtrer(); return; }
+        const poidsml = original.poids_ml || 0;
+        const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : original.poids_barre_kg;
+        patch = { longueur_m: longueur, poids_barre_kg: poidsBarre };
+      } else if (field === 'lieu') {
+        patch = { lieu_stockage: rawVal || original.lieu_stockage };
+      } else if (field === 'dispo') {
+        patch = { disponibilite: rawVal };
+      } else if (field === 'chantier') {
+        patch = { chantier_affectation: rawVal || null };
+      } else if (field === 'commentaire') {
+        patch = { commentaire: rawVal };
+      }
+    } else {
+      // tôle
+      if (field === 'epaisseur') {
+        const ep = parseFloat(rawVal);
+        if (isNaN(ep) || ep <= 0) { _filtrer(); return; }
+        const poidsU = Math.round(((ep/1000)*(original.largeur_mm/1000)*(original.longueur_mm/1000)*7850)*10)/10;
+        patch = { epaisseur_mm: ep, poids_unitaire_kg: poidsU, poids_total_kg: Math.round(poidsU*(original.quantite||1)*10)/10 };
+      } else if (field === 'quantite') {
+        const qty = parseInt(rawVal) || 1;
+        patch = { quantite: qty, poids_total_kg: Math.round(original.poids_unitaire_kg*qty*10)/10 };
+      } else if (field === 'lieu') {
+        patch = { lieu_stockage: rawVal };
+      } else if (field === 'dispo') {
+        patch = { disponibilite: rawVal };
+      }
+    }
+
+    if (!Object.keys(patch).length) { _filtrer(); return; }
+
+    const modif = {
+      ...original,
+      ...patch,
+      statut: original.statut === 'en_attente' ? 'en_attente' : (isAdmin ? 'valide' : 'en_attente'),
+      valide_par:      isAdmin ? session?.identifiant : null,
+      date_validation: isAdmin ? _dateAujourdhui() : null,
+      date_modif:      _dateAujourdhui(),
+      modifie_par:     session?.identifiant || 'inconnu'
+    };
+
+    const enLigne = await _persisterElement(modif);
+    _notif('Modification enregistrée' + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
+
+    if (field === 'longueur' && original.categorie === 'profil') {
+      const longAvant = original.longueur_m;
+      const longueur  = modif.longueur_m;
+      if (longueur === 0) {
+        await _enregistrerHistorique(id, 'ARCHIVAGE', longAvant, 0,
+          original.chantier_origine || null, session?.identifiant || null, null, null);
+      } else if (longueur < longAvant) {
+        await _enregistrerHistorique(id, 'RETOUR', longAvant, longueur,
+          original.chantier_origine || null, session?.identifiant || null, null, null);
+      }
+    }
+
+    _filtrer();
+  }
 
   /**
    * Ouvre la modale de modification et pré-remplit les champs
