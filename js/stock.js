@@ -721,10 +721,12 @@ const Stock = (() => {
      HELPERS CALCUL
      ────────────────────────────────────────────────────────────── */
 
-  /** Poids effectif d'un profilé — poids_barre_kg prioritaire, sinon poids_ml × longueur */
+  /** Poids effectif d'un profilé — poids_barre_kg prioritaire, sinon poids_ml × longueur,
+   *  sinon lookup catalogue sections.json × longueur */
   function _poidsEffectifProfil(b) {
     if (b.poids_barre_kg > 0) return b.poids_barre_kg;
-    if (b.poids_ml > 0 && b.longueur_m > 0) return Math.round(b.poids_ml * b.longueur_m * 10) / 10;
+    const pml = b.poids_ml > 0 ? b.poids_ml : (_getDims(b.section_type, b.designation)?.pml || 0);
+    if (pml > 0 && b.longueur_m > 0) return Math.round(pml * b.longueur_m * 10) / 10;
     return 0;
   }
 
