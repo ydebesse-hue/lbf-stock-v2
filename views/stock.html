@@ -1151,7 +1151,22 @@
     }
     .syn-tab:hover { color: #444; }
     .syn-tab.actif { color: var(--vert); border-bottom-color: var(--vert); font-weight: bold; }
-    .syn-attente-badge {
+    .syn-kpi.k-statuts { border-top-color: #888; justify-content: flex-start; }
+    .syn-statut-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px;
+    }
+    .syn-statut-row:last-child { border-bottom: none; }
+    .syn-statut-row strong { margin-left: 2px; }
+    .syn-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block; flex-shrink: 0;
+    }
+    .syn-dot.s-vert   { background: var(--vert); }
+    .syn-dot.s-rouge  { background: var(--rouge); }
+    .syn-dot.s-orange { background: #e67e22; }
+    .syn-ml-hint { color: #aaa; font-size: 11px; margin-left: auto; }
+    .syn-kpi { display: flex; flex-direction: column; }
       background: #e67e22; color: white;
       border-radius: 10px; padding: 1px 9px;
       font-size: 12px; font-weight: bold;
@@ -2108,10 +2123,10 @@
     </div>
   </div>
 
-  <script src="../js/supabase.js?v=20260421"></script>
-  <script src="../auth/auth.js?v=20260421"></script>
-  <script src="../js/profils-utils.js?v=20260421"></script>
-  <script src="../js/stock.js?v=20260421"></script>
+  <script src="../js/supabase.js?v=20260422"></script>
+  <script src="../auth/auth.js?v=20260422"></script>
+  <script src="../js/profils-utils.js?v=20260422"></script>
+  <script src="../js/stock.js?v=20260422"></script>
 
 </body>
 </html>
