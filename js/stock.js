@@ -946,14 +946,14 @@ const Stock = (() => {
             </tr></thead>
             <tbody>
               <tr>
-                <td><span class="syn-dot s-vert"></span> Disponible</td>
-                <td><strong>${profilsDispo.length}</strong> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils">→</span></td>
+                <td><span class="syn-dot s-vert"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils">Disponible →</span></td>
+                <td><strong>${profilsDispo.length}</strong></td>
                 <td>${fmt(mlDispo)} m</td>
                 <td>${fmtT(poidsProfils)}</td>
               </tr>
               <tr>
-                <td><span class="syn-dot s-rouge"></span> Affecté</td>
-                <td><strong>${profilsAffectes.length}</strong> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils" data-syn-dispo="affecte">→</span></td>
+                <td><span class="syn-dot s-rouge"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils" data-syn-dispo="affecte">Affecté →</span></td>
+                <td><strong>${profilsAffectes.length}</strong></td>
                 <td>${fmt(mlAffectes)} m</td>
                 <td>${fmtT(poidsAffectes)}</td>
               </tr>
@@ -982,7 +982,6 @@ const Stock = (() => {
               <td class="r syn-sous-val">${sd.nb}</td>
               <td class="r syn-sous-val">${fmt(sd.ml)} m</td>
               <td class="r syn-sous-val">${fmtT(sd.poids)}</td>
-              <td></td>
             </tr>`).join('');
         return `<tr class="syn-type-row">
           <td>
@@ -992,13 +991,12 @@ const Stock = (() => {
           <td class="r">${d.nb}</td>
           <td class="r">${fmt(d.ml)} m</td>
           <td class="r">${fmtT(d.poids)}</td>
-          <td><div class="syn-bar"><div class="syn-bar-fill" style="width:${pct}%"></div></div></td>
         </tr>${sousLignes}`;
       }).join('');
 
       const totalRow = lignesType.length > 1 ? `<tr class="syn-total">
         <td>Total</td><td class="r">${profilsDispo.length}</td>
-        <td class="r">${fmt(mlDispo)} m</td><td class="r">${fmtT(poidsProfils)}</td><td></td>
+        <td class="r">${fmt(mlDispo)} m</td><td class="r">${fmtT(poidsProfils)}</td>
       </tr>` : '';
 
       return `
@@ -1009,7 +1007,6 @@ const Stock = (() => {
             <thead><tr>
               <th>Type</th><th class="r">Barres</th>
               <th class="r">ML total</th><th class="r">Poids</th>
-              <th style="width:70px"></th>
             </tr></thead>
             <tbody>
               ${rowsType || '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">Aucun profilé disponible</td></tr>'}
@@ -1064,14 +1061,14 @@ const Stock = (() => {
             </tr></thead>
             <tbody>
               <tr>
-                <td><span class="syn-dot s-vert"></span> Disponible</td>
-                <td><strong>${tolesDispo.length}</strong> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles">→</span></td>
+                <td><span class="syn-dot s-vert"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles">Disponible →</span></td>
+                <td><strong>${tolesDispo.length}</strong></td>
                 <td>${fmt(surfaceDispo)} m²</td>
                 <td>${fmtT(poidsTolesTot)}</td>
               </tr>
               <tr>
-                <td><span class="syn-dot s-rouge"></span> Affecté</td>
-                <td><strong>${tolesAffectees.length}</strong> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="affecte">→</span></td>
+                <td><span class="syn-dot s-rouge"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="affecte">Affecté →</span></td>
+                <td><strong>${tolesAffectees.length}</strong></td>
                 <td>${fmt(surfaceAfft)} m²</td>
                 <td>${fmtT(pAfft)}</td>
               </tr>
