@@ -1172,18 +1172,22 @@
       border-radius: 10px; padding: 1px 9px;
       font-size: 12px; font-weight: bold;
     }
-    .syn-kpi-row {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 12px; padding: 3px 0;
-      border-bottom: 1px solid #f2f2f2;
+    .syn-kpi-table { padding: 12px 16px; }
+    .syn-kpi-inner { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .syn-kpi-inner th {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .4px;
+      color: #999; font-weight: normal; text-align: right; padding: 0 8px 6px;
     }
-    .syn-kpi-row:last-child { border-bottom: none; }
-    .syn-row-val { margin-left: auto; font-weight: bold; white-space: nowrap; }
-    .syn-kpi-total-row {
-      border-top: 1px solid #ddd; border-bottom: none !important;
-      margin-top: 2px; padding-top: 5px; color: #444;
+    .syn-kpi-inner th:first-child { text-align: left; padding-left: 0; }
+    .syn-kpi-inner td {
+      padding: 4px 8px; border-top: 1px solid #f2f2f2; vertical-align: middle;
+      text-align: right; color: #444; white-space: nowrap;
     }
-    .syn-kpi-total-row .syn-row-val { font-size: 13px; }
+    .syn-kpi-inner td:first-child { text-align: left; padding-left: 0; color: #555; }
+    .syn-kpi-inner tbody tr:first-child td { border-top: none; }
+    .syn-kpi-inner-total td {
+      border-top: 1px solid #ddd; font-weight: bold; color: #222; padding-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -2139,7 +2143,7 @@
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
-  <script src="../js/stock.js?v=20260423"></script>
+  <script src="../js/stock.js?v=20260424"></script>
 
 </body>
 </html>
