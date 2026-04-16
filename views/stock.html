@@ -1167,10 +1167,23 @@
     .syn-dot.s-orange { background: #e67e22; }
     .syn-ml-hint { color: #aaa; font-size: 11px; margin-left: auto; }
     .syn-kpi { display: flex; flex-direction: column; }
+    .syn-attente-badge {
       background: #e67e22; color: white;
       border-radius: 10px; padding: 1px 9px;
       font-size: 12px; font-weight: bold;
     }
+    .syn-kpi-row {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; padding: 3px 0;
+      border-bottom: 1px solid #f2f2f2;
+    }
+    .syn-kpi-row:last-child { border-bottom: none; }
+    .syn-row-val { margin-left: auto; font-weight: bold; white-space: nowrap; }
+    .syn-kpi-total-row {
+      border-top: 1px solid #ddd; border-bottom: none !important;
+      margin-top: 2px; padding-top: 5px; color: #444;
+    }
+    .syn-kpi-total-row .syn-row-val { font-size: 13px; }
   </style>
 </head>
 <body>
@@ -2126,7 +2139,7 @@
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
-  <script src="../js/stock.js?v=20260422"></script>
+  <script src="../js/stock.js?v=20260423"></script>
 
 </body>
 </html>

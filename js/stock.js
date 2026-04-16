@@ -929,8 +929,35 @@ const Stock = (() => {
       const lignesType = Object.entries(parType).sort((a, b) => b[1].ml - a[1].ml);
       const mlMax = lignesType.length ? lignesType[0][1].ml : 1;
 
-      const mlAffectes = profilsAffectes.reduce((s, b) => s + (b.longueur_m || 0), 0);
-      const mlAttente  = profilsAttente.reduce((s, b)  => s + (b.longueur_m || 0), 0);
+      const mlAffectes   = profilsAffectes.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const mlAttente    = profilsAttente.reduce((s, b)  => s + (b.longueur_m || 0), 0);
+      const mlTotal      = mlDispo + mlAffectes + mlAttente;
+      const poidsAffectes = profilsAffectes.reduce((s, b) => s + (b.poids_barre_kg || 0), 0);
+      const poidsAttente  = profilsAttente.reduce((s, b)  => s + (b.poids_barre_kg || 0), 0);
+      const poidsTotal    = poidsProfils + poidsAffectes + poidsAttente;
+      const nbTotal       = profilsDispo.length + profilsAffectes.length + profilsAttente.length;
+
+      const cartes = `
+        <div class="syn-kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
+          <div class="syn-kpi k-vert">
+            <div class="syn-kpi-lbl">Barres</div>
+            <div class="syn-kpi-row"><span class="syn-dot s-vert"></span><span>Disponible</span><strong class="syn-row-val">${profilsDispo.length}</strong><span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils">→</span></div>
+            <div class="syn-kpi-row"><span class="syn-dot s-rouge"></span><span>Affecté</span><strong class="syn-row-val">${profilsAffectes.length}</strong><span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils" data-syn-dispo="affecte">→</span></div>
+            <div class="syn-kpi-row syn-kpi-total-row"><span>Total</span><strong class="syn-row-val">${nbTotal}</strong></div>
+          </div>
+          <div class="syn-kpi k-bleu">
+            <div class="syn-kpi-lbl">Métrage</div>
+            <div class="syn-kpi-row"><span class="syn-dot s-vert"></span><span>Disponible</span><strong class="syn-row-val">${fmt(mlDispo)} m</strong></div>
+            <div class="syn-kpi-row"><span class="syn-dot s-rouge"></span><span>Affecté</span><strong class="syn-row-val">${fmt(mlAffectes)} m</strong></div>
+            <div class="syn-kpi-row syn-kpi-total-row"><span>Total</span><strong class="syn-row-val">${fmt(mlTotal)} m</strong></div>
+          </div>
+          <div class="syn-kpi k-bleu">
+            <div class="syn-kpi-lbl">Poids</div>
+            <div class="syn-kpi-row"><span class="syn-dot s-vert"></span><span>Disponible</span><strong class="syn-row-val">${fmtT(poidsProfils)}</strong></div>
+            <div class="syn-kpi-row"><span class="syn-dot s-rouge"></span><span>Affecté</span><strong class="syn-row-val">${fmtT(poidsAffectes)}</strong></div>
+            <div class="syn-kpi-row syn-kpi-total-row"><span>Total</span><strong class="syn-row-val">${fmtT(poidsTotal)}</strong></div>
+          </div>
+        </div>`;
 
       const rowsType = lignesType.map(([type, d]) => {
         const pct = Math.round((d.ml / mlMax) * 100);
@@ -967,44 +994,7 @@ const Stock = (() => {
       </tr>` : '';
 
       return `
-        <div class="syn-kpi-grid" style="margin-bottom:16px">
-          <div class="syn-kpi k-vert">
-            <div class="syn-kpi-lbl">Barres disponibles</div>
-            <div class="syn-kpi-val">${profilsDispo.length}</div>
-            <div class="syn-kpi-sub">validées</div>
-          </div>
-          <div class="syn-kpi k-bleu">
-            <div class="syn-kpi-lbl">ML total</div>
-            <div class="syn-kpi-val">${fmt(mlDispo)} m</div>
-            <div class="syn-kpi-sub">disponible</div>
-          </div>
-          <div class="syn-kpi k-bleu">
-            <div class="syn-kpi-lbl">Poids total</div>
-            <div class="syn-kpi-val">${fmtT(poidsProfils)}</div>
-            <div class="syn-kpi-sub">disponible</div>
-          </div>
-          <div class="syn-kpi k-statuts">
-            <div class="syn-kpi-lbl">Statuts</div>
-            <div class="syn-statut-row">
-              <span class="syn-dot s-vert"></span><span>Disponible</span>
-              <strong>${profilsDispo.length}</strong>
-              <span class="syn-ml-hint">${fmt(mlDispo)} m</span>
-              <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils">→</span>
-            </div>
-            <div class="syn-statut-row">
-              <span class="syn-dot s-rouge"></span><span>Affecté</span>
-              <strong>${profilsAffectes.length}</strong>
-              <span class="syn-ml-hint">${fmt(mlAffectes)} m</span>
-              <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils" data-syn-dispo="affecte">→</span>
-            </div>
-            <div class="syn-statut-row" style="border-bottom:none">
-              <span class="syn-dot s-orange"></span><span>En attente</span>
-              <strong>${profilsAttente.length}</strong>
-              <span class="syn-ml-hint">${fmt(mlAttente)} m</span>
-              <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils" data-syn-dispo="en_attente">→</span>
-            </div>
-          </div>
-        </div>
+        ${cartes}
         <div class="syn-section-titre">Par type — ▶ pour développer · clic chip pour filtrer</div>
         <div class="syn-card" style="padding:0;overflow:hidden">
           <table class="syn-table">
@@ -1023,10 +1013,11 @@ const Stock = (() => {
 
     // ── Contenu sous-onglet Tôles ─────────────────────────────────
     const _contenuToles = () => {
-      const surfaceDispo = tolesDispo.reduce((s, b) =>
-        s + ((b.largeur_mm || 0) / 1000) * ((b.longueur_mm || 0) / 1000) * (b.quantite || 1), 0);
+      const surfaceDispo  = tolesDispo.reduce((s, b) => s + ((b.largeur_mm||0)/1000)*((b.longueur_mm||0)/1000)*(b.quantite||1), 0);
+      const surfaceAfft   = tolesAffectees.reduce((s, b) => s + ((b.largeur_mm||0)/1000)*((b.longueur_mm||0)/1000)*(b.quantite||1), 0);
       const poidsTolesTot = tolesDispo.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
       const pAfft         = tolesAffectees.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
+      const nbTolTotal    = tolesDispo.length + tolesAffectees.length + tolesAttente.length;
 
       const parEp = {};
       tolesDispo.forEach(b => {
@@ -1057,42 +1048,24 @@ const Stock = (() => {
       </tr>` : '';
 
       return `
-        <div class="syn-kpi-grid" style="margin-bottom:16px">
+        <div class="syn-kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
           <div class="syn-kpi k-vert">
-            <div class="syn-kpi-lbl">Tôles disponibles</div>
-            <div class="syn-kpi-val">${tolesDispo.length}</div>
-            <div class="syn-kpi-sub">validées</div>
+            <div class="syn-kpi-lbl">Tôles</div>
+            <div class="syn-kpi-row"><span class="syn-dot s-vert"></span><span>Disponible</span><strong class="syn-row-val">${tolesDispo.length}</strong><span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles">→</span></div>
+            <div class="syn-kpi-row"><span class="syn-dot s-rouge"></span><span>Affecté</span><strong class="syn-row-val">${tolesAffectees.length}</strong><span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="affecte">→</span></div>
+            <div class="syn-kpi-row syn-kpi-total-row"><span>Total</span><strong class="syn-row-val">${nbTolTotal}</strong></div>
           </div>
           <div class="syn-kpi k-bleu">
-            <div class="syn-kpi-lbl">Surface totale</div>
-            <div class="syn-kpi-val">${fmt(surfaceDispo)} m²</div>
-            <div class="syn-kpi-sub">disponible</div>
+            <div class="syn-kpi-lbl">Surface</div>
+            <div class="syn-kpi-row"><span class="syn-dot s-vert"></span><span>Disponible</span><strong class="syn-row-val">${fmt(surfaceDispo)} m²</strong></div>
+            <div class="syn-kpi-row"><span class="syn-dot s-rouge"></span><span>Affecté</span><strong class="syn-row-val">${fmt(surfaceAfft)} m²</strong></div>
+            <div class="syn-kpi-row syn-kpi-total-row"><span>Total</span><strong class="syn-row-val">${fmt(surfaceDispo + surfaceAfft)} m²</strong></div>
           </div>
           <div class="syn-kpi k-bleu">
-            <div class="syn-kpi-lbl">Poids total</div>
-            <div class="syn-kpi-val">${fmtT(poidsTolesTot)}</div>
-            <div class="syn-kpi-sub">disponible</div>
-          </div>
-          <div class="syn-kpi k-statuts">
-            <div class="syn-kpi-lbl">Statuts</div>
-            <div class="syn-statut-row">
-              <span class="syn-dot s-vert"></span><span>Disponible</span>
-              <strong>${tolesDispo.length}</strong>
-              <span class="syn-ml-hint">${fmtT(poidsTolesTot)}</span>
-              <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles">→</span>
-            </div>
-            <div class="syn-statut-row">
-              <span class="syn-dot s-rouge"></span><span>Affecté</span>
-              <strong>${tolesAffectees.length}</strong>
-              <span class="syn-ml-hint">${fmtT(pAfft)}</span>
-              <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="affecte">→</span>
-            </div>
-            <div class="syn-statut-row" style="border-bottom:none">
-              <span class="syn-dot s-orange"></span><span>En attente</span>
-              <strong>${tolesAttente.length}</strong>
-              <span class="syn-ml-hint">—</span>
-              <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="en_attente">→</span>
-            </div>
+            <div class="syn-kpi-lbl">Poids</div>
+            <div class="syn-kpi-row"><span class="syn-dot s-vert"></span><span>Disponible</span><strong class="syn-row-val">${fmtT(poidsTolesTot)}</strong></div>
+            <div class="syn-kpi-row"><span class="syn-dot s-rouge"></span><span>Affecté</span><strong class="syn-row-val">${fmtT(pAfft)}</strong></div>
+            <div class="syn-kpi-row syn-kpi-total-row"><span>Total</span><strong class="syn-row-val">${fmtT(poidsTolesTot + pAfft)}</strong></div>
           </div>
         </div>
         <div class="syn-section-titre">Par épaisseur</div>
