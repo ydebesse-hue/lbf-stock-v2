@@ -33,8 +33,8 @@ const Stock = (() => {
   /** Densité acier (kg/dm³) pour calcul poids tôle */
   const DENSITE_ACIER = 7.85;
 
-  /** Lieux de stockage disponibles */
-  const LIEUX = ['Rack 1', 'Rack 2', 'Rack 3', 'Rack 4', 'Extérieur', 'Autre'];
+  /** Lieux de stockage — chargés depuis Supabase, fallback codé en dur */
+  const LIEUX_DEFAUT = ['Rack 1', 'Rack 2', 'Rack 3', 'Rack 4', 'Extérieur', 'Autre'];
 
   /** Classes acier disponibles */
   const CLASSES_ACIER = ['S235', 'S275', 'S355', 'S420', 'S460', 'S690'];
@@ -80,6 +80,8 @@ const Stock = (() => {
   let _onglet        = 'synthese';   // onglet actif
   let _synTab        = 'profils';    // sous-onglet actif dans Synthèse
   let _synProfilsTous = false;       // false = disponibles seulement, true = dispo + affectés
+  let _lieux     = [...LIEUX_DEFAUT]; // chargés depuis Supabase
+  let _chantiers = [];                // { id, nom, reference } chargés depuis Supabase
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
@@ -145,6 +147,16 @@ const Stock = (() => {
         _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
       }
 
+      // Charger les référentiels administrables
+      try {
+        const rows = await window.SB.lire('lieux_stockage', { order: 'ordre' });
+        if (rows.length) _lieux = rows.filter(l => l.actif).map(l => l.nom);
+      } catch(e) { /* garde LIEUX_DEFAUT */ }
+      try {
+        const rows = await window.SB.lire('chantiers', { order: 'nom' });
+        _chantiers = rows.filter(c => c.actif);
+      } catch(e) {}
+
     } catch (err) {
       _erreurChargement(err.message);
       return;
@@ -153,6 +165,7 @@ const Stock = (() => {
     _peuplerFiltres();
     _filtrer();
     _majAlerteAttente();
+    _majDatalistChantiers();
     _attacherEvenements();
     _initialiserModales();
   }
@@ -1660,6 +1673,8 @@ const Stock = (() => {
       if (btnAnalyser)  btnAnalyser.addEventListener('click',  _analyserImport);
       if (btnConfirmer) btnConfirmer.addEventListener('click', _confirmerImport);
     }
+
+    _attacherAdminRef();
   }
 
 
@@ -3475,14 +3490,16 @@ const Stock = (() => {
    * Remplit un select avec les lieux de stockage
    * @param {HTMLSelectElement} sel
    */
-  function _remplirSelectLieux(sel) {
+  function _remplirSelectLieux(sel, valeur = '') {
     if (!sel) return;
-    sel.innerHTML = '<option value="">— Choisir —</option>';
-    LIEUX.forEach(l => {
-      const o = document.createElement('option');
-      o.value = l; o.textContent = l;
-      sel.appendChild(o);
-    });
+    sel.innerHTML = '<option value="">— Choisir —</option>'
+      + _lieux.map(l => `<option value="${_e(l)}"${valeur === l ? ' selected' : ''}>${_e(l)}</option>`).join('');
+  }
+
+  function _majDatalistChantiers() {
+    const dl = document.getElementById('dl-chantiers');
+    if (!dl) return;
+    dl.innerHTML = _chantiers.map(c => `<option value="${_e(c.nom)}">`).join('');
   }
 
   /**
@@ -4106,6 +4123,107 @@ const Stock = (() => {
 
 
   /* ──────────────────────────────────────────────────────────────
+     ADMIN RÉFÉRENTIELS
+     ────────────────────────────────────────────────────────────── */
+
+  async function ouvrirAdminRef() {
+    _ouvrirModale('m-admin-ref');
+    _rendreListe('admin-lieux',     _lieux.map(n => ({ nom: n })), false);
+    _rendreListe('admin-chantiers', _chantiers, true);
+  }
+
+  function _rendreListe(zoneId, items, avecRef) {
+    const zone = document.getElementById(zoneId);
+    if (!zone) return;
+    if (!items.length) {
+      zone.innerHTML = '<div class="admin-ref-vide">Aucune entrée</div>';
+      return;
+    }
+    zone.innerHTML = items.map(item => `
+      <div class="admin-ref-item" data-id="${_e(item.id || '')}">
+        <span class="admin-ref-nom">${_e(item.nom)}${avecRef && item.reference ? ` <small>${_e(item.reference)}</small>` : ''}</span>
+        <button class="admin-ref-del" data-type="${avecRef ? 'chantier' : 'lieu'}"
+                data-id="${_e(item.id || '')}" data-nom="${_e(item.nom)}"
+                title="Supprimer">✕</button>
+      </div>`).join('');
+  }
+
+  async function _adminAjouter(type, nom, ref) {
+    nom = nom.trim();
+    if (!nom) return;
+    try {
+      if (type === 'lieu') {
+        const ordre = _lieux.length + 1;
+        await window.SB.inserer('lieux_stockage', { nom, ordre, actif: true });
+        const rows = await window.SB.lire('lieux_stockage', { order: 'ordre' });
+        _lieux = rows.filter(l => l.actif).map(l => l.nom);
+        _rendreListe('admin-lieux', _lieux.map(n => ({ nom: n })), false);
+      } else {
+        const row = await window.SB.inserer('chantiers', { nom, reference: ref || null, actif: true });
+        const rows = await window.SB.lire('chantiers', { order: 'nom' });
+        _chantiers = rows.filter(c => c.actif);
+        _rendreListe('admin-chantiers', _chantiers, true);
+      }
+      _majDatalistChantiers();
+      _notif('Entrée ajoutée', 'succes');
+    } catch(e) {
+      _notif('Erreur : ' + e.message, 'alerte');
+    }
+  }
+
+  async function _adminSupprimer(type, id, nom) {
+    try {
+      if (type === 'lieu') {
+        await window.SB.supprimer('lieux_stockage', id);
+        const rows = await window.SB.lire('lieux_stockage', { order: 'ordre' });
+        _lieux = rows.filter(l => l.actif).map(l => l.nom);
+        if (!_lieux.length) _lieux = [...LIEUX_DEFAUT];
+        _rendreListe('admin-lieux', _lieux.map(n => ({ nom: n })), false);
+      } else {
+        await window.SB.supprimer('chantiers', id);
+        const rows = await window.SB.lire('chantiers', { order: 'nom' });
+        _chantiers = rows.filter(c => c.actif);
+        _rendreListe('admin-chantiers', _chantiers, true);
+      }
+      _majDatalistChantiers();
+      _notif(`"${nom}" supprimé`, 'succes');
+    } catch(e) {
+      _notif('Erreur : ' + e.message, 'alerte');
+    }
+  }
+
+  function _attacherAdminRef() {
+    const m = document.getElementById('m-admin-ref');
+    if (!m) return;
+
+    // Délégation suppression
+    m.addEventListener('click', e => {
+      const btn = e.target.closest('.admin-ref-del');
+      if (!btn) return;
+      _adminSupprimer(btn.dataset.type, btn.dataset.id, btn.dataset.nom);
+    });
+
+    // Ajout lieu
+    const inpLieu = m.querySelector('#admin-inp-lieu');
+    m.querySelector('#admin-btn-lieu')?.addEventListener('click', () => {
+      _adminAjouter('lieu', inpLieu?.value || '');
+      if (inpLieu) inpLieu.value = '';
+    });
+    inpLieu?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); _adminAjouter('lieu', inpLieu.value); inpLieu.value = ''; }
+    });
+
+    // Ajout chantier
+    const inpNom = m.querySelector('#admin-inp-chantier-nom');
+    const inpRef = m.querySelector('#admin-inp-chantier-ref');
+    m.querySelector('#admin-btn-chantier')?.addEventListener('click', () => {
+      _adminAjouter('chantier', inpNom?.value || '', inpRef?.value || '');
+      if (inpNom) inpNom.value = '';
+      if (inpRef) inpRef.value = '';
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────
      API PUBLIQUE
      ────────────────────────────────────────────────────────────── */
   return {
@@ -4118,6 +4236,7 @@ const Stock = (() => {
     refuserElement,
     getSelection,
     ouvrirHistoriqueBarre,
+    ouvrirAdminRef,
     exporterCSV: _exporterCSV,
     ouvrirImport: _ouvrirImport,
   };

@@ -559,6 +559,35 @@
     .btn-modale-rouge    { background: var(--rouge); color: white; }
     .btn-modale-gris     { background: #e0e0e0;      color: var(--noir); }
     .btn-modale-vert     { background: var(--vert);  color: white; }
+
+    /* ── Modale référentiels admin ───────────────────────────── */
+    .admin-ref-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .admin-ref-section-titre {
+      font-size: 12px; font-weight: bold; color: #555;
+      text-transform: uppercase; letter-spacing: .4px;
+      border-bottom: 1px solid var(--gris-clair); padding-bottom: 6px; margin-bottom: 10px;
+    }
+    .admin-ref-liste { min-height: 80px; max-height: 260px; overflow-y: auto; margin-bottom: 12px; }
+    .admin-ref-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 8px; border-radius: 3px; font-size: 13px;
+    }
+    .admin-ref-item:hover { background: #f5f5f5; }
+    .admin-ref-nom { flex: 1; }
+    .admin-ref-nom small { color: #aaa; font-size: 11px; margin-left: 6px; }
+    .admin-ref-del {
+      background: none; border: none; color: #ccc; cursor: pointer;
+      font-size: 12px; padding: 2px 5px; border-radius: 3px;
+      transition: color .12s, background .12s;
+    }
+    .admin-ref-del:hover { color: var(--rouge); background: #fee; }
+    .admin-ref-form { display: flex; gap: 8px; align-items: flex-start; }
+    .admin-ref-inp {
+      flex: 1; border: 1px solid var(--gris-bord); border-radius: 3px;
+      padding: 5px 8px; font-size: 13px; font-family: Tahoma;
+    }
+    .admin-ref-inp:focus { outline: none; border-color: var(--vert); }
+    .admin-ref-vide { color: #aaa; font-size: 12px; padding: 8px 0; }
     .btn-modale-supprimer {
       background: none;
       border: 1px solid #ccc;
@@ -1263,7 +1292,13 @@
     <button id="btn-importer" class="btn-admin" title="Restaurer le stock depuis un fichier CSV">
       ⬆ Importer CSV
     </button>
+    <button class="btn-admin" onclick="Stock.ouvrirAdminRef()" title="Gérer les lieux de stockage et chantiers">
+      ⚙ Référentiels
+    </button>
   </div>
+
+  <!-- Datalist chantiers (partagé par tous les inputs chantier) -->
+  <datalist id="dl-chantiers"></datalist>
 
   <!-- ── SOUS-ONGLETS ─────────────────────────────────────────── -->
   <div class="sous-onglets">
@@ -1700,7 +1735,7 @@
           </div>
           <div class="fr">
             <label>Chantier d'affectation</label>
-            <input type="text" id="mod-affectation" placeholder="Nom ou référence du chantier">
+            <input type="text" id="mod-affectation" placeholder="Nom ou référence du chantier" list="dl-chantiers">
           </div>
         </div>
 
@@ -1735,7 +1770,7 @@
           </div>
           <div class="fr">
             <label>Chantier d'origine</label>
-            <input type="text" id="mod-t-chantier" placeholder="Référence chantier">
+            <input type="text" id="mod-t-chantier" placeholder="Référence chantier" list="dl-chantiers">
           </div>
           <div class="fr">
             <label>Lieu de stockage</label>
@@ -2130,6 +2165,43 @@
   <!-- ══════════════════════════════════════════════════════════════
        MODALE IMPORT CSV (admin)
        ══════════════════════════════════════════════════════════════ -->
+  <!-- ── Modale référentiels admin ──────────────────────────────── -->
+  <div id="m-admin-ref" class="modale-bg" role="dialog" aria-modal="true" aria-label="Référentiels">
+    <div class="modale modale-lg">
+      <div class="modale-titre">⚙ Référentiels</div>
+      <div class="admin-ref-cols">
+
+        <!-- Lieux de stockage -->
+        <div class="admin-ref-col">
+          <div class="admin-ref-section-titre">Lieux de stockage</div>
+          <div id="admin-lieux" class="admin-ref-liste"></div>
+          <div class="admin-ref-form">
+            <input id="admin-inp-lieu" type="text" placeholder="Nouveau lieu…" class="admin-ref-inp">
+            <button id="admin-btn-lieu" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
+        </div>
+
+        <!-- Chantiers -->
+        <div class="admin-ref-col">
+          <div class="admin-ref-section-titre">Chantiers</div>
+          <div id="admin-chantiers" class="admin-ref-liste"></div>
+          <div class="admin-ref-form" style="flex-direction:column;gap:6px">
+            <input id="admin-inp-chantier-nom" type="text" placeholder="Nom du chantier…" class="admin-ref-inp">
+            <input id="admin-inp-chantier-ref" type="text" placeholder="Référence (optionnel)" class="admin-ref-inp">
+            <button id="admin-btn-chantier" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris"
+                onclick="document.getElementById('m-admin-ref').classList.remove('open')">
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="m-import" class="modale-bg" role="dialog" aria-modal="true" aria-label="Import CSV">
     <div class="modale">
       <div class="modale-titre">Importer une sauvegarde CSV</div>
@@ -2171,7 +2243,7 @@
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
-  <script src="../js/stock.js?v=20260429"></script>
+  <script src="../js/stock.js?v=20260430"></script>
 
 </body>
 </html>
