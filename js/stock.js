@@ -594,7 +594,7 @@ const Stock = (() => {
       case 'chantier':
         return b.chantier_affectation ? _e(b.chantier_affectation) : '—';
       case 'lieu':
-        return `${_e(b.lieu_stockage)}<button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(b.lieu_stockage)}')" title="Plan">📍</button>`;
+        return b.lieu_stockage ? `<span class="chip-lieu">${_e(b.lieu_stockage)}</span>` : '—';
       case 'origine':
         return _e(b.chantier_origine) || '—';
       case 'ref_cmd':
@@ -715,8 +715,8 @@ const Stock = (() => {
           : `<td>${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`;
         h += `<td>${t.poids_unitaire_kg.toFixed(1)} <span style="color:#999;font-size:11px">(tot.&nbsp;${t.poids_total_kg.toFixed(1)})</span></td>`;
         h += modif
-          ? `<td class="cell-editable" data-field="lieu">${_e(t.lieu_stockage)} <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(t.lieu_stockage)}')" title="Voir sur le plan">📍</button></td>`
-          : `<td>${_e(t.lieu_stockage)} <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(t.lieu_stockage)}')" title="Voir sur le plan">📍</button></td>`;
+          ? `<td class="cell-editable" data-field="lieu">${t.lieu_stockage ? `<span class="chip-lieu">${_e(t.lieu_stockage)}</span>` : '—'}</td>`
+          : `<td>${t.lieu_stockage ? `<span class="chip-lieu">${_e(t.lieu_stockage)}</span>` : '—'}</td>`;
         h += `<td>${dateAjout}</td>`;
         h += `<td>${_e(t.chantier_origine)}${t.chantier_affectation
           ? ` <span class="chip-chantier" title="Affecté à : ${_e(t.chantier_affectation)}">→ ${_e(t.chantier_affectation)}</span>`
@@ -2360,7 +2360,7 @@ const Stock = (() => {
       ctrl.className = 'cell-inline-input';
       if (field === 'lieu') {
         ctrl.innerHTML = '<option value="">— Choisir —</option>'
-          + LIEUX.map(l => `<option value="${_e(l)}"${item.lieu_stockage === l ? ' selected' : ''}>${_e(l)}</option>`).join('');
+          + _lieux.map(l => `<option value="${_e(l)}"${item.lieu_stockage === l ? ' selected' : ''}>${_e(l)}</option>`).join('');
       } else {
         ctrl.innerHTML = `
           <option value="disponible"${item.disponibilite === 'disponible' ? ' selected' : ''}>Disponible</option>
