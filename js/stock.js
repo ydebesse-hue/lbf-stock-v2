@@ -77,11 +77,12 @@ const Stock = (() => {
 
   let _data      = null;        // données fusionnées (stock.json + localStorage)
   let _sections  = null;        // données de sections.json (pour les modales)
-  let _onglet        = 'synthese';   // onglet actif
-  let _synTab        = 'profils';    // sous-onglet actif dans Synthèse
-  let _synProfilsTous = false;       // false = disponibles seulement, true = dispo + affectés
-  let _lieux     = [...LIEUX_DEFAUT]; // chargés depuis Supabase
-  let _chantiers = [];                // { id, nom, reference } chargés depuis Supabase
+  let _onglet        = 'synthese';
+  let _synTab        = 'profils';
+  let _synProfilsTous = false;
+  let _racks     = [];  // { id, nom, nb_allees, nb_etages } depuis Supabase
+  let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
+  let _chantiers = [];  // { id, nom, reference } depuis Supabase
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
@@ -149,8 +150,9 @@ const Stock = (() => {
 
       // Charger les référentiels administrables
       try {
-        const rows = await window.SB.lire('lieux_stockage', { order: 'ordre' });
-        if (rows.length) _lieux = rows.filter(l => l.actif).map(l => l.nom);
+        const rows = await window.SB.lire('racks', { order: 'created_at' });
+        _racks = rows.filter(r => r.actif);
+        if (_racks.length) _lieux = _majLieux();
       } catch(e) { /* garde LIEUX_DEFAUT */ }
       try {
         const rows = await window.SB.lire('chantiers', { order: 'nom' });
@@ -734,6 +736,23 @@ const Stock = (() => {
   /* ──────────────────────────────────────────────────────────────
      HELPERS CALCUL
      ────────────────────────────────────────────────────────────── */
+
+  /** Génère tous les emplacements d'un rack (ex. "Rack 1 - B4") */
+  function _lieuxDuRack(rack) {
+    const lieux = [];
+    for (let a = 0; a < rack.nb_allees; a++) {
+      for (let e = 1; e <= rack.nb_etages; e++) {
+        lieux.push(`${rack.nom} - ${String.fromCharCode(65 + a)}${e}`);
+      }
+    }
+    return lieux;
+  }
+
+  /** Recalcule _lieux depuis _racks et retourne le tableau */
+  function _majLieux() {
+    const liste = _racks.flatMap(r => _lieuxDuRack(r));
+    return liste.length ? liste : [...LIEUX_DEFAUT];
+  }
 
   /** Poids effectif d'un profilé — poids_barre_kg prioritaire, sinon poids_ml × longueur,
    *  sinon lookup catalogue sections.json × longueur */
@@ -1674,7 +1693,8 @@ const Stock = (() => {
       if (btnConfirmer) btnConfirmer.addEventListener('click', _confirmerImport);
     }
 
-    _attacherAdminRef();
+    _attacherAdminStockage();
+    _attacherAdminChantiers();
   }
 
 
@@ -4123,104 +4143,165 @@ const Stock = (() => {
 
 
   /* ──────────────────────────────────────────────────────────────
-     ADMIN RÉFÉRENTIELS
+     ADMIN STOCKAGE
      ────────────────────────────────────────────────────────────── */
 
-  async function ouvrirAdminRef() {
-    _ouvrirModale('m-admin-ref');
-    _rendreListe('admin-lieux',     _lieux.map(n => ({ nom: n })), false);
-    _rendreListe('admin-chantiers', _chantiers, true);
+  function ouvrirAdminStockage() {
+    _ouvrirModale('m-admin-stockage');
+    _rendreRacks();
   }
 
-  function _rendreListe(zoneId, items, avecRef) {
-    const zone = document.getElementById(zoneId);
+  function _rendreRacks() {
+    const zone = document.getElementById('admin-racks-liste');
     if (!zone) return;
-    if (!items.length) {
-      zone.innerHTML = '<div class="admin-ref-vide">Aucune entrée</div>';
+    if (!_racks.length) {
+      zone.innerHTML = '<div class="admin-ref-vide">Aucun rack configuré</div>';
       return;
     }
-    zone.innerHTML = items.map(item => `
-      <div class="admin-ref-item" data-id="${_e(item.id || '')}">
-        <span class="admin-ref-nom">${_e(item.nom)}${avecRef && item.reference ? ` <small>${_e(item.reference)}</small>` : ''}</span>
-        <button class="admin-ref-del" data-type="${avecRef ? 'chantier' : 'lieu'}"
-                data-id="${_e(item.id || '')}" data-nom="${_e(item.nom)}"
-                title="Supprimer">✕</button>
+    zone.innerHTML = `
+      <table class="admin-rack-table">
+        <thead><tr>
+          <th>Rack</th><th>Allées</th><th>Étages</th><th>Emplacements</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${_racks.map(r => {
+            const nb = r.nb_allees * r.nb_etages;
+            const dernAllee = String.fromCharCode(65 + r.nb_allees - 1);
+            return `<tr>
+              <td><strong>${_e(r.nom)}</strong></td>
+              <td>A – ${_e(dernAllee)} (${r.nb_allees})</td>
+              <td>1 – ${r.nb_etages}</td>
+              <td style="color:#888;font-size:12px">${nb} emplacement${nb > 1 ? 's' : ''}</td>
+              <td><button class="admin-ref-del" data-rack-id="${_e(r.id)}" data-nom="${_e(r.nom)}" title="Supprimer">✕</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function _aperçuRack(nom, nbAllees, nbEtages) {
+    if (!nom || !nbAllees || !nbEtages) return '';
+    const ex = [];
+    outer: for (let a = 0; a < nbAllees; a++) {
+      for (let e = 1; e <= nbEtages; e++) {
+        ex.push(`${nom} - ${String.fromCharCode(65 + a)}${e}`);
+        if (ex.length >= 4) break outer;
+      }
+    }
+    const total = nbAllees * nbEtages;
+    return ex.join(', ') + (total > 4 ? ` … (${total} au total)` : '');
+  }
+
+  function _majAperçuRack() {
+    const m   = document.getElementById('m-admin-stockage');
+    const nom = m?.querySelector('#admin-rack-nom')?.value?.trim() || '';
+    const na  = parseInt(m?.querySelector('#admin-rack-allees')?.value) || 0;
+    const ne  = parseInt(m?.querySelector('#admin-rack-etages')?.value) || 0;
+    const el  = m?.querySelector('#admin-rack-apercu');
+    if (el) el.textContent = _aperçuRack(nom, na, ne);
+  }
+
+  async function _adminAjouterRack() {
+    const m   = document.getElementById('m-admin-stockage');
+    const nom = m?.querySelector('#admin-rack-nom')?.value?.trim();
+    const na  = parseInt(m?.querySelector('#admin-rack-allees')?.value);
+    const ne  = parseInt(m?.querySelector('#admin-rack-etages')?.value);
+    if (!nom) return;
+    if (!na || na < 1 || na > 26) return _notif('Allées : entre 1 et 26', 'alerte');
+    if (!ne || ne < 1)            return _notif('Étages : minimum 1', 'alerte');
+    try {
+      await window.SB.inserer('racks', { nom, nb_allees: na, nb_etages: ne, actif: true });
+      const rows = await window.SB.lire('racks', { order: 'created_at' });
+      _racks = rows.filter(r => r.actif);
+      _lieux = _majLieux();
+      _rendreRacks();
+      if (m) { m.querySelector('#admin-rack-nom').value = ''; m.querySelector('#admin-rack-allees').value = ''; m.querySelector('#admin-rack-etages').value = ''; m.querySelector('#admin-rack-apercu').textContent = ''; }
+      _notif(`${nom} ajouté (${na * ne} emplacements)`, 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  async function _adminSupprimerRack(id, nom) {
+    try {
+      await window.SB.supprimer('racks', id);
+      const rows = await window.SB.lire('racks', { order: 'created_at' });
+      _racks = rows.filter(r => r.actif);
+      _lieux = _majLieux();
+      _rendreRacks();
+      _notif(`"${nom}" supprimé`, 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  function _attacherAdminStockage() {
+    const m = document.getElementById('m-admin-stockage');
+    if (!m) return;
+    m.addEventListener('click', e => {
+      const del = e.target.closest('.admin-ref-del[data-rack-id]');
+      if (del) _adminSupprimerRack(del.dataset.rackId, del.dataset.nom);
+    });
+    m.querySelector('#admin-rack-nom')?.addEventListener('input', _majAperçuRack);
+    m.querySelector('#admin-rack-allees')?.addEventListener('input', _majAperçuRack);
+    m.querySelector('#admin-rack-etages')?.addEventListener('input', _majAperçuRack);
+    m.querySelector('#admin-btn-rack')?.addEventListener('click', _adminAjouterRack);
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     ADMIN CHANTIERS
+     ────────────────────────────────────────────────────────────── */
+
+  function ouvrirAdminChantiers() {
+    _ouvrirModale('m-admin-chantiers');
+    _rendreChantiers();
+  }
+
+  function _rendreChantiers() {
+    const zone = document.getElementById('admin-chantiers-liste');
+    if (!zone) return;
+    if (!_chantiers.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun chantier</div>'; return; }
+    zone.innerHTML = _chantiers.map(c => `
+      <div class="admin-ref-item">
+        <span class="admin-ref-nom">${_e(c.nom)}${c.reference ? ` <small>${_e(c.reference)}</small>` : ''}</span>
+        <button class="admin-ref-del" data-ch-id="${_e(c.id)}" data-nom="${_e(c.nom)}" title="Supprimer">✕</button>
       </div>`).join('');
   }
 
-  async function _adminAjouter(type, nom, ref) {
-    nom = nom.trim();
+  async function _adminAjouterChantier() {
+    const m   = document.getElementById('m-admin-chantiers');
+    const nom = m?.querySelector('#admin-ch-nom')?.value?.trim();
+    const ref = m?.querySelector('#admin-ch-ref')?.value?.trim();
     if (!nom) return;
     try {
-      if (type === 'lieu') {
-        const ordre = _lieux.length + 1;
-        await window.SB.inserer('lieux_stockage', { nom, ordre, actif: true });
-        const rows = await window.SB.lire('lieux_stockage', { order: 'ordre' });
-        _lieux = rows.filter(l => l.actif).map(l => l.nom);
-        _rendreListe('admin-lieux', _lieux.map(n => ({ nom: n })), false);
-      } else {
-        const row = await window.SB.inserer('chantiers', { nom, reference: ref || null, actif: true });
-        const rows = await window.SB.lire('chantiers', { order: 'nom' });
-        _chantiers = rows.filter(c => c.actif);
-        _rendreListe('admin-chantiers', _chantiers, true);
-      }
+      await window.SB.inserer('chantiers', { nom, reference: ref || null, actif: true });
+      const rows = await window.SB.lire('chantiers', { order: 'nom' });
+      _chantiers = rows.filter(c => c.actif);
+      _rendreChantiers();
       _majDatalistChantiers();
-      _notif('Entrée ajoutée', 'succes');
-    } catch(e) {
-      _notif('Erreur : ' + e.message, 'alerte');
-    }
+      if (m) { m.querySelector('#admin-ch-nom').value = ''; m.querySelector('#admin-ch-ref').value = ''; }
+      _notif('Chantier ajouté', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 
-  async function _adminSupprimer(type, id, nom) {
+  async function _adminSupprimerChantier(id, nom) {
     try {
-      if (type === 'lieu') {
-        await window.SB.supprimer('lieux_stockage', id);
-        const rows = await window.SB.lire('lieux_stockage', { order: 'ordre' });
-        _lieux = rows.filter(l => l.actif).map(l => l.nom);
-        if (!_lieux.length) _lieux = [...LIEUX_DEFAUT];
-        _rendreListe('admin-lieux', _lieux.map(n => ({ nom: n })), false);
-      } else {
-        await window.SB.supprimer('chantiers', id);
-        const rows = await window.SB.lire('chantiers', { order: 'nom' });
-        _chantiers = rows.filter(c => c.actif);
-        _rendreListe('admin-chantiers', _chantiers, true);
-      }
+      await window.SB.supprimer('chantiers', id);
+      const rows = await window.SB.lire('chantiers', { order: 'nom' });
+      _chantiers = rows.filter(c => c.actif);
+      _rendreChantiers();
       _majDatalistChantiers();
       _notif(`"${nom}" supprimé`, 'succes');
-    } catch(e) {
-      _notif('Erreur : ' + e.message, 'alerte');
-    }
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 
-  function _attacherAdminRef() {
-    const m = document.getElementById('m-admin-ref');
+  function _attacherAdminChantiers() {
+    const m = document.getElementById('m-admin-chantiers');
     if (!m) return;
-
-    // Délégation suppression
     m.addEventListener('click', e => {
-      const btn = e.target.closest('.admin-ref-del');
-      if (!btn) return;
-      _adminSupprimer(btn.dataset.type, btn.dataset.id, btn.dataset.nom);
+      const del = e.target.closest('.admin-ref-del[data-ch-id]');
+      if (del) _adminSupprimerChantier(del.dataset.chId, del.dataset.nom);
     });
-
-    // Ajout lieu
-    const inpLieu = m.querySelector('#admin-inp-lieu');
-    m.querySelector('#admin-btn-lieu')?.addEventListener('click', () => {
-      _adminAjouter('lieu', inpLieu?.value || '');
-      if (inpLieu) inpLieu.value = '';
-    });
-    inpLieu?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); _adminAjouter('lieu', inpLieu.value); inpLieu.value = ''; }
-    });
-
-    // Ajout chantier
-    const inpNom = m.querySelector('#admin-inp-chantier-nom');
-    const inpRef = m.querySelector('#admin-inp-chantier-ref');
-    m.querySelector('#admin-btn-chantier')?.addEventListener('click', () => {
-      _adminAjouter('chantier', inpNom?.value || '', inpRef?.value || '');
-      if (inpNom) inpNom.value = '';
-      if (inpRef) inpRef.value = '';
-    });
+    const inpNom = m.querySelector('#admin-ch-nom');
+    const inpRef = m.querySelector('#admin-ch-ref');
+    m.querySelector('#admin-btn-chantier')?.addEventListener('click', _adminAjouterChantier);
+    inpNom?.addEventListener('keydown', e => { if (e.key === 'Enter') _adminAjouterChantier(); });
   }
 
   /* ──────────────────────────────────────────────────────────────
@@ -4236,7 +4317,8 @@ const Stock = (() => {
     refuserElement,
     getSelection,
     ouvrirHistoriqueBarre,
-    ouvrirAdminRef,
+    ouvrirAdminStockage,
+    ouvrirAdminChantiers,
     exporterCSV: _exporterCSV,
     ouvrirImport: _ouvrirImport,
   };

@@ -588,6 +588,24 @@
     }
     .admin-ref-inp:focus { outline: none; border-color: var(--vert); }
     .admin-ref-vide { color: #aaa; font-size: 12px; padding: 8px 0; }
+
+    /* ── Admin racks ─────────────────────────────────────────────── */
+    .admin-rack-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .admin-rack-table th {
+      text-align: left; padding: 6px 10px; font-size: 11px; font-weight: bold;
+      color: #555; text-transform: uppercase; letter-spacing: .4px;
+      border-bottom: 1px solid var(--gris-clair);
+    }
+    .admin-rack-table td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    .admin-rack-table tr:last-child td { border-bottom: none; }
+    .admin-rack-table tr:hover td { background: #fafafa; }
+    .admin-rack-apercu {
+      font-size: 11px; color: #777; margin-top: 4px; min-height: 16px; font-style: italic;
+    }
+    .admin-rack-form {
+      display: grid; grid-template-columns: 1fr 80px 80px auto; gap: 8px; align-items: end; margin-top: 14px;
+    }
+    .admin-rack-form label { font-size: 11px; color: #555; font-weight: bold; display: block; margin-bottom: 3px; }
     .btn-modale-supprimer {
       background: none;
       border: 1px solid #ccc;
@@ -1292,8 +1310,11 @@
     <button id="btn-importer" class="btn-admin" title="Restaurer le stock depuis un fichier CSV">
       ⬆ Importer CSV
     </button>
-    <button class="btn-admin" onclick="Stock.ouvrirAdminRef()" title="Gérer les lieux de stockage et chantiers">
-      ⚙ Référentiels
+    <button class="btn-admin" onclick="Stock.ouvrirAdminStockage()" title="Gérer les racks et zones de stockage">
+      📦 Stockage
+    </button>
+    <button class="btn-admin" onclick="Stock.ouvrirAdminChantiers()" title="Gérer la liste des chantiers">
+      🏗 Chantiers
     </button>
   </div>
 
@@ -2165,37 +2186,60 @@
   <!-- ══════════════════════════════════════════════════════════════
        MODALE IMPORT CSV (admin)
        ══════════════════════════════════════════════════════════════ -->
-  <!-- ── Modale référentiels admin ──────────────────────────────── -->
-  <div id="m-admin-ref" class="modale-bg" role="dialog" aria-modal="true" aria-label="Référentiels">
+  <!-- ── Modale admin stockage (racks) ─────────────────────────── -->
+  <div id="m-admin-stockage" class="modale-bg" role="dialog" aria-modal="true" aria-label="Zones de stockage">
     <div class="modale modale-lg">
-      <div class="modale-titre">⚙ Référentiels</div>
-      <div class="admin-ref-cols">
+      <div class="modale-titre">📦 Zones de stockage</div>
 
-        <!-- Lieux de stockage -->
-        <div class="admin-ref-col">
-          <div class="admin-ref-section-titre">Lieux de stockage</div>
-          <div id="admin-lieux" class="admin-ref-liste"></div>
-          <div class="admin-ref-form">
-            <input id="admin-inp-lieu" type="text" placeholder="Nouveau lieu…" class="admin-ref-inp">
-            <button id="admin-btn-lieu" class="btn-modale btn-modale-vert">+ Ajouter</button>
-          </div>
+      <div id="admin-racks-liste" class="admin-ref-liste" style="max-height:300px"></div>
+
+      <div class="admin-ref-section-titre" style="margin-top:16px">Ajouter un rack</div>
+      <div class="admin-rack-form">
+        <div>
+          <label for="admin-rack-nom">Nom du rack</label>
+          <input id="admin-rack-nom" type="text" placeholder="ex. Rack 1" class="admin-ref-inp">
         </div>
-
-        <!-- Chantiers -->
-        <div class="admin-ref-col">
-          <div class="admin-ref-section-titre">Chantiers</div>
-          <div id="admin-chantiers" class="admin-ref-liste"></div>
-          <div class="admin-ref-form" style="flex-direction:column;gap:6px">
-            <input id="admin-inp-chantier-nom" type="text" placeholder="Nom du chantier…" class="admin-ref-inp">
-            <input id="admin-inp-chantier-ref" type="text" placeholder="Référence (optionnel)" class="admin-ref-inp">
-            <button id="admin-btn-chantier" class="btn-modale btn-modale-vert">+ Ajouter</button>
-          </div>
+        <div>
+          <label for="admin-rack-allees">Allées</label>
+          <input id="admin-rack-allees" type="number" min="1" max="26" placeholder="5" class="admin-ref-inp">
         </div>
-
+        <div>
+          <label for="admin-rack-etages">Étages</label>
+          <input id="admin-rack-etages" type="number" min="1" placeholder="4" class="admin-ref-inp">
+        </div>
+        <div>
+          <label style="visibility:hidden">_</label>
+          <button id="admin-btn-rack" class="btn-modale btn-modale-vert">+ Ajouter</button>
+        </div>
       </div>
+      <div id="admin-rack-apercu" class="admin-rack-apercu"></div>
+
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris"
-                onclick="document.getElementById('m-admin-ref').classList.remove('open')">
+                onclick="document.getElementById('m-admin-stockage').classList.remove('open')">
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modale admin chantiers ──────────────────────────────────── -->
+  <div id="m-admin-chantiers" class="modale-bg" role="dialog" aria-modal="true" aria-label="Chantiers">
+    <div class="modale">
+      <div class="modale-titre">🏗 Chantiers</div>
+
+      <div id="admin-chantiers-liste" class="admin-ref-liste"></div>
+
+      <div class="admin-ref-section-titre" style="margin-top:16px">Ajouter un chantier</div>
+      <div class="admin-ref-form" style="flex-direction:column;gap:6px">
+        <input id="admin-ch-nom" type="text" placeholder="Nom du chantier…" class="admin-ref-inp">
+        <input id="admin-ch-ref" type="text" placeholder="Référence (optionnel)" class="admin-ref-inp">
+        <button id="admin-btn-chantier" class="btn-modale btn-modale-vert" style="align-self:flex-start">+ Ajouter</button>
+      </div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris"
+                onclick="document.getElementById('m-admin-chantiers').classList.remove('open')">
           Fermer
         </button>
       </div>
@@ -2243,7 +2287,7 @@
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
-  <script src="../js/stock.js?v=20260430"></script>
+  <script src="../js/stock.js?v=20260501"></script>
 
 </body>
 </html>

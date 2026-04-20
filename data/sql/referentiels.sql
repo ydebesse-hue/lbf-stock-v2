@@ -3,29 +3,24 @@
 --  À exécuter dans l'éditeur SQL Supabase
 -- ════════════════════════════════════════════════════════════════
 
--- ── Lieux de stockage ────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lieux_stockage (
+-- ── Racks (remplace lieux_stockage) ─────────────────────────────
+-- Chaque rack génère des emplacements : Rack 1 - A1, Rack 1 - B4, etc.
+CREATE TABLE IF NOT EXISTS racks (
   id         uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
   nom        text        NOT NULL,
-  ordre      integer     NOT NULL DEFAULT 0,
+  nb_allees  integer     NOT NULL DEFAULT 1,   -- nombre de colonnes (A, B, C…)
+  nb_etages  integer     NOT NULL DEFAULT 1,   -- nombre de niveaux  (1, 2, 3…)
   actif      boolean     NOT NULL DEFAULT true,
   created_at timestamptz DEFAULT now()
 );
 
-ALTER TABLE lieux_stockage ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "acces_anon_lieux" ON lieux_stockage;
-CREATE POLICY "acces_anon_lieux" ON lieux_stockage
+ALTER TABLE racks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "acces_anon_racks" ON racks;
+CREATE POLICY "acces_anon_racks" ON racks
   FOR ALL TO anon USING (true) WITH CHECK (true);
 
--- Données initiales (ignorées si déjà présentes)
-INSERT INTO lieux_stockage (nom, ordre) VALUES
-  ('Rack 1',    1),
-  ('Rack 2',    2),
-  ('Rack 3',    3),
-  ('Rack 4',    4),
-  ('Extérieur', 5),
-  ('Autre',     6)
-ON CONFLICT DO NOTHING;
+-- Supprimer l'ancienne table si elle existe
+DROP TABLE IF EXISTS lieux_stockage;
 
 -- ── Chantiers ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS chantiers (
