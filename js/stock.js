@@ -77,6 +77,8 @@ const Stock = (() => {
 
   let _data      = null;        // données fusionnées (stock.json + localStorage)
   let _sections  = null;        // données de sections.json (pour les modales)
+  let _sectionActive = 'stock';  // 'stock' | 'admin'
+  let _ongletAdmin   = 'stockage';
   let _onglet        = 'synthese';
   let _synTab        = 'profils';
   let _synProfilsTous = false;
@@ -1695,6 +1697,7 @@ const Stock = (() => {
 
     _attacherAdminStockage();
     _attacherAdminChantiers();
+    _attacherNavAdmin();
   }
 
 
@@ -4220,12 +4223,73 @@ const Stock = (() => {
 
 
   /* ──────────────────────────────────────────────────────────────
+     NAVIGATION STOCK ↔ ADMINISTRATION
+     ────────────────────────────────────────────────────────────── */
+
+  function _activerSectionAdmin(onglet = _ongletAdmin) {
+    _ongletAdmin = onglet;
+    _sectionActive = 'admin';
+
+    document.getElementById('section-stock')?.style.setProperty('display', 'none');
+    document.getElementById('section-admin')?.style.setProperty('display', 'block');
+
+    // Activer nav-admin
+    document.querySelectorAll('.nav-item').forEach(a => a.classList.remove('actif'));
+    document.getElementById('nav-admin')?.classList.add('actif');
+
+    // Activer sous-onglet admin
+    _activerOngletAdmin(onglet);
+  }
+
+  function _activerSectionStock() {
+    _sectionActive = 'stock';
+    document.getElementById('section-stock')?.style.setProperty('display', 'block');
+    document.getElementById('section-admin')?.style.setProperty('display', 'none');
+
+    document.querySelectorAll('.nav-item').forEach(a => a.classList.remove('actif'));
+    document.querySelector('.nav-item[href="stock.html"]')?.classList.add('actif');
+  }
+
+  function _activerOngletAdmin(onglet) {
+    _ongletAdmin = onglet;
+    document.querySelectorAll('#section-admin .sous-onglet').forEach(btn => {
+      btn.classList.toggle('actif', btn.dataset.adminOnglet === onglet);
+    });
+    document.querySelectorAll('.admin-panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById(`admin-panel-${onglet}`);
+    if (panel) panel.style.display = 'block';
+
+    if (onglet === 'stockage')  _rendreRacks();
+    if (onglet === 'chantiers') _rendreChantiers();
+    if (onglet === 'comptes')   { window.location.href = 'comptes.html'; }
+  }
+
+  function _attacherNavAdmin() {
+    const navAdmin = document.getElementById('nav-admin');
+    if (navAdmin) {
+      navAdmin.addEventListener('click', e => {
+        e.preventDefault();
+        _activerSectionAdmin();
+      });
+    }
+    const navStock = document.querySelector('.nav-item[href="stock.html"]');
+    if (navStock) {
+      navStock.addEventListener('click', e => {
+        e.preventDefault();
+        _activerSectionStock();
+      });
+    }
+    document.querySelectorAll('#section-admin .sous-onglet').forEach(btn => {
+      btn.addEventListener('click', () => _activerOngletAdmin(btn.dataset.adminOnglet));
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────
      ADMIN STOCKAGE
      ────────────────────────────────────────────────────────────── */
 
   function ouvrirAdminStockage() {
-    _ouvrirModale('m-admin-stockage');
-    _rendreRacks();
+    _activerSectionAdmin('stockage');
   }
 
   function _rendreRacks() {
@@ -4270,7 +4334,7 @@ const Stock = (() => {
   }
 
   function _majAperçuRack() {
-    const m   = document.getElementById('m-admin-stockage');
+    const m   = document.getElementById('admin-panel-stockage');
     const nom = m?.querySelector('#admin-rack-nom')?.value?.trim() || '';
     const na  = parseInt(m?.querySelector('#admin-rack-allees')?.value) || 0;
     const ne  = parseInt(m?.querySelector('#admin-rack-etages')?.value) || 0;
@@ -4279,7 +4343,7 @@ const Stock = (() => {
   }
 
   async function _adminAjouterRack() {
-    const m   = document.getElementById('m-admin-stockage');
+    const m   = document.getElementById('admin-panel-stockage');
     const nom = m?.querySelector('#admin-rack-nom')?.value?.trim();
     const na  = parseInt(m?.querySelector('#admin-rack-allees')?.value);
     const ne  = parseInt(m?.querySelector('#admin-rack-etages')?.value);
@@ -4309,7 +4373,7 @@ const Stock = (() => {
   }
 
   function _attacherAdminStockage() {
-    const m = document.getElementById('m-admin-stockage');
+    const m = document.getElementById('admin-panel-stockage');
     if (!m) return;
     m.addEventListener('click', e => {
       const del = e.target.closest('.admin-ref-del[data-rack-id]');
@@ -4326,8 +4390,7 @@ const Stock = (() => {
      ────────────────────────────────────────────────────────────── */
 
   function ouvrirAdminChantiers() {
-    _ouvrirModale('m-admin-chantiers');
-    _rendreChantiers();
+    _activerSectionAdmin('chantiers');
   }
 
   function _rendreChantiers() {
@@ -4342,7 +4405,7 @@ const Stock = (() => {
   }
 
   async function _adminAjouterChantier() {
-    const m   = document.getElementById('m-admin-chantiers');
+    const m   = document.getElementById('admin-panel-chantiers');
     const nom = m?.querySelector('#admin-ch-nom')?.value?.trim();
     const ref = m?.querySelector('#admin-ch-ref')?.value?.trim();
     if (!nom) return;
@@ -4369,7 +4432,7 @@ const Stock = (() => {
   }
 
   function _attacherAdminChantiers() {
-    const m = document.getElementById('m-admin-chantiers');
+    const m = document.getElementById('admin-panel-chantiers');
     if (!m) return;
     m.addEventListener('click', e => {
       const del = e.target.closest('.admin-ref-del[data-ch-id]');

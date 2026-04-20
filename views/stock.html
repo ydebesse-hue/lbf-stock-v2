@@ -614,6 +614,15 @@
     .admin-ref-inp:focus { outline: none; border-color: var(--vert); }
     .admin-ref-vide { color: #aaa; font-size: 12px; padding: 8px 0; }
 
+    /* ── Section administration ──────────────────────────────────── */
+    .admin-panel-zone { padding: 24px 28px; max-width: 860px; }
+    .admin-panel-titre {
+      font-size: 15px; font-weight: bold; color: var(--noir);
+      margin-bottom: 8px; padding-bottom: 8px;
+      border-bottom: 2px solid var(--gris-clair);
+    }
+    .admin-panel-desc { color: #666; font-size: 13px; margin-bottom: 18px; line-height: 1.5; }
+
     /* ── Admin racks ─────────────────────────────────────────────── */
     .admin-rack-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .admin-rack-table th {
@@ -1316,35 +1325,21 @@
     <a class="nav-item" href="bibliotheque.html">
       <span>📚</span> Bibliothèque
     </a>
-    <a class="nav-item nav-item-droite" href="comptes.html" data-require="can_manage_users">
-      <span>⚙</span> Comptes
+    <a class="nav-item" id="nav-admin" href="#" data-require="can_validate">
+      <span>⚙</span> Administration
     </a>
   </nav>
+
+  <!-- Datalist chantiers (partagé par tous les inputs chantier) -->
+  <datalist id="dl-chantiers"></datalist>
+
+  <!-- ══ SECTION STOCK ════════════════════════════════════════════ -->
+  <div id="section-stock">
 
   <!-- Alerte admin : éléments en attente -->
   <div id="stock-alerte-attente" class="alerte-attente" role="alert">
     ⚠&nbsp; <span class="alerte-nb">0</span>&nbsp; élément(s) en attente de validation
   </div>
-
-  <!-- Barre outils admin (export / import) -->
-  <div class="barre-admin" data-require="can_validate">
-    <span class="barre-admin-label">Admin :</span>
-    <button id="btn-exporter" class="btn-admin" title="Télécharger le stock au format CSV (Excel)">
-      ⬇ Exporter CSV
-    </button>
-    <button id="btn-importer" class="btn-admin" title="Restaurer le stock depuis un fichier CSV">
-      ⬆ Importer CSV
-    </button>
-    <button class="btn-admin" onclick="Stock.ouvrirAdminStockage()" title="Gérer les racks et zones de stockage">
-      📦 Stockage
-    </button>
-    <button class="btn-admin" onclick="Stock.ouvrirAdminChantiers()" title="Gérer la liste des chantiers">
-      🏗 Chantiers
-    </button>
-  </div>
-
-  <!-- Datalist chantiers (partagé par tous les inputs chantier) -->
-  <datalist id="dl-chantiers"></datalist>
 
   <!-- ── SOUS-ONGLETS ─────────────────────────────────────────── -->
   <div class="sous-onglets">
@@ -1445,6 +1440,83 @@
     </div>
     <div id="zone-synthese"></div>
   </div>
+
+  </div><!-- fin #section-stock -->
+
+  <!-- ══ SECTION ADMINISTRATION ══════════════════════════════════ -->
+  <div id="section-admin" style="display:none" data-require="can_validate">
+    <div class="sous-onglets">
+      <button class="sous-onglet actif" data-admin-onglet="stockage">📦 Stockage</button>
+      <button class="sous-onglet"       data-admin-onglet="chantiers">🏗 Chantiers</button>
+      <button class="sous-onglet"       data-admin-onglet="export">⬇ Export</button>
+      <button class="sous-onglet"       data-admin-onglet="import">⬆ Import</button>
+      <button class="sous-onglet"       data-admin-onglet="comptes">👤 Comptes</button>
+    </div>
+    <div class="admin-panel-zone">
+
+      <!-- Stockage -->
+      <div id="admin-panel-stockage" class="admin-panel">
+        <h3 class="admin-panel-titre">Zones de stockage</h3>
+        <div id="admin-racks-liste" class="admin-ref-liste" style="max-height:380px"></div>
+        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un rack</div>
+        <div class="admin-rack-form">
+          <div>
+            <label for="admin-rack-nom">Nom du rack</label>
+            <input id="admin-rack-nom" type="text" placeholder="ex. Rack 1" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-rack-allees">Allées</label>
+            <input id="admin-rack-allees" type="number" min="1" max="26" placeholder="5" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-rack-etages">Étages</label>
+            <input id="admin-rack-etages" type="number" min="1" placeholder="4" class="admin-ref-inp">
+          </div>
+          <div>
+            <label style="visibility:hidden">_</label>
+            <button id="admin-btn-rack" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
+        </div>
+        <div id="admin-rack-apercu" class="admin-rack-apercu"></div>
+      </div>
+
+      <!-- Chantiers -->
+      <div id="admin-panel-chantiers" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Chantiers</h3>
+        <div id="admin-chantiers-liste" class="admin-ref-liste" style="max-height:380px"></div>
+        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un chantier</div>
+        <div class="admin-ref-form" style="flex-direction:column;gap:6px;max-width:440px">
+          <input id="admin-ch-nom" type="text" placeholder="Nom du chantier…" class="admin-ref-inp">
+          <input id="admin-ch-ref" type="text" placeholder="Référence (optionnel)" class="admin-ref-inp">
+          <button id="admin-btn-chantier" class="btn-modale btn-modale-vert" style="align-self:flex-start">+ Ajouter</button>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div id="admin-panel-export" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Exporter le stock</h3>
+        <p class="admin-panel-desc">Télécharge l'intégralité du stock au format CSV (compatible Excel).</p>
+        <button id="btn-exporter" class="btn-action btn-rouge">⬇ Télécharger le stock CSV</button>
+      </div>
+
+      <!-- Import -->
+      <div id="admin-panel-import" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Importer un stock CSV</h3>
+        <p class="admin-panel-desc">Fusionner ou restaurer le stock depuis un fichier CSV exporté précédemment.</p>
+        <button id="btn-importer" class="btn-action btn-rouge">⬆ Ouvrir l'import CSV</button>
+      </div>
+
+      <!-- Comptes -->
+      <div id="admin-panel-comptes" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Gestion des comptes</h3>
+        <p class="admin-panel-desc">Gérer les utilisateurs, les rôles et les droits d'accès à l'application.</p>
+        <a href="comptes.html" class="btn-action btn-rouge" style="text-decoration:none;display:inline-block">
+          ⚙ Accéder à la gestion des comptes →
+        </a>
+      </div>
+
+    </div>
+  </div><!-- fin #section-admin -->
 
 
   <!-- ══════════════════════════════════════════════════════════════
@@ -2207,66 +2279,6 @@
   <!-- ══════════════════════════════════════════════════════════════
        MODALE IMPORT CSV (admin)
        ══════════════════════════════════════════════════════════════ -->
-  <!-- ── Modale admin stockage (racks) ─────────────────────────── -->
-  <div id="m-admin-stockage" class="modale-bg" role="dialog" aria-modal="true" aria-label="Zones de stockage">
-    <div class="modale modale-lg">
-      <div class="modale-titre">📦 Zones de stockage</div>
-
-      <div id="admin-racks-liste" class="admin-ref-liste" style="max-height:300px"></div>
-
-      <div class="admin-ref-section-titre" style="margin-top:16px">Ajouter un rack</div>
-      <div class="admin-rack-form">
-        <div>
-          <label for="admin-rack-nom">Nom du rack</label>
-          <input id="admin-rack-nom" type="text" placeholder="ex. Rack 1" class="admin-ref-inp">
-        </div>
-        <div>
-          <label for="admin-rack-allees">Allées</label>
-          <input id="admin-rack-allees" type="number" min="1" max="26" placeholder="5" class="admin-ref-inp">
-        </div>
-        <div>
-          <label for="admin-rack-etages">Étages</label>
-          <input id="admin-rack-etages" type="number" min="1" placeholder="4" class="admin-ref-inp">
-        </div>
-        <div>
-          <label style="visibility:hidden">_</label>
-          <button id="admin-btn-rack" class="btn-modale btn-modale-vert">+ Ajouter</button>
-        </div>
-      </div>
-      <div id="admin-rack-apercu" class="admin-rack-apercu"></div>
-
-      <div class="modale-footer">
-        <button class="btn-modale btn-modale-gris"
-                onclick="document.getElementById('m-admin-stockage').classList.remove('open')">
-          Fermer
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Modale admin chantiers ──────────────────────────────────── -->
-  <div id="m-admin-chantiers" class="modale-bg" role="dialog" aria-modal="true" aria-label="Chantiers">
-    <div class="modale">
-      <div class="modale-titre">🏗 Chantiers</div>
-
-      <div id="admin-chantiers-liste" class="admin-ref-liste"></div>
-
-      <div class="admin-ref-section-titre" style="margin-top:16px">Ajouter un chantier</div>
-      <div class="admin-ref-form" style="flex-direction:column;gap:6px">
-        <input id="admin-ch-nom" type="text" placeholder="Nom du chantier…" class="admin-ref-inp">
-        <input id="admin-ch-ref" type="text" placeholder="Référence (optionnel)" class="admin-ref-inp">
-        <button id="admin-btn-chantier" class="btn-modale btn-modale-vert" style="align-self:flex-start">+ Ajouter</button>
-      </div>
-
-      <div class="modale-footer">
-        <button class="btn-modale btn-modale-gris"
-                onclick="document.getElementById('m-admin-chantiers').classList.remove('open')">
-          Fermer
-        </button>
-      </div>
-    </div>
-  </div>
-
   <div id="m-import" class="modale-bg" role="dialog" aria-modal="true" aria-label="Import CSV">
     <div class="modale">
       <div class="modale-titre">Importer une sauvegarde CSV</div>
@@ -2308,7 +2320,7 @@
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
-  <script src="../js/stock.js?v=20260503"></script>
+  <script src="../js/stock.js?v=20260504"></script>
 
 </body>
 </html>
