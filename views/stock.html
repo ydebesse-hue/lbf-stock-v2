@@ -405,6 +405,18 @@
       font-weight: 500;
     }
 
+    /* ── Sélecteur lieu en cascade ───────────────────────────── */
+    .lieu-cascade { display: flex; gap: 4px; align-items: center; }
+    .lieu-sel {
+      flex: 1; min-width: 0; border: 1px solid var(--gris-bord); border-radius: 3px;
+      padding: 4px 6px; font-size: 12px; font-family: Tahoma; background: #fff;
+    }
+    .lieu-sel:focus { outline: none; border-color: var(--vert); }
+    .lieu-sel-rack  { flex: 2; }
+    .lieu-sel-allee { flex: 1; }
+    .lieu-sel-etage { flex: 1; }
+    .lieu-cascade-inline .lieu-sel { padding: 2px 4px; font-size: 12px; }
+
     /* ── BOUTONS LIGNE ────────────────────────────────────────── */
     .td-actions { white-space: nowrap; }
     .td-id { white-space: nowrap; }
@@ -1513,9 +1525,7 @@
           </div>
           <div class="fr">
             <label>Lieu de stockage</label>
-            <select id="ap-lieu">
-              <option value="">— Choisir —</option>
-            </select>
+            <div id="ap-lieu" class="lieu-cascade"></div>
           </div>
         </div>
 
@@ -1686,9 +1696,7 @@
         </div>
         <div class="fr">
           <label>Lieu de stockage</label>
-          <select id="at-lieu">
-            <option value="">— Choisir —</option>
-          </select>
+          <div id="at-lieu" class="lieu-cascade"></div>
         </div>
       </div>
 
@@ -1753,8 +1761,8 @@
             </div>
           </div>
           <div class="fr">
-            <label>Lieu de stockage (rack)</label>
-            <select id="mod-lieu"><option value="">— Choisir —</option></select>
+            <label>Lieu de stockage</label>
+            <div id="mod-lieu" class="lieu-cascade"></div>
           </div>
         </div>
 
@@ -1808,7 +1816,7 @@
           </div>
           <div class="fr">
             <label>Lieu de stockage</label>
-            <select id="mod-t-lieu"><option value="">— Choisir —</option></select>
+            <div id="mod-t-lieu" class="lieu-cascade"></div>
           </div>
         </div>
         <div class="form-cols2">
@@ -2300,7 +2308,7 @@
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
-  <script src="../js/stock.js?v=20260502"></script>
+  <script src="../js/stock.js?v=20260503"></script>
 
 </body>
 </html>

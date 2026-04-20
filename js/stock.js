@@ -1723,7 +1723,7 @@ const Stock = (() => {
 
     // Remplir les selects
     _remplirSelectType(m.querySelector('#ap-type'));
-    _remplirSelectLieux(m.querySelector('#ap-lieu'));
+    _monterSelecteurLieu(m.querySelector('#ap-lieu'));
 
     // Cacher le schéma et la zone ID
     const schema = m.querySelector('#ap-schema');
@@ -1927,7 +1927,7 @@ const Stock = (() => {
     const type        = m.querySelector('#ap-type')?.value?.trim();
     const desig       = m.querySelector('#ap-desig')?.value?.trim();
     const longueur    = parseFloat(m.querySelector('#ap-longueur')?.value);
-    const lieu        = m.querySelector('#ap-lieu')?.value?.trim();
+    const lieu        = _lireLieu(m.querySelector('#ap-lieu'));
     const classe      = m.querySelector('#ap-classe')?.value?.trim() || '';
     const commentaire = m.querySelector('#ap-commentaire')?.value?.trim() || '';
 
@@ -2016,7 +2016,7 @@ const Stock = (() => {
       const classe   = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
       const longueur = parseFloat(ligne.querySelector('.cmd-longueur')?.value);
       const qte      = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
-      const lieu     = ligne.querySelector('.cmd-lieu')?.value?.trim()  || '';
+      const lieu     = _lireLieu(ligne.querySelector('.cmd-lieu-csc'))  || '';
 
       const dims    = _getDims(type, desig);
       const poidsml = dims?.pml || 0;
@@ -2161,10 +2161,10 @@ const Stock = (() => {
     inpQte.type = 'number'; inpQte.className = 'cmd-qte';
     inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
 
-    // Select lieu
-    const selLieu = document.createElement('select');
-    selLieu.className = 'cmd-lieu';
-    _remplirSelectLieux(selLieu);
+    // Sélecteur lieu en cascade
+    const selLieu = document.createElement('span');
+    selLieu.className = 'cmd-lieu-csc lieu-cascade';
+    _monterSelecteurLieu(selLieu);
 
     // Bouton suppression
     const btnDel = document.createElement('button');
@@ -2233,7 +2233,7 @@ const Stock = (() => {
       else el.value = '';
     });
 
-    _remplirSelectLieux(m.querySelector('#at-lieu'));
+    _monterSelecteurLieu(m.querySelector('#at-lieu'));
     _majNoteStatut(m, '.at-note-statut');
     _atMajApercu(m); // reset aperçu
 
@@ -2284,7 +2284,7 @@ const Stock = (() => {
     const lng = parseFloat(m.querySelector('#at-longueur')?.value);
     const qty = parseInt(m.querySelector('#at-quantite')?.value) || 1;
     const chantier    = m.querySelector('#at-chantier')?.value?.trim();
-    const lieu        = m.querySelector('#at-lieu')?.value?.trim();
+    const lieu        = _lireLieu(m.querySelector('#at-lieu'));
     const dispo       = m.querySelector('#at-dispo')?.value || 'disponible';
     const commentaire = m.querySelector('#at-commentaire')?.value?.trim() || '';
 
@@ -2354,18 +2354,39 @@ const Stock = (() => {
     td.classList.add('editing');
     const originalHtml = td.innerHTML;
 
+    // ── Cas particulier : lieu (cascade Rack → Allée → Étage) ──────
+    if (field === 'lieu') {
+      const wrapper = document.createElement('span');
+      wrapper.className = 'lieu-cascade lieu-cascade-inline';
+      _monterSelecteurLieu(wrapper, item.lieu_stockage || '');
+
+      const annulerL = () => { td.innerHTML = originalHtml; td.classList.remove('editing'); };
+      let savedL = false;
+      const sauvegarderL = () => {
+        if (savedL) return; savedL = true;
+        td.classList.remove('editing');
+        _sauvegarderInline(id, field, _lireLieu(wrapper), item.categorie);
+      };
+
+      wrapper.querySelector('.lieu-sel-etage')?.addEventListener('change', sauvegarderL);
+      wrapper.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); sauvegarderL(); }
+        if (e.key === 'Escape') { e.preventDefault(); annulerL(); }
+      });
+
+      td.innerHTML = '';
+      td.appendChild(wrapper);
+      wrapper.querySelector('.lieu-sel-rack')?.focus();
+      return;
+    }
+
     let ctrl;
-    if (field === 'lieu' || field === 'dispo') {
+    if (field === 'dispo') {
       ctrl = document.createElement('select');
       ctrl.className = 'cell-inline-input';
-      if (field === 'lieu') {
-        ctrl.innerHTML = '<option value="">— Choisir —</option>'
-          + _lieux.map(l => `<option value="${_e(l)}"${item.lieu_stockage === l ? ' selected' : ''}>${_e(l)}</option>`).join('');
-      } else {
-        ctrl.innerHTML = `
+      ctrl.innerHTML = `
           <option value="disponible"${item.disponibilite === 'disponible' ? ' selected' : ''}>Disponible</option>
           <option value="affecte"${item.disponibilite === 'affecte' ? ' selected' : ''}>Affecté</option>`;
-      }
     } else {
       ctrl = document.createElement('input');
       ctrl.className = 'cell-inline-input';
@@ -2537,9 +2558,8 @@ const Stock = (() => {
     }
 
     // ── Champs éditables ──
-    _remplirSelectLieux(m.querySelector('#mod-lieu'));
+    _monterSelecteurLieu(m.querySelector('#mod-lieu'), barre.lieu_stockage || '');
     _setVal(m, '#mod-longueur',    barre.longueur_m);
-    _setVal(m, '#mod-lieu',        barre.lieu_stockage);
     _setVal(m, '#mod-dispo',       barre.disponibilite);
     _setVal(m, '#mod-affectation', barre.chantier_affectation || '');
     _setVal(m, '#mod-commentaire', barre.commentaire || '');
@@ -2568,14 +2588,13 @@ const Stock = (() => {
     if (zoneProfil) zoneProfil.style.display = 'none';
     if (zoneTole)   zoneTole.style.display   = 'block';
 
-    _remplirSelectLieux(m.querySelector('#mod-t-lieu'));
+    _monterSelecteurLieu(m.querySelector('#mod-t-lieu'), tole.lieu_stockage || '');
 
     _setVal(m, '#mod-t-epaisseur',  tole.epaisseur_mm);
     _setVal(m, '#mod-t-largeur',    tole.largeur_mm);
     _setVal(m, '#mod-t-longueur',   tole.longueur_mm);
     _setVal(m, '#mod-t-quantite',   tole.quantite);
     _setVal(m, '#mod-t-chantier',   tole.chantier_origine);
-    _setVal(m, '#mod-t-lieu',       tole.lieu_stockage);
     _setVal(m, '#mod-t-dispo',      tole.disponibilite);
     _setVal(m, '#mod-t-commentaire', tole.commentaire || '');
 
@@ -2601,7 +2620,7 @@ const Stock = (() => {
 
     if (categorie === 'profil') {
       const longueur    = parseFloat(m.querySelector('#mod-longueur')?.value);
-      const lieu        = m.querySelector('#mod-lieu')?.value?.trim();
+      const lieu        = _lireLieu(m.querySelector('#mod-lieu'));
       const dispo       = m.querySelector('#mod-dispo')?.value || 'disponible';
       const affectation = m.querySelector('#mod-affectation')?.value?.trim() || null;
       const commentaire = m.querySelector('#mod-commentaire')?.value?.trim() || '';
@@ -2649,7 +2668,7 @@ const Stock = (() => {
       const lng = parseFloat(m.querySelector('#mod-t-longueur')?.value);
       const qty = parseInt(m.querySelector('#mod-t-quantite')?.value) || 1;
       const chantier    = m.querySelector('#mod-t-chantier')?.value?.trim();
-      const lieu        = m.querySelector('#mod-t-lieu')?.value?.trim();
+      const lieu        = _lireLieu(m.querySelector('#mod-t-lieu'));
       const dispo       = m.querySelector('#mod-t-dispo')?.value || 'disponible';
       const commentaire = m.querySelector('#mod-t-commentaire')?.value?.trim() || '';
 
@@ -3510,10 +3529,68 @@ const Stock = (() => {
    * Remplit un select avec les lieux de stockage
    * @param {HTMLSelectElement} sel
    */
-  function _remplirSelectLieux(sel, valeur = '') {
-    if (!sel) return;
-    sel.innerHTML = '<option value="">— Choisir —</option>'
-      + _lieux.map(l => `<option value="${_e(l)}"${valeur === l ? ' selected' : ''}>${_e(l)}</option>`).join('');
+  /** Monte un sélecteur lieu en cascade (Rack → Allée → Étage) dans el.
+   *  valeur — ex. "Rack 1 - B4" pour pré-sélectionner */
+  function _monterSelecteurLieu(el, valeur = '') {
+    if (!el) return;
+    let nomRack = '', nomAllee = '', nomEtage = '';
+    if (valeur) {
+      const mt = valeur.match(/^(.+)\s*-\s*([A-Z])(\d+)$/);
+      if (mt) { nomRack = mt[1].trim(); nomAllee = mt[2]; nomEtage = mt[3]; }
+    }
+
+    const selRack = document.createElement('select');
+    selRack.className = 'lieu-sel lieu-sel-rack';
+    selRack.innerHTML = '<option value="">— Rack —</option>'
+      + _racks.map(r => `<option value="${_e(r.nom)}"${r.nom === nomRack ? ' selected' : ''}>${_e(r.nom)}</option>`).join('');
+
+    const selAllee = document.createElement('select');
+    selAllee.className = 'lieu-sel lieu-sel-allee';
+
+    const selEtage = document.createElement('select');
+    selEtage.className = 'lieu-sel lieu-sel-etage';
+
+    const majAllee = () => {
+      const rack = _racks.find(r => r.nom === selRack.value);
+      if (!rack) {
+        selAllee.innerHTML = '<option value="">— Allée —</option>';
+        selEtage.innerHTML = '<option value="">— Étage —</option>';
+        return;
+      }
+      selAllee.innerHTML = '<option value="">— Allée —</option>'
+        + Array.from({length: rack.nb_allees}, (_, i) => {
+            const l = String.fromCharCode(65 + i);
+            return `<option value="${l}"${l === nomAllee ? ' selected' : ''}>${l}</option>`;
+          }).join('');
+      majEtage();
+    };
+
+    const majEtage = () => {
+      const rack = _racks.find(r => r.nom === selRack.value);
+      if (!rack || !selAllee.value) { selEtage.innerHTML = '<option value="">— Étage —</option>'; return; }
+      selEtage.innerHTML = '<option value="">— Étage —</option>'
+        + Array.from({length: rack.nb_etages}, (_, i) => {
+            const n = String(i + 1);
+            return `<option value="${n}"${n === nomEtage ? ' selected' : ''}>${n}</option>`;
+          }).join('');
+    };
+
+    selRack.addEventListener('change', () => { nomAllee = ''; nomEtage = ''; majAllee(); });
+    selAllee.addEventListener('change', majEtage);
+
+    el.innerHTML = '';
+    el.append(selRack, selAllee, selEtage);
+    majAllee();
+  }
+
+  /** Lit la valeur composée "Rack 1 - B4" depuis un conteneur lieu-cascade */
+  function _lireLieu(el) {
+    if (!el) return '';
+    const rack  = el.querySelector('.lieu-sel-rack')?.value  || '';
+    const allee = el.querySelector('.lieu-sel-allee')?.value || '';
+    const etage = el.querySelector('.lieu-sel-etage')?.value || '';
+    if (!rack || !allee || !etage) return '';
+    return `${rack} - ${allee}${etage}`;
   }
 
   function _majDatalistChantiers() {
