@@ -690,6 +690,20 @@
       font-size: 12px; color: #666; background: #f4f9f4; border: 1px solid #c8dfc8;
       border-radius: 4px; padding: 6px 10px; margin-bottom: 10px;
     }
+    .plan-zone-chips { display:flex; flex-wrap:wrap; gap:6px; }
+    .plan-zone-chip {
+      display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px;
+      border:1px solid #d0d0d0; border-radius:20px; background:white;
+      font-size:12px; cursor:pointer; transition:background .15s, border-color .15s;
+    }
+    .plan-zone-chip:hover { border-color:#2d5f32; }
+    .plan-zone-chip.selected { border-color:#2d5f32; background:#e8f5ea; font-weight:bold; }
+    .plan-zone-dot {
+      width:10px; height:10px; border-radius:50%; flex-shrink:0;
+      background:#ccc; border:1px solid #aaa;
+    }
+    .plan-zone-chip.placed     .plan-zone-dot { background:rgb(45,95,50);  border-color:rgb(45,95,50); }
+    .plan-zone-chip.selected   .plan-zone-dot { background:rgb(45,95,50);  border-color:rgb(45,95,50); }
 
     .btn-modale-supprimer {
       background: none;
@@ -1542,10 +1556,10 @@
           <button id="admin-plan-clear" class="btn-modale btn-modale-rouge" style="display:none">✕ Effacer le plan</button>
         </div>
         <div id="admin-plan-editor" style="margin-top:12px">
-          <div class="admin-plan-hint">Sélectionnez un rack puis cliquez sur le plan pour positionner son marqueur.</div>
-          <div style="margin-bottom:10px; display:flex; align-items:center; gap:10px">
-            <label style="font-size:12px;color:#555;font-weight:bold">Rack à placer :</label>
-            <select id="admin-plan-rack-sel" class="admin-ref-inp" style="width:auto;display:inline-block"></select>
+          <div class="admin-plan-hint">Sélectionnez une zone ci-dessous puis cliquez sur le plan pour placer son marqueur.</div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;color:#555;font-weight:bold;margin-bottom:6px">Zone à placer sur l'image :</div>
+            <div id="admin-plan-zones-list" class="plan-zone-chips"></div>
           </div>
           <div id="admin-plan-canvas-wrap" style="position:relative; display:block; width:100%; cursor:crosshair; border:1px solid var(--gris-bord); border-radius:4px; background:#f7f7f7; line-height:0">
             <img id="admin-plan-img" style="display:block; width:100%; height:auto; border-radius:4px" alt="">

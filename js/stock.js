@@ -4002,14 +4002,20 @@ const Stock = (() => {
     const btnClear  = document.getElementById('admin-plan-clear');
     const planImg   = document.getElementById('admin-plan-img');
     const planSvg   = document.getElementById('admin-plan-svg');
-    const sel       = document.getElementById('admin-plan-rack-sel');
 
-    if (sel) {
-      sel.innerHTML = '<option value="">— Choisir —</option>'
-        + _racks.map(r => `<option value="${_e(r.id)}">${_e(r.nom)}</option>`).join('');
+    // Pastilles de zones — triées alphabétiquement
+    const zonesList = document.getElementById('admin-plan-zones-list');
+    if (zonesList) {
+      const sorted = [..._racks].sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }));
+      // Conserver la sélection courante
+      const selId = zonesList.querySelector('.plan-zone-chip.selected')?.dataset.rackId || '';
+      zonesList.innerHTML = sorted.map(r =>
+        `<div class="plan-zone-chip${positions[r.id] ? ' placed' : ''}${r.id === selId ? ' selected' : ''}" data-rack-id="${_e(r.id)}">
+          <span class="plan-zone-dot"></span>${_e(r.nom)}
+        </div>`
+      ).join('');
     }
 
-    // Toujours afficher l'éditeur (plan perso ou plan provisoire)
     if (editor) editor.style.display = '';
     if (btnClear) btnClear.style.display = img ? '' : 'none';
 
@@ -4019,8 +4025,17 @@ const Stock = (() => {
   }
 
   function _attacherAdminPlan() {
-    const input = document.getElementById('admin-plan-input');
-    const wrap  = document.getElementById('admin-plan-canvas-wrap');
+    const input     = document.getElementById('admin-plan-input');
+    const wrap      = document.getElementById('admin-plan-canvas-wrap');
+    const zonesList = document.getElementById('admin-plan-zones-list');
+
+    // Sélection d'une zone via pastille
+    zonesList?.addEventListener('click', e => {
+      const chip = e.target.closest('.plan-zone-chip');
+      if (!chip) return;
+      zonesList.querySelectorAll('.plan-zone-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    });
 
     input?.addEventListener('change', e => {
       const file = e.target.files[0];
@@ -4043,18 +4058,21 @@ const Stock = (() => {
     });
 
     wrap?.addEventListener('click', e => {
-      const rackId = document.getElementById('admin-plan-rack-sel')?.value;
-      if (!rackId) { _notif('Sélectionnez un rack d\'abord', 'alerte'); return; }
+      const chip = zonesList?.querySelector('.plan-zone-chip.selected');
+      const rackId = chip?.dataset.rackId;
+      if (!rackId) { _notif('Sélectionnez une zone d\'abord', 'alerte'); return; }
       const rect = wrap.getBoundingClientRect();
       const x = +((e.clientX - rect.left)  / rect.width  * 100).toFixed(2);
       const y = +((e.clientY - rect.top)   / rect.height * 100).toFixed(2);
       const positions = _chargerPlanPos();
       positions[rackId] = { x, y };
       _sauvegarderPlanPos(positions);
+      // Marquer la pastille comme placée
+      chip.classList.add('placed');
       const planSvg = document.getElementById('admin-plan-svg');
       if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null);
       const rack = _racks.find(r => r.id === rackId);
-      _notif(`${rack?.nom || 'Rack'} placé sur le plan`, 'succes');
+      _notif(`${rack?.nom || 'Zone'} placée sur le plan`, 'succes');
     });
   }
 
