@@ -684,6 +684,13 @@
       display: grid; grid-template-columns: 1fr 80px 80px auto; gap: 8px; align-items: end; margin-top: 14px;
     }
     .admin-rack-form label { font-size: 11px; color: #555; font-weight: bold; display: block; margin-bottom: 3px; }
+    .admin-plan-actions { display:flex; gap:8px; align-items:center; margin-top:10px; }
+    .admin-plan-upload-btn { cursor:pointer; }
+    .admin-plan-hint {
+      font-size: 12px; color: #666; background: #f4f9f4; border: 1px solid #c8dfc8;
+      border-radius: 4px; padding: 6px 10px; margin-bottom: 10px;
+    }
+
     .btn-modale-supprimer {
       background: none;
       border: 1px solid #ccc;
@@ -1522,6 +1529,27 @@
           </div>
         </div>
         <div id="admin-rack-apercu" class="admin-rack-apercu"></div>
+
+        <!-- Plan de stockage -->
+        <div class="admin-ref-section-titre" style="margin-top:28px">Plan de stockage</div>
+        <div class="admin-plan-actions">
+          <label class="btn-modale btn-modale-vert admin-plan-upload-btn">
+            📂 Charger une image
+            <input type="file" id="admin-plan-input" accept="image/*" style="display:none">
+          </label>
+          <button id="admin-plan-clear" class="btn-modale btn-modale-rouge" style="display:none">✕ Effacer le plan</button>
+        </div>
+        <div id="admin-plan-editor" style="display:none; margin-top:12px">
+          <div class="admin-plan-hint">Sélectionnez un rack puis cliquez sur le plan pour positionner son marqueur.</div>
+          <div style="margin-bottom:10px; display:flex; align-items:center; gap:10px">
+            <label style="font-size:12px;color:#555;font-weight:bold">Rack à placer :</label>
+            <select id="admin-plan-rack-sel" class="admin-ref-inp" style="width:auto;display:inline-block"></select>
+          </div>
+          <div id="admin-plan-canvas-wrap" style="position:relative; display:inline-block; max-width:100%; cursor:crosshair; border:1px solid var(--gris-bord); border-radius:4px; overflow:hidden; background:#f7f7f7">
+            <img id="admin-plan-img" style="display:block; max-width:100%; max-height:400px" alt="Plan">
+            <svg id="admin-plan-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none" overflow="visible"></svg>
+          </div>
+        </div>
       </div>
 
       <!-- Chantiers -->
@@ -2262,52 +2290,20 @@
     <div class="modale modale-lg" onclick="event.stopPropagation()">
       <div class="modale-titre" id="carte-titre">Plan de stockage</div>
 
-      <!-- Plan SVG de l'atelier — à remplacer par votre plan réel -->
-      <div style="background:#f7f7f7; border:1px solid var(--gris-bord); border-radius:3px; padding:16px; margin-bottom:14px;">
-        <svg id="plan-atelier" viewBox="0 0 600 380" style="width:100%; height:auto; display:block;">
+      <!-- Image chargée + marqueurs SVG -->
+      <div id="carte-plan-wrap" style="position:relative; display:inline-block; max-width:100%; margin-bottom:12px; border:1px solid var(--gris-bord); border-radius:4px; overflow:hidden; background:#f7f7f7">
+        <img id="carte-plan-img" style="display:block; max-width:100%; max-height:420px" alt="Plan de stockage">
+        <svg id="carte-plan-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none" overflow="visible"></svg>
+      </div>
 
-          <!-- Contour atelier -->
-          <rect x="10" y="10" width="580" height="360" fill="white" stroke="#ccc" stroke-width="2" rx="4"/>
-
-          <!-- Zone Rack 1 -->
-          <rect class="zone-stockage" data-zone="Rack 1"
-            x="40" y="40" width="120" height="80" rx="3"
-            fill="#e6f4ea" stroke="rgb(45,95,50)" stroke-width="2"/>
-          <text x="100" y="76" text-anchor="middle" font-family="Impact" font-size="14" fill="rgb(45,95,50)" pointer-events="none">Rack 1</text>
-
-          <!-- Zone Rack 2 -->
-          <rect class="zone-stockage" data-zone="Rack 2"
-            x="200" y="40" width="120" height="80" rx="3"
-            fill="#e6f4ea" stroke="rgb(45,95,50)" stroke-width="2"/>
-          <text x="260" y="76" text-anchor="middle" font-family="Impact" font-size="14" fill="rgb(45,95,50)" pointer-events="none">Rack 2</text>
-
-          <!-- Zone Rack 3 -->
-          <rect class="zone-stockage" data-zone="Rack 3"
-            x="360" y="40" width="120" height="80" rx="3"
-            fill="#e6f4ea" stroke="rgb(45,95,50)" stroke-width="2"/>
-          <text x="420" y="76" text-anchor="middle" font-family="Impact" font-size="14" fill="rgb(45,95,50)" pointer-events="none">Rack 3</text>
-
-          <!-- Zone Rack 4 -->
-          <rect class="zone-stockage" data-zone="Rack 4"
-            x="40" y="160" width="120" height="80" rx="3"
-            fill="#e6f4ea" stroke="rgb(45,95,50)" stroke-width="2"/>
-          <text x="100" y="196" text-anchor="middle" font-family="Impact" font-size="14" fill="rgb(45,95,50)" pointer-events="none">Rack 4</text>
-
-          <!-- Zone Extérieur -->
-          <rect class="zone-stockage" data-zone="Extérieur"
-            x="40" y="280" width="520" height="60" rx="3"
-            fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
-          <text x="300" y="316" text-anchor="middle" font-family="Impact" font-size="14" fill="#e65100" pointer-events="none">Extérieur</text>
-
-          <!-- Légende -->
-          <text x="300" y="370" text-anchor="middle" font-family="Tahoma" font-size="10" fill="#aaa">
-            Plan provisoire — à remplacer par le plan réel de l'atelier
-          </text>
-        </svg>
+      <!-- Placeholder si aucun plan -->
+      <div id="carte-no-plan" style="display:none; background:#f7f7f7; border:1px solid var(--gris-bord); border-radius:4px; padding:30px; text-align:center; color:#999; font-size:13px; margin-bottom:12px">
+        Aucun plan chargé.<br>
+        <span style="font-size:12px">Allez dans <strong>Administration → Stockage</strong> pour charger un plan.</span>
       </div>
 
       <div id="carte-info" style="font-size:13px; color:#555; padding:6px 10px; background:#f4f4f4; border-radius:3px; border-left:3px solid var(--rouge);">
-        Zone mise en évidence sur le plan.
+        Le rack est mis en évidence sur le plan (cercle rouge).
       </div>
 
       <div class="modale-footer">
@@ -2317,11 +2313,9 @@
   </div>
 
   <style>
-    /* Zones du plan de stockage */
-    .zone-stockage { cursor: default; transition: fill .2s, stroke-width .2s; }
-    .zone-active   { fill: rgb(210,35,42) !important; stroke: rgb(140,20,25) !important; stroke-width: 3 !important; }
-    .zone-active + text { fill: white !important; }
-    .zone-inactive { opacity: 0.35; }
+    .chip-lieu-btn  { cursor: pointer; }
+    .chip-lieu-btn:hover { opacity: .8; }
+    .chip-plan-pin  { font-size: 11px; margin-left: 3px; }
   </style>
 
   <!-- ══════════════════════════════════════════════════════════════

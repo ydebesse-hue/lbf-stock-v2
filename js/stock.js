@@ -70,6 +70,12 @@ const Stock = (() => {
   /** Clé localStorage pour le mode de vue du tableau profilés */
   const CLE_VUE_PROFILS = 'lbf-stock-vue-profils';
 
+  /** Clé localStorage pour l'image du plan de stockage (base64) */
+  const CLE_PLAN_IMG = 'lbf_plan_image';
+
+  /** Clé localStorage pour les positions des racks sur le plan { rackId: {x,y} } */
+  const CLE_PLAN_POS = 'lbf_plan_positions';
+
 
   /* ──────────────────────────────────────────────────────────────
      ÉTAT INTERNE
@@ -596,7 +602,9 @@ const Stock = (() => {
       case 'chantier':
         return b.chantier_affectation ? _e(b.chantier_affectation) : '—';
       case 'lieu':
-        return b.lieu_stockage ? `<span class="chip-lieu">${_e(b.lieu_stockage)}</span>` : '—';
+        return b.lieu_stockage
+          ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(b.lieu_stockage)}" title="Voir sur le plan">${_e(b.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>`
+          : '—';
       case 'origine':
         return _e(b.chantier_origine) || '—';
       case 'ref_cmd':
@@ -717,8 +725,8 @@ const Stock = (() => {
           : `<td>${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`;
         h += `<td>${t.poids_unitaire_kg.toFixed(1)} <span style="color:#999;font-size:11px">(tot.&nbsp;${t.poids_total_kg.toFixed(1)})</span></td>`;
         h += modif
-          ? `<td class="cell-editable" data-field="lieu">${t.lieu_stockage ? `<span class="chip-lieu">${_e(t.lieu_stockage)}</span>` : '—'}</td>`
-          : `<td>${t.lieu_stockage ? `<span class="chip-lieu">${_e(t.lieu_stockage)}</span>` : '—'}</td>`;
+          ? `<td class="cell-editable" data-field="lieu">${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`
+          : `<td>${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`;
         h += `<td>${dateAjout}</td>`;
         h += `<td>${_e(t.chantier_origine)}${t.chantier_affectation
           ? ` <span class="chip-chantier" title="Affecté à : ${_e(t.chantier_affectation)}">→ ${_e(t.chantier_affectation)}</span>`
@@ -1390,6 +1398,10 @@ const Stock = (() => {
     const zoneTab = document.getElementById('tableau-stock');
     if (zoneTab) {
       zoneTab.addEventListener('click', e => {
+        // Chip lieu → ouvrir plan
+        const chipLieu = e.target.closest('.chip-lieu-btn');
+        if (chipLieu) { e.stopPropagation(); _ouvrirCarte(chipLieu.dataset.lieu); return; }
+
         if (e.target.closest('button')) return;
         const tdEd = e.target.closest('td.cell-editable');
         if (tdEd) {
@@ -1705,6 +1717,7 @@ const Stock = (() => {
     }
 
     _attacherAdminStockage();
+    _attacherAdminPlan();
     _attacherAdminChantiers();
     _attacherNavAdmin();
   }
@@ -3842,33 +3855,139 @@ const Stock = (() => {
 
 
   /* ──────────────────────────────────────────────────────────────
-     MODALE CARTE DE STOCKAGE
+     PLAN DE STOCKAGE
      ────────────────────────────────────────────────────────────── */
 
+  function _chargerPlanImg() { return localStorage.getItem(CLE_PLAN_IMG) || null; }
+
+  function _chargerPlanPos() {
+    try { return JSON.parse(localStorage.getItem(CLE_PLAN_POS) || '{}'); } catch { return {}; }
+  }
+
+  function _sauvegarderPlanPos(p) { localStorage.setItem(CLE_PLAN_POS, JSON.stringify(p)); }
+
+  /** Génère les marqueurs SVG à superposer sur l'image du plan */
+  function _svgMarqueursPlan(positions, rackActif) {
+    return _racks.map(r => {
+      const pos = positions[r.id];
+      if (!pos) return '';
+      const actif = r.nom === rackActif;
+      const c   = actif ? 'rgb(210,35,42)' : 'rgb(45,95,50)';
+      const op  = actif ? '1' : '.45';
+      const rad = actif ? 18 : 13;
+      const label = r.nom.replace(/^Rack\s+/i, '') || r.nom;
+      return `<g transform="translate(${pos.x}%,${pos.y}%)" style="cursor:default">
+        ${actif ? `<circle r="${rad + 8}" fill="${c}" fill-opacity=".18">
+          <animate attributeName="r" values="${rad+6};${rad+14};${rad+6}" dur="1.6s" repeatCount="indefinite"/>
+        </circle>` : ''}
+        <circle r="${rad}" fill="${c}" fill-opacity="${op}"/>
+        <text x="0" y="${Math.round(rad * 0.3)}" text-anchor="middle" fill="white"
+          font-size="${actif ? 12 : 10}" font-family="Tahoma"
+          font-weight="${actif ? 'bold' : 'normal'}">${_e(label)}</text>
+      </g>`;
+    }).join('');
+  }
+
   /**
-   * Ouvre la modale de plan de stockage et met en évidence la zone.
-   * @param {string} lieu — nom du lieu de stockage
+   * Ouvre la modale de plan et met en évidence le rack correspondant.
+   * @param {string} lieu — ex. "Rack 1 - B4" ou "Zone Ext."
    */
   function _ouvrirCarte(lieu) {
     const m = document.getElementById('m-carte');
     if (!m) return;
 
-    // Titre
     const titre = m.querySelector('#carte-titre');
     if (titre) titre.textContent = `Emplacement : ${lieu}`;
 
-    // Mettre en évidence la zone correspondante sur le plan SVG
-    m.querySelectorAll('.zone-stockage').forEach(z => {
-      const actif = z.dataset.zone === lieu;
-      z.classList.toggle('zone-active', actif);
-      z.classList.toggle('zone-inactive', !actif);
-    });
+    const img      = _chargerPlanImg();
+    const noPlan   = m.querySelector('#carte-no-plan');
+    const planWrap = m.querySelector('#carte-plan-wrap');
+
+    if (img) {
+      if (noPlan)   noPlan.style.display   = 'none';
+      if (planWrap) planWrap.style.display  = '';
+      const planImg = m.querySelector('#carte-plan-img');
+      if (planImg) planImg.src = img;
+      // Extraire le nom du rack : "Rack 1 - B4" → "Rack 1"
+      const rackNom = lieu.includes(' - ') ? lieu.split(' - ')[0].trim() : lieu;
+      const svg = m.querySelector('#carte-plan-svg');
+      if (svg) svg.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), rackNom);
+    } else {
+      if (noPlan)   noPlan.style.display   = '';
+      if (planWrap) planWrap.style.display  = 'none';
+    }
 
     m.classList.add('open');
   }
 
-  // Exposer _ouvrirCarte globalement (appelée depuis le HTML généré)
   window._ouvrirCarte = _ouvrirCarte;
+
+  /* ── Gestion admin du plan ───────────────────────────────────── */
+
+  function _rendreAdminPlan() {
+    const img       = _chargerPlanImg();
+    const positions = _chargerPlanPos();
+    const editor    = document.getElementById('admin-plan-editor');
+    const btnClear  = document.getElementById('admin-plan-clear');
+    const planImg   = document.getElementById('admin-plan-img');
+    const planSvg   = document.getElementById('admin-plan-svg');
+    const sel       = document.getElementById('admin-plan-rack-sel');
+
+    if (sel) {
+      sel.innerHTML = '<option value="">— Choisir —</option>'
+        + _racks.map(r => `<option value="${_e(r.id)}">${_e(r.nom)}</option>`).join('');
+    }
+
+    if (img) {
+      if (editor)   editor.style.display   = '';
+      if (btnClear) btnClear.style.display  = '';
+      if (planImg)  planImg.src = img;
+      if (planSvg)  planSvg.innerHTML = _svgMarqueursPlan(positions, null);
+    } else {
+      if (editor)   editor.style.display   = 'none';
+      if (btnClear) btnClear.style.display  = 'none';
+    }
+  }
+
+  function _attacherAdminPlan() {
+    const input = document.getElementById('admin-plan-input');
+    const wrap  = document.getElementById('admin-plan-canvas-wrap');
+
+    input?.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        localStorage.setItem(CLE_PLAN_IMG, ev.target.result);
+        _rendreAdminPlan();
+        _notif('Plan chargé', 'succes');
+      };
+      reader.readAsDataURL(file);
+      input.value = '';
+    });
+
+    document.getElementById('admin-plan-clear')?.addEventListener('click', () => {
+      localStorage.removeItem(CLE_PLAN_IMG);
+      localStorage.removeItem(CLE_PLAN_POS);
+      _rendreAdminPlan();
+      _notif('Plan supprimé', 'info');
+    });
+
+    wrap?.addEventListener('click', e => {
+      const rackId = document.getElementById('admin-plan-rack-sel')?.value;
+      if (!rackId) { _notif('Sélectionnez un rack d\'abord', 'alerte'); return; }
+      const rect = wrap.getBoundingClientRect();
+      const x = +((e.clientX - rect.left)  / rect.width  * 100).toFixed(2);
+      const y = +((e.clientY - rect.top)   / rect.height * 100).toFixed(2);
+      const positions = _chargerPlanPos();
+      positions[rackId] = { x, y };
+      _sauvegarderPlanPos(positions);
+      const planSvg = document.getElementById('admin-plan-svg');
+      if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null);
+      const rack = _racks.find(r => r.id === rackId);
+      _notif(`${rack?.nom || 'Rack'} placé sur le plan`, 'succes');
+    });
+  }
 
   /* ──────────────────────────────────────────────────────────────
      SUPPRESSION D'UNE BARRE
@@ -4292,7 +4411,7 @@ const Stock = (() => {
     const panel = document.getElementById(`admin-panel-${onglet}`);
     if (panel) panel.style.display = 'block';
 
-    if (onglet === 'stockage')  _rendreRacks();
+    if (onglet === 'stockage')  { _rendreRacks(); _rendreAdminPlan(); }
     if (onglet === 'chantiers') _rendreChantiers();
     if (onglet === 'comptes' && typeof chargerUsers === 'function') chargerUsers();
   }
