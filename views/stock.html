@@ -681,7 +681,7 @@
       font-size: 11px; color: #777; margin-top: 4px; min-height: 16px; font-style: italic;
     }
     .admin-rack-form {
-      display: grid; grid-template-columns: 1fr 80px 80px auto; gap: 8px; align-items: end; margin-top: 14px;
+      display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: end; margin-top: 14px;
     }
     .admin-rack-form label { font-size: 11px; color: #555; font-weight: bold; display: block; margin-bottom: 3px; }
     .admin-plan-actions { display:flex; gap:8px; align-items:center; margin-top:10px; }
@@ -1509,19 +1509,21 @@
       <div id="admin-panel-stockage" class="admin-panel">
         <h3 class="admin-panel-titre">Zones de stockage</h3>
         <div id="admin-racks-liste" class="admin-ref-liste" style="max-height:380px"></div>
-        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un rack</div>
+        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter une zone de stock</div>
         <div class="admin-rack-form">
           <div>
-            <label for="admin-rack-nom">Nom du rack</label>
+            <label for="admin-rack-nom">Nom de la zone</label>
             <input id="admin-rack-nom" type="text" placeholder="ex. Rack 1" class="admin-ref-inp">
           </div>
-          <div>
-            <label for="admin-rack-allees">Allées <span style="font-weight:normal;color:#999">(0=zone plate)</span></label>
-            <input id="admin-rack-allees" type="number" min="0" placeholder="5" class="admin-ref-inp">
-          </div>
-          <div>
-            <label for="admin-rack-etages">Étages</label>
-            <input id="admin-rack-etages" type="number" min="1" placeholder="4" class="admin-ref-inp">
+          <div style="display:flex;gap:6px;align-items:flex-end">
+            <div>
+              <label for="admin-rack-allees">Allées <span style="font-weight:normal;color:#999">(0=zone plate)</span></label>
+              <input id="admin-rack-allees" type="number" min="0" placeholder="5" class="admin-ref-inp">
+            </div>
+            <div>
+              <label for="admin-rack-etages">Étages</label>
+              <input id="admin-rack-etages" type="number" min="1" placeholder="4" class="admin-ref-inp">
+            </div>
           </div>
           <div>
             <label style="visibility:hidden">_</label>

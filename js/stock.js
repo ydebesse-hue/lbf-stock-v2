@@ -4517,16 +4517,17 @@ const Stock = (() => {
     const zone = document.getElementById('admin-racks-liste');
     if (!zone) return;
     if (!_racks.length) {
-      zone.innerHTML = '<div class="admin-ref-vide">Aucun rack configuré</div>';
+      zone.innerHTML = '<div class="admin-ref-vide">Aucune zone configurée</div>';
       return;
     }
+    const sorted = [..._racks].sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }));
     zone.innerHTML = `
       <table class="admin-rack-table">
         <thead><tr>
-          <th>Rack</th><th>Allées</th><th>Étages</th><th>Emplacements</th><th></th>
+          <th>Zone</th><th>Allées</th><th>Étages</th><th>Emplacements</th><th></th>
         </tr></thead>
         <tbody>
-          ${_racks.map(r => {
+          ${sorted.map(r => {
             const plat = !r.nb_allees || !r.nb_etages;
             const nb = plat ? 0 : r.nb_allees * r.nb_etages;
             const alleeLabel = plat ? '—' : `A – ${_e(_labelAllee(r.nb_allees - 1))} (${r.nb_allees})`;
