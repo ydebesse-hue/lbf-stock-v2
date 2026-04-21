@@ -3941,7 +3941,8 @@ const Stock = (() => {
 
   function _sauvegarderPlanPos(p) { localStorage.setItem(CLE_PLAN_POS, JSON.stringify(p)); }
 
-  /** Génère les marqueurs SVG à superposer sur l'image du plan */
+  /** Génère les marqueurs SVG à superposer sur l'image du plan.
+   *  cx/cy en % sont valides en SVG ; transform="translate(X%,Y%)" ne l'est pas. */
   function _svgMarqueursPlan(positions, rackActif) {
     return _racks.map(r => {
       const pos = positions[r.id];
@@ -3950,16 +3951,17 @@ const Stock = (() => {
       const c   = actif ? 'rgb(210,35,42)' : 'rgb(45,95,50)';
       const op  = actif ? '1' : '.45';
       const rad = actif ? 18 : 13;
+      const cx  = `${pos.x}%`;
+      const cy  = `${pos.y}%`;
       const label = r.nom.replace(/^Rack\s+/i, '') || r.nom;
-      return `<g transform="translate(${pos.x}%,${pos.y}%)" style="cursor:default">
-        ${actif ? `<circle r="${rad + 8}" fill="${c}" fill-opacity=".18">
+      return `
+        ${actif ? `<circle cx="${cx}" cy="${cy}" r="${rad + 8}" fill="${c}" fill-opacity=".18">
           <animate attributeName="r" values="${rad+6};${rad+14};${rad+6}" dur="1.6s" repeatCount="indefinite"/>
         </circle>` : ''}
-        <circle r="${rad}" fill="${c}" fill-opacity="${op}"/>
-        <text x="0" y="${Math.round(rad * 0.3)}" text-anchor="middle" fill="white"
+        <circle cx="${cx}" cy="${cy}" r="${rad}" fill="${c}" fill-opacity="${op}"/>
+        <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="white"
           font-size="${actif ? 12 : 10}" font-family="Tahoma"
-          font-weight="${actif ? 'bold' : 'normal'}">${_e(label)}</text>
-      </g>`;
+          font-weight="${actif ? 'bold' : 'normal'}">${_e(label)}</text>`;
     }).join('');
   }
 
@@ -3986,14 +3988,10 @@ const Stock = (() => {
     if (planWrap) planWrap.style.display  = '';
     if (planImg)  planImg.src = src;
 
-    // Marqueurs dynamiques uniquement si un plan personnalisé est chargé
+    // Marqueurs sur tous les plans (provisoire ou personnalisé)
     if (svgOver) {
-      if (img) {
-        const rackNom = lieu.includes(' - ') ? lieu.split(' - ')[0].trim() : lieu;
-        svgOver.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), rackNom);
-      } else {
-        svgOver.innerHTML = ''; // plan provisoire : zones déjà dessinées dans le SVG
-      }
+      const rackNom = lieu.includes(' - ') ? lieu.split(' - ')[0].trim() : lieu;
+      svgOver.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), rackNom);
     }
 
     m.classList.add('open');
@@ -4023,7 +4021,7 @@ const Stock = (() => {
 
     const src = img || PLAN_PROVISOIRE_SRC;
     if (planImg) planImg.src = src;
-    if (planSvg) planSvg.innerHTML = img ? _svgMarqueursPlan(positions, null) : '';
+    if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null);
   }
 
   function _attacherAdminPlan() {
