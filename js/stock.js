@@ -3902,19 +3902,23 @@ const Stock = (() => {
     const img      = _chargerPlanImg();
     const noPlan   = m.querySelector('#carte-no-plan');
     const planWrap = m.querySelector('#carte-plan-wrap');
+    const planImg  = m.querySelector('#carte-plan-img');
+    const svgOver  = m.querySelector('#carte-plan-svg');
 
-    if (img) {
-      if (noPlan)   noPlan.style.display   = 'none';
-      if (planWrap) planWrap.style.display  = '';
-      const planImg = m.querySelector('#carte-plan-img');
-      if (planImg) planImg.src = img;
-      // Extraire le nom du rack : "Rack 1 - B4" → "Rack 1"
-      const rackNom = lieu.includes(' - ') ? lieu.split(' - ')[0].trim() : lieu;
-      const svg = m.querySelector('#carte-plan-svg');
-      if (svg) svg.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), rackNom);
-    } else {
-      if (noPlan)   noPlan.style.display   = '';
-      if (planWrap) planWrap.style.display  = 'none';
+    // Plan personnalisé ou plan provisoire par défaut
+    const src = img || '../data/plan-provisoire.svg';
+    if (noPlan)   noPlan.style.display   = 'none';
+    if (planWrap) planWrap.style.display  = '';
+    if (planImg)  planImg.src = src;
+
+    // Marqueurs dynamiques uniquement si un plan personnalisé est chargé
+    if (svgOver) {
+      if (img) {
+        const rackNom = lieu.includes(' - ') ? lieu.split(' - ')[0].trim() : lieu;
+        svgOver.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), rackNom);
+      } else {
+        svgOver.innerHTML = ''; // plan provisoire : zones déjà dessinées dans le SVG
+      }
     }
 
     m.classList.add('open');
@@ -3938,15 +3942,13 @@ const Stock = (() => {
         + _racks.map(r => `<option value="${_e(r.id)}">${_e(r.nom)}</option>`).join('');
     }
 
-    if (img) {
-      if (editor)   editor.style.display   = '';
-      if (btnClear) btnClear.style.display  = '';
-      if (planImg)  planImg.src = img;
-      if (planSvg)  planSvg.innerHTML = _svgMarqueursPlan(positions, null);
-    } else {
-      if (editor)   editor.style.display   = 'none';
-      if (btnClear) btnClear.style.display  = 'none';
-    }
+    // Toujours afficher l'éditeur (plan perso ou plan provisoire)
+    if (editor) editor.style.display = '';
+    if (btnClear) btnClear.style.display = img ? '' : 'none';
+
+    const src = img || '../data/plan-provisoire.svg';
+    if (planImg) planImg.src = src;
+    if (planSvg) planSvg.innerHTML = img ? _svgMarqueursPlan(positions, null) : '';
   }
 
   function _attacherAdminPlan() {
