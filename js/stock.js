@@ -76,6 +76,81 @@ const Stock = (() => {
   /** Clé localStorage pour les positions des racks sur le plan { rackId: {x,y} } */
   const CLE_PLAN_POS = 'lbf_plan_positions';
 
+  /** Plan provisoire embarqué en data URL — indépendant du serveur de fichiers */
+  const PLAN_PROVISOIRE_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Tahoma,Geneva,sans-serif">
+  <rect width="820" height="520" fill="#f0f0f0"/>
+  <rect x="14" y="14" width="792" height="492" fill="white" stroke="#b0b0b0" stroke-width="2.5" stroke-dasharray="10,5" rx="6"/>
+  <text x="410" y="44" text-anchor="middle" font-size="12" fill="#999" font-weight="bold" letter-spacing="3">PLAN PROVISOIRE — ATELIER LBF</text>
+  <g transform="translate(30,145)">
+    <text x="0" y="0" font-size="22" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="0" y="18" font-size="11" fill="#2d5f32">allée</text>
+    <line x1="26" y1="-9" x2="58" y2="-9" stroke="#2d5f32" stroke-width="2.5"/>
+    <polygon points="58,-13 68,-9 58,-5" fill="#2d5f32"/>
+  </g>
+  <g transform="translate(100,75)">
+    <rect width="170" height="150" rx="5" fill="#e8f5ea" stroke="#2d5f32" stroke-width="2.5"/>
+    <line x1="10" y1="50" x2="160" y2="50" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <line x1="10" y1="100" x2="160" y2="100" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <rect x="0" y="0" width="22" height="150" rx="3" fill="#2d5f32" fill-opacity=".12"/>
+    <text x="11" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="96" y="80" text-anchor="middle" font-size="18" font-weight="bold" fill="#2d5f32">RACK 1</text>
+    <text x="158" y="30" text-anchor="end" font-size="10" fill="#888">ét. 1</text>
+    <text x="158" y="80" text-anchor="end" font-size="10" fill="#888">ét. 2</text>
+    <text x="158" y="130" text-anchor="end" font-size="10" fill="#888">ét. 3</text>
+  </g>
+  <g transform="translate(320,75)">
+    <rect width="170" height="150" rx="5" fill="#e8f5ea" stroke="#2d5f32" stroke-width="2.5"/>
+    <line x1="10" y1="50" x2="160" y2="50" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <line x1="10" y1="100" x2="160" y2="100" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <rect x="0" y="0" width="22" height="150" rx="3" fill="#2d5f32" fill-opacity=".12"/>
+    <text x="11" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="96" y="80" text-anchor="middle" font-size="18" font-weight="bold" fill="#2d5f32">RACK 2</text>
+    <text x="158" y="30" text-anchor="end" font-size="10" fill="#888">ét. 1</text>
+    <text x="158" y="80" text-anchor="end" font-size="10" fill="#888">ét. 2</text>
+    <text x="158" y="130" text-anchor="end" font-size="10" fill="#888">ét. 3</text>
+  </g>
+  <g transform="translate(540,75)">
+    <rect width="170" height="150" rx="5" fill="#e8f5ea" stroke="#2d5f32" stroke-width="2.5"/>
+    <line x1="10" y1="50" x2="160" y2="50" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <line x1="10" y1="100" x2="160" y2="100" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <rect x="0" y="0" width="22" height="150" rx="3" fill="#2d5f32" fill-opacity=".12"/>
+    <text x="11" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="96" y="80" text-anchor="middle" font-size="18" font-weight="bold" fill="#2d5f32">RACK 3</text>
+    <text x="158" y="30" text-anchor="end" font-size="10" fill="#888">ét. 1</text>
+    <text x="158" y="80" text-anchor="end" font-size="10" fill="#888">ét. 2</text>
+    <text x="158" y="130" text-anchor="end" font-size="10" fill="#888">ét. 3</text>
+  </g>
+  <line x1="40" y1="262" x2="780" y2="262" stroke="#ccc" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="410" y="277" text-anchor="middle" font-size="10" fill="#bbb" letter-spacing="2">ZONE EXTÉRIEURE</text>
+  <g transform="translate(100,292)">
+    <rect width="245" height="90" rx="5" fill="#fff3e0" stroke="#e65100" stroke-width="2.5"/>
+    <line x1="0" y1="0" x2="30" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="40" y1="0" x2="70" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="80" y1="0" x2="110" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="120" y1="0" x2="150" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="160" y1="0" x2="190" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="200" y1="0" x2="230" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <text x="122" y="52" text-anchor="middle" font-size="20" font-weight="bold" fill="#e65100">EXT 1</text>
+  </g>
+  <g transform="translate(400,292)">
+    <rect width="245" height="90" rx="5" fill="#fff3e0" stroke="#e65100" stroke-width="2.5"/>
+    <line x1="0" y1="0" x2="30" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="40" y1="0" x2="70" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="80" y1="0" x2="110" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="120" y1="0" x2="150" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="160" y1="0" x2="190" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="200" y1="0" x2="230" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <text x="122" y="52" text-anchor="middle" font-size="20" font-weight="bold" fill="#e65100">EXT 2</text>
+  </g>
+  <g transform="translate(40,425)">
+    <rect width="14" height="14" rx="2" fill="#e8f5ea" stroke="#2d5f32" stroke-width="1.5"/>
+    <text x="20" y="11" font-size="11" fill="#555">Rack (stockage intérieur)</text>
+    <rect x="200" width="14" height="14" rx="2" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+    <text x="220" y="11" font-size="11" fill="#555">Zone extérieure</text>
+  </g>
+  <text x="410" y="500" text-anchor="middle" font-size="10" fill="#bbb" font-style="italic">Plan provisoire — remplacer par le plan réel dans Administration › Stockage</text>
+</svg>`);
+
 
   /* ──────────────────────────────────────────────────────────────
      ÉTAT INTERNE
@@ -3906,7 +3981,7 @@ const Stock = (() => {
     const svgOver  = m.querySelector('#carte-plan-svg');
 
     // Plan personnalisé ou plan provisoire par défaut
-    const src = img || '../data/plan-provisoire.svg';
+    const src = img || PLAN_PROVISOIRE_SRC;
     if (noPlan)   noPlan.style.display   = 'none';
     if (planWrap) planWrap.style.display  = '';
     if (planImg)  planImg.src = src;
@@ -3946,7 +4021,7 @@ const Stock = (() => {
     if (editor) editor.style.display = '';
     if (btnClear) btnClear.style.display = img ? '' : 'none';
 
-    const src = img || '../data/plan-provisoire.svg';
+    const src = img || PLAN_PROVISOIRE_SRC;
     if (planImg) planImg.src = src;
     if (planSvg) planSvg.innerHTML = img ? _svgMarqueursPlan(positions, null) : '';
   }
