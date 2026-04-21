@@ -24,12 +24,17 @@ DROP TABLE IF EXISTS lieux_stockage;
 
 -- ── Chantiers ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS chantiers (
-  id         uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
-  nom        text        NOT NULL,
-  reference  text,
-  actif      boolean     NOT NULL DEFAULT true,
-  created_at timestamptz DEFAULT now()
+  id             uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  nom            text        NOT NULL,
+  numero_affaire text,
+  ville          text,
+  actif          boolean     NOT NULL DEFAULT true,
+  created_at     timestamptz DEFAULT now()
 );
+
+-- Si la table existe déjà, ajouter les nouvelles colonnes :
+ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS numero_affaire text;
+ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS ville text;
 
 ALTER TABLE chantiers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "acces_anon_chantiers" ON chantiers;

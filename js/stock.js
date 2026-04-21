@@ -4261,7 +4261,7 @@ const Stock = (() => {
 
     if (onglet === 'stockage')  _rendreRacks();
     if (onglet === 'chantiers') _rendreChantiers();
-    if (onglet === 'comptes')   { window.location.href = 'comptes.html'; }
+    if (onglet === 'comptes' && typeof chargerUsers === 'function') chargerUsers();
   }
 
   function _attacherNavAdmin() {
@@ -4397,25 +4397,39 @@ const Stock = (() => {
     const zone = document.getElementById('admin-chantiers-liste');
     if (!zone) return;
     if (!_chantiers.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun chantier</div>'; return; }
-    zone.innerHTML = _chantiers.map(c => `
-      <div class="admin-ref-item">
-        <span class="admin-ref-nom">${_e(c.nom)}${c.reference ? ` <small>${_e(c.reference)}</small>` : ''}</span>
-        <button class="admin-ref-del" data-ch-id="${_e(c.id)}" data-nom="${_e(c.nom)}" title="Supprimer">✕</button>
-      </div>`).join('');
+    zone.innerHTML = `
+      <table class="admin-rack-table">
+        <thead><tr>
+          <th>N° Affaire</th><th>Ville</th><th>Nom du chantier</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${_chantiers.map(c => `<tr>
+            <td>${_e(c.numero_affaire || '—')}</td>
+            <td>${_e(c.ville || '—')}</td>
+            <td><strong>${_e(c.nom)}</strong></td>
+            <td><button class="admin-ref-del" data-ch-id="${_e(c.id)}" data-nom="${_e(c.nom)}" title="Supprimer">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
   }
 
   async function _adminAjouterChantier() {
-    const m   = document.getElementById('admin-panel-chantiers');
-    const nom = m?.querySelector('#admin-ch-nom')?.value?.trim();
-    const ref = m?.querySelector('#admin-ch-ref')?.value?.trim();
+    const m       = document.getElementById('admin-panel-chantiers');
+    const nom     = m?.querySelector('#admin-ch-nom')?.value?.trim();
+    const affaire = m?.querySelector('#admin-ch-affaire')?.value?.trim();
+    const ville   = m?.querySelector('#admin-ch-ville')?.value?.trim();
     if (!nom) return;
     try {
-      await window.SB.inserer('chantiers', { nom, reference: ref || null, actif: true });
+      await window.SB.inserer('chantiers', { nom, numero_affaire: affaire || null, ville: ville || null, actif: true });
       const rows = await window.SB.lire('chantiers', { order: 'nom' });
       _chantiers = rows.filter(c => c.actif);
       _rendreChantiers();
       _majDatalistChantiers();
-      if (m) { m.querySelector('#admin-ch-nom').value = ''; m.querySelector('#admin-ch-ref').value = ''; }
+      if (m) {
+        m.querySelector('#admin-ch-nom').value     = '';
+        m.querySelector('#admin-ch-affaire').value = '';
+        m.querySelector('#admin-ch-ville').value   = '';
+      }
       _notif('Chantier ajouté', 'succes');
     } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
@@ -4438,10 +4452,10 @@ const Stock = (() => {
       const del = e.target.closest('.admin-ref-del[data-ch-id]');
       if (del) _adminSupprimerChantier(del.dataset.chId, del.dataset.nom);
     });
-    const inpNom = m.querySelector('#admin-ch-nom');
-    const inpRef = m.querySelector('#admin-ch-ref');
     m.querySelector('#admin-btn-chantier')?.addEventListener('click', _adminAjouterChantier);
-    inpNom?.addEventListener('keydown', e => { if (e.key === 'Enter') _adminAjouterChantier(); });
+    ['#admin-ch-affaire','#admin-ch-ville','#admin-ch-nom'].forEach(sel => {
+      m.querySelector(sel)?.addEventListener('keydown', e => { if (e.key === 'Enter') _adminAjouterChantier(); });
+    });
   }
 
   /* ──────────────────────────────────────────────────────────────

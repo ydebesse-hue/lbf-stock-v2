@@ -614,6 +614,50 @@
     .admin-ref-inp:focus { outline: none; border-color: var(--vert); }
     .admin-ref-vide { color: #aaa; font-size: 12px; padding: 8px 0; }
 
+    /* ── Form chantier en grille ─────────────────────────────────── */
+    .admin-ch-form {
+      display: grid; grid-template-columns: 140px 160px 1fr auto; gap: 10px; align-items: end; margin-top: 10px;
+    }
+    .admin-ch-form label { font-size: 11px; color: #555; font-weight: bold; display: block; margin-bottom: 3px; }
+
+    /* ── Table comptes inline ────────────────────────────────────── */
+    .cpt-table-wrap { background: #fff; border: 1px solid var(--gris-clair); border-radius: 3px; overflow: hidden; }
+    .cpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .cpt-table thead th {
+      background: var(--noir); color: white; font-family: Impact, sans-serif; font-size: 11px;
+      letter-spacing: 1px; text-transform: uppercase; padding: 9px 12px; text-align: left;
+    }
+    .cpt-table tbody tr { border-bottom: 1px solid #eee; }
+    .cpt-table tbody tr:last-child { border-bottom: none; }
+    .cpt-table tbody tr:hover { background: #fafafa; }
+    .cpt-table td { padding: 9px 12px; vertical-align: middle; }
+    .profil-label {
+      display: inline-block; padding: 2px 8px; border-radius: 2px;
+      font-family: Impact, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    }
+    .profil-consultation   { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
+    .profil-gestion        { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert); }
+    .profil-administration { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
+    .statut-actif   { color: var(--vert); font-weight: bold; }
+    .statut-inactif { color: #aaa; }
+    .bl-modifier  { background: var(--vert);  color: white; }
+    .bl-supprimer { background: #dc3545; color: white; }
+    .bl-mdp       { background: #6c757d; color: white; }
+
+    /* ── Champ modale comptes ────────────────────────────────────── */
+    .champ { margin-bottom: 14px; }
+    .champ label { display: block; font-size: 10px; font-weight: bold; color: #666; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; }
+    .champ input, .champ select { width: 100%; padding: 8px 11px; border: 1px solid var(--gris-bord); border-radius: 3px; font-family: Tahoma; font-size: 13px; color: var(--noir); outline: none; transition: border-color .15s; }
+    .champ input:focus, .champ select:focus { border-color: var(--rouge); }
+    .champ-mdp-wrap { position: relative; }
+    .champ-mdp-wrap input { padding-right: 38px; }
+    .btn-oeil { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #aaa; font-size: 15px; }
+    .btn-oeil:hover { color: var(--rouge); }
+    .note-info { background: #e8f0fe; border: 1px solid #a8c4f8; padding: 8px 12px; border-radius: 3px; font-size: 12px; color: var(--bleu-info); margin-bottom: 12px; }
+    .note-danger { background: #fde8e8; border: 1px solid var(--rouge); padding: 8px 12px; border-radius: 3px; font-size: 12px; color: var(--rouge); margin-bottom: 12px; }
+    .msg-erreur-modale { display: none; color: var(--rouge); font-size: 12px; margin-top: -8px; margin-bottom: 10px; }
+    .msg-erreur-modale.visible { display: block; }
+
     /* ── Section administration ──────────────────────────────────── */
     .admin-panel-zone { padding: 24px 28px; max-width: 860px; }
     .admin-panel-titre {
@@ -1485,10 +1529,23 @@
         <h3 class="admin-panel-titre">Chantiers</h3>
         <div id="admin-chantiers-liste" class="admin-ref-liste" style="max-height:380px"></div>
         <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un chantier</div>
-        <div class="admin-ref-form" style="flex-direction:column;gap:6px;max-width:440px">
-          <input id="admin-ch-nom" type="text" placeholder="Nom du chantier…" class="admin-ref-inp">
-          <input id="admin-ch-ref" type="text" placeholder="Référence (optionnel)" class="admin-ref-inp">
-          <button id="admin-btn-chantier" class="btn-modale btn-modale-vert" style="align-self:flex-start">+ Ajouter</button>
+        <div class="admin-ch-form">
+          <div>
+            <label for="admin-ch-affaire">N° d'affaire</label>
+            <input id="admin-ch-affaire" type="text" placeholder="ex. 2024-001" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-ch-ville">Ville</label>
+            <input id="admin-ch-ville" type="text" placeholder="ex. Rennes" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-ch-nom">Nom du chantier</label>
+            <input id="admin-ch-nom" type="text" placeholder="ex. École Jean Moulin" class="admin-ref-inp">
+          </div>
+          <div>
+            <label style="visibility:hidden">_</label>
+            <button id="admin-btn-chantier" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
         </div>
       </div>
 
@@ -1508,11 +1565,22 @@
 
       <!-- Comptes -->
       <div id="admin-panel-comptes" class="admin-panel" style="display:none">
-        <h3 class="admin-panel-titre">Gestion des comptes</h3>
-        <p class="admin-panel-desc">Gérer les utilisateurs, les rôles et les droits d'accès à l'application.</p>
-        <a href="comptes.html" class="btn-action btn-rouge" style="text-decoration:none;display:inline-block">
-          ⚙ Accéder à la gestion des comptes →
-        </a>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h3 class="admin-panel-titre" style="margin-bottom:0;border-bottom:none;padding-bottom:0">Gestion des comptes</h3>
+          <button class="btn-modale btn-modale-vert" onclick="ouvrirCreation()">+ Ajouter un compte</button>
+        </div>
+        <div class="cpt-table-wrap">
+          <table class="cpt-table">
+            <thead>
+              <tr>
+                <th>Identifiant</th><th>Nom complet</th><th>Profil</th><th>Statut</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="comptes-tbody">
+              <tr><td colspan="5" class="vide" style="padding:20px;text-align:center;color:#aaa">Chargement…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </div>
@@ -2317,10 +2385,99 @@
     </div>
   </div>
 
+  <!-- ── Modales gestion des comptes ──────────────────────────── -->
+  <div id="m-compte" class="modale-bg" onclick="bgClose(event,'m-compte')">
+    <div class="modale" onclick="event.stopPropagation()">
+      <div class="modale-titre" id="m-compte-titre">Nouveau compte</div>
+      <div class="note-info" id="m-compte-info" style="display:none"></div>
+      <div class="champ">
+        <label for="mc-identifiant">Identifiant *</label>
+        <input type="text" id="mc-identifiant" placeholder="ex : p.dupont" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="champ">
+        <label for="mc-nom">Nom complet *</label>
+        <input type="text" id="mc-nom" placeholder="ex : Pierre Dupont">
+      </div>
+      <div class="champ">
+        <label for="mc-profil">Profil *</label>
+        <select id="mc-profil">
+          <option value="consultation">Consultation — lecture seule</option>
+          <option value="gestion">Gestion — ajouts soumis à validation</option>
+          <option value="administration">Administration — accès complet</option>
+        </select>
+      </div>
+      <div class="champ" id="mc-mdp-zone">
+        <label for="mc-mdp">Mot de passe *</label>
+        <div class="champ-mdp-wrap">
+          <input type="password" id="mc-mdp" placeholder="Mot de passe">
+          <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp','mc-oeil')" id="mc-oeil">👁</button>
+        </div>
+      </div>
+      <div class="champ" id="mc-mdp2-zone">
+        <label for="mc-mdp2">Confirmer le mot de passe *</label>
+        <div class="champ-mdp-wrap">
+          <input type="password" id="mc-mdp2" placeholder="Confirmation">
+          <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp2','mc-oeil2')" id="mc-oeil2">👁</button>
+        </div>
+      </div>
+      <div class="champ">
+        <label for="mc-actif">Statut</label>
+        <select id="mc-actif">
+          <option value="true">Actif</option>
+          <option value="false">Désactivé</option>
+        </select>
+      </div>
+      <div class="msg-erreur-modale" id="mc-erreur"></div>
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="fermerM('m-compte')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge" onclick="sauvegarderCompte()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="m-mdp" class="modale-bg" onclick="bgClose(event,'m-mdp')">
+    <div class="modale" onclick="event.stopPropagation()">
+      <div class="modale-titre">Changer le mot de passe</div>
+      <p style="font-size:13px;color:#555;margin-bottom:14px">Compte : <strong id="mdp-nom-compte"></strong></p>
+      <div class="champ">
+        <label for="mdp-nouveau">Nouveau mot de passe *</label>
+        <div class="champ-mdp-wrap">
+          <input type="password" id="mdp-nouveau" placeholder="Nouveau mot de passe">
+          <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-nouveau','mdp-oeil1')" id="mdp-oeil1">👁</button>
+        </div>
+      </div>
+      <div class="champ">
+        <label for="mdp-confirme">Confirmer *</label>
+        <div class="champ-mdp-wrap">
+          <input type="password" id="mdp-confirme" placeholder="Confirmation">
+          <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-confirme','mdp-oeil2')" id="mdp-oeil2">👁</button>
+        </div>
+      </div>
+      <div class="msg-erreur-modale" id="mdp-erreur"></div>
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="fermerM('m-mdp')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge" onclick="sauvegarderMdp()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="m-supprimer" class="modale-bg" onclick="bgClose(event,'m-supprimer')">
+    <div class="modale" onclick="event.stopPropagation()">
+      <div class="modale-titre">Supprimer le compte</div>
+      <div class="note-danger">⚠ Cette action est irréversible.</div>
+      <p style="font-size:13px;color:#555;margin-bottom:16px">Supprimer le compte <strong id="sup-nom-compte"></strong> ?</p>
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="fermerM('m-supprimer')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge" onclick="confirmerSuppression()">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
-  <script src="../js/stock.js?v=20260504"></script>
+  <script src="../js/comptes.js?v=20260505"></script>
+  <script src="../js/stock.js?v=20260505"></script>
 
 </body>
 </html>
