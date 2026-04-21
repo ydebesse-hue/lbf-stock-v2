@@ -3953,15 +3953,11 @@ const Stock = (() => {
       const rad = actif ? 18 : 13;
       const cx  = `${pos.x}%`;
       const cy  = `${pos.y}%`;
-      const label = r.nom.replace(/^Rack\s+/i, '') || r.nom;
       return `
         ${actif ? `<circle cx="${cx}" cy="${cy}" r="${rad + 8}" fill="${c}" fill-opacity=".18">
           <animate attributeName="r" values="${rad+6};${rad+14};${rad+6}" dur="1.6s" repeatCount="indefinite"/>
         </circle>` : ''}
-        <circle cx="${cx}" cy="${cy}" r="${rad}" fill="${c}" fill-opacity="${op}"/>
-        <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="white"
-          font-size="${actif ? 12 : 10}" font-family="Tahoma"
-          font-weight="${actif ? 'bold' : 'normal'}">${_e(label)}</text>`;
+        <circle cx="${cx}" cy="${cy}" r="${rad}" fill="${c}" fill-opacity="${op}"/>`;
     }).join('');
   }
 
