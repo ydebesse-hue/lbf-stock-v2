@@ -739,12 +739,21 @@ const Stock = (() => {
      HELPERS CALCUL
      ────────────────────────────────────────────────────────────── */
 
-  /** Génère tous les emplacements d'un rack (ex. "Rack 1 - B4") */
+  /** Étiquette d'allée : 0→A, 25→Z, 26→AA, 27→AB … (style colonnes Excel) */
+  function _labelAllee(i) {
+    let s = '', n = i;
+    do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
+    return s;
+  }
+
+  /** Génère tous les emplacements d'un rack (ex. "Rack 1 - B4").
+   *  Rack avec nb_allees=0 → zone plate : retourne juste [rack.nom]. */
   function _lieuxDuRack(rack) {
+    if (!rack.nb_allees || !rack.nb_etages) return [rack.nom];
     const lieux = [];
     for (let a = 0; a < rack.nb_allees; a++) {
       for (let e = 1; e <= rack.nb_etages; e++) {
-        lieux.push(`${rack.nom} - ${String.fromCharCode(65 + a)}${e}`);
+        lieux.push(`${rack.nom} - ${_labelAllee(a)}${e}`);
       }
     }
     return lieux;
@@ -2371,6 +2380,12 @@ const Stock = (() => {
         _sauvegarderInline(id, field, _lireLieu(wrapper), item.categorie);
       };
 
+      // Zone plate : sauvegarder dès la sélection du rack
+      wrapper.querySelector('.lieu-sel-rack')?.addEventListener('change', () => {
+        const rNom = wrapper.querySelector('.lieu-sel-rack')?.value;
+        const rack = _racks.find(r => r.nom === rNom);
+        if (rack && (!rack.nb_allees || !rack.nb_etages)) sauvegarderL();
+      });
       wrapper.querySelector('.lieu-sel-etage')?.addEventListener('change', sauvegarderL);
       wrapper.addEventListener('keydown', e => {
         if (e.key === 'Enter')  { e.preventDefault(); sauvegarderL(); }
@@ -3538,8 +3553,9 @@ const Stock = (() => {
     if (!el) return;
     let nomRack = '', nomAllee = '', nomEtage = '';
     if (valeur) {
-      const mt = valeur.match(/^(.+)\s*-\s*([A-Z])(\d+)$/);
+      const mt = valeur.match(/^(.+)\s*-\s*([A-Z]+)(\d+)$/);
       if (mt) { nomRack = mt[1].trim(); nomAllee = mt[2]; nomEtage = mt[3]; }
+      else { nomRack = valeur.trim(); } // zone plate : valeur = nom du rack seul
     }
 
     const selRack = document.createElement('select');
@@ -3557,12 +3573,24 @@ const Stock = (() => {
       const rack = _racks.find(r => r.nom === selRack.value);
       if (!rack) {
         selAllee.innerHTML = '<option value="">— Allée —</option>';
+        selAllee.style.display = '';
         selEtage.innerHTML = '<option value="">— Étage —</option>';
+        selEtage.style.display = '';
         return;
       }
+      // Zone plate : cacher allée et étage
+      if (!rack.nb_allees || !rack.nb_etages) {
+        selAllee.innerHTML = '<option value="">— Allée —</option>';
+        selAllee.style.display = 'none';
+        selEtage.innerHTML = '<option value="">— Étage —</option>';
+        selEtage.style.display = 'none';
+        return;
+      }
+      selAllee.style.display = '';
+      selEtage.style.display = '';
       selAllee.innerHTML = '<option value="">— Allée —</option>'
         + Array.from({length: rack.nb_allees}, (_, i) => {
-            const l = String.fromCharCode(65 + i);
+            const l = _labelAllee(i);
             return `<option value="${l}"${l === nomAllee ? ' selected' : ''}>${l}</option>`;
           }).join('');
       majEtage();
@@ -3586,13 +3614,18 @@ const Stock = (() => {
     majAllee();
   }
 
-  /** Lit la valeur composée "Rack 1 - B4" depuis un conteneur lieu-cascade */
+  /** Lit la valeur depuis un conteneur lieu-cascade.
+   *  Zone plate : retourne juste le nom du rack.
+   *  Zone avec allées/étages : retourne "Rack 1 - B4". */
   function _lireLieu(el) {
     if (!el) return '';
-    const rack  = el.querySelector('.lieu-sel-rack')?.value  || '';
-    const allee = el.querySelector('.lieu-sel-allee')?.value || '';
+    const rack = el.querySelector('.lieu-sel-rack')?.value || '';
+    if (!rack) return '';
+    const selAllee = el.querySelector('.lieu-sel-allee');
+    if (selAllee?.style.display === 'none') return rack; // zone plate
+    const allee = selAllee?.value || '';
     const etage = el.querySelector('.lieu-sel-etage')?.value || '';
-    if (!rack || !allee || !etage) return '';
+    if (!allee || !etage) return '';
     return `${rack} - ${allee}${etage}`;
   }
 
@@ -4306,13 +4339,15 @@ const Stock = (() => {
         </tr></thead>
         <tbody>
           ${_racks.map(r => {
-            const nb = r.nb_allees * r.nb_etages;
-            const dernAllee = String.fromCharCode(65 + r.nb_allees - 1);
+            const plat = !r.nb_allees || !r.nb_etages;
+            const nb = plat ? 0 : r.nb_allees * r.nb_etages;
+            const alleeLabel = plat ? '—' : `A – ${_e(_labelAllee(r.nb_allees - 1))} (${r.nb_allees})`;
+            const etageLabel = plat ? '—' : `1 – ${r.nb_etages}`;
             return `<tr>
               <td><strong>${_e(r.nom)}</strong></td>
-              <td>A – ${_e(dernAllee)} (${r.nb_allees})</td>
-              <td>1 – ${r.nb_etages}</td>
-              <td style="color:#888;font-size:12px">${nb} emplacement${nb > 1 ? 's' : ''}</td>
+              <td>${alleeLabel}</td>
+              <td>${etageLabel}</td>
+              <td style="color:#888;font-size:12px">${plat ? 'Zone plate' : `${nb} emplacement${nb > 1 ? 's' : ''}`}</td>
               <td><button class="admin-ref-del" data-rack-id="${_e(r.id)}" data-nom="${_e(r.nom)}" title="Supprimer">✕</button></td>
             </tr>`;
           }).join('')}
@@ -4321,11 +4356,12 @@ const Stock = (() => {
   }
 
   function _aperçuRack(nom, nbAllees, nbEtages) {
-    if (!nom || !nbAllees || !nbEtages) return '';
+    if (!nom) return '';
+    if (!nbAllees || !nbEtages) return `${nom} (zone plate, sans allée ni étage)`;
     const ex = [];
     outer: for (let a = 0; a < nbAllees; a++) {
       for (let e = 1; e <= nbEtages; e++) {
-        ex.push(`${nom} - ${String.fromCharCode(65 + a)}${e}`);
+        ex.push(`${nom} - ${_labelAllee(a)}${e}`);
         if (ex.length >= 4) break outer;
       }
     }
@@ -4348,16 +4384,17 @@ const Stock = (() => {
     const na  = parseInt(m?.querySelector('#admin-rack-allees')?.value);
     const ne  = parseInt(m?.querySelector('#admin-rack-etages')?.value);
     if (!nom) return;
-    if (!na || na < 1 || na > 26) return _notif('Allées : entre 1 et 26', 'alerte');
-    if (!ne || ne < 1)            return _notif('Étages : minimum 1', 'alerte');
+    if (isNaN(na) || na < 0) return _notif('Allées : 0 (zone plate) ou nombre ≥ 1', 'alerte');
+    if (na > 0 && (!ne || ne < 1)) return _notif('Étages : minimum 1', 'alerte');
+    const neEffectif = na === 0 ? 0 : ne;
     try {
-      await window.SB.inserer('racks', { nom, nb_allees: na, nb_etages: ne, actif: true });
+      await window.SB.inserer('racks', { nom, nb_allees: na, nb_etages: neEffectif, actif: true });
       const rows = await window.SB.lire('racks', { order: 'created_at' });
       _racks = rows.filter(r => r.actif);
       _lieux = _majLieux();
       _rendreRacks();
       if (m) { m.querySelector('#admin-rack-nom').value = ''; m.querySelector('#admin-rack-allees').value = ''; m.querySelector('#admin-rack-etages').value = ''; m.querySelector('#admin-rack-apercu').textContent = ''; }
-      _notif(`${nom} ajouté (${na * ne} emplacements)`, 'succes');
+      _notif(na > 0 ? `${nom} ajouté (${na * ne} emplacements)` : `${nom} ajouté (zone plate)`, 'succes');
     } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 
