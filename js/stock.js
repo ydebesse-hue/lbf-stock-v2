@@ -3948,16 +3948,14 @@ const Stock = (() => {
       const pos = positions[r.id];
       if (!pos) return '';
       const actif = r.nom === rackActif;
-      const c   = actif ? 'rgb(210,35,42)' : 'rgb(45,95,50)';
-      const op  = actif ? '1' : '.45';
-      const rad = actif ? 18 : 13;
-      const cx  = `${pos.x}%`;
-      const cy  = `${pos.y}%`;
+      if (!actif) return '';
+      const cx = `${pos.x}%`;
+      const cy = `${pos.y}%`;
       return `
-        ${actif ? `<circle cx="${cx}" cy="${cy}" r="${rad + 8}" fill="${c}" fill-opacity=".18">
-          <animate attributeName="r" values="${rad+6};${rad+14};${rad+6}" dur="1.6s" repeatCount="indefinite"/>
-        </circle>` : ''}
-        <circle cx="${cx}" cy="${cy}" r="${rad}" fill="${c}" fill-opacity="${op}"/>`;
+        <circle cx="${cx}" cy="${cy}" r="26" fill="rgb(210,35,42)" fill-opacity=".18">
+          <animate attributeName="r" values="22;30;22" dur="1.6s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="${cx}" cy="${cy}" r="18" fill="rgb(210,35,42)"/>`;
     }).join('');
   }
 
