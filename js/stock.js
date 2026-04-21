@@ -3942,15 +3942,26 @@ const Stock = (() => {
   function _sauvegarderPlanPos(p) { localStorage.setItem(CLE_PLAN_POS, JSON.stringify(p)); }
 
   /** Génère les marqueurs SVG à superposer sur l'image du plan.
-   *  cx/cy en % sont valides en SVG ; transform="translate(X%,Y%)" ne l'est pas. */
-  function _svgMarqueursPlan(positions, rackActif) {
+   *  showNames=true : tous les marqueurs avec nom (vue admin).
+   *  showNames=false : uniquement le rack actif en rouge, sans texte (vue localisation). */
+  function _svgMarqueursPlan(positions, rackActif, showNames = false) {
     return _racks.map(r => {
       const pos = positions[r.id];
       if (!pos) return '';
       const actif = r.nom === rackActif;
-      if (!actif) return '';
+      // Vue localisation : afficher uniquement le rack actif
+      if (!showNames && !actif) return '';
       const cx = `${pos.x}%`;
       const cy = `${pos.y}%`;
+      if (showNames) {
+        // Vue admin : pastille verte + nom sous le cercle
+        return `
+          <circle cx="${cx}" cy="${cy}" r="10" fill="rgb(45,95,50)" fill-opacity=".85"/>
+          <text x="${cx}" y="${cy}" dy="22" text-anchor="middle" fill="rgb(45,95,50)"
+            font-size="11" font-family="Tahoma" font-weight="bold"
+            style="text-shadow:0 0 3px white,0 0 3px white">${_e(r.nom)}</text>`;
+      }
+      // Vue localisation : cercle rouge avec pulsation
       return `
         <circle cx="${cx}" cy="${cy}" r="26" fill="rgb(210,35,42)" fill-opacity=".18">
           <animate attributeName="r" values="22;30;22" dur="1.6s" repeatCount="indefinite"/>
@@ -4002,18 +4013,14 @@ const Stock = (() => {
     const btnClear  = document.getElementById('admin-plan-clear');
     const planImg   = document.getElementById('admin-plan-img');
     const planSvg   = document.getElementById('admin-plan-svg');
+    const sel       = document.getElementById('admin-plan-rack-sel');
 
-    // Pastilles de zones — triées alphabétiquement
-    const zonesList = document.getElementById('admin-plan-zones-list');
-    if (zonesList) {
-      const sorted = [..._racks].sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }));
-      // Conserver la sélection courante
-      const selId = zonesList.querySelector('.plan-zone-chip.selected')?.dataset.rackId || '';
-      zonesList.innerHTML = sorted.map(r =>
-        `<div class="plan-zone-chip${positions[r.id] ? ' placed' : ''}${r.id === selId ? ' selected' : ''}" data-rack-id="${_e(r.id)}">
-          <span class="plan-zone-dot"></span>${_e(r.nom)}
-        </div>`
-      ).join('');
+    if (sel) {
+      sel.innerHTML = '<option value="">— Choisir —</option>'
+        + [..._racks]
+            .sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }))
+            .map(r => `<option value="${_e(r.id)}">${_e(r.nom)}</option>`)
+            .join('');
     }
 
     if (editor) editor.style.display = '';
@@ -4021,21 +4028,12 @@ const Stock = (() => {
 
     const src = img || PLAN_PROVISOIRE_SRC;
     if (planImg) planImg.src = src;
-    if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null);
+    if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null, true);
   }
 
   function _attacherAdminPlan() {
-    const input     = document.getElementById('admin-plan-input');
-    const wrap      = document.getElementById('admin-plan-canvas-wrap');
-    const zonesList = document.getElementById('admin-plan-zones-list');
-
-    // Sélection d'une zone via pastille
-    zonesList?.addEventListener('click', e => {
-      const chip = e.target.closest('.plan-zone-chip');
-      if (!chip) return;
-      zonesList.querySelectorAll('.plan-zone-chip').forEach(c => c.classList.remove('selected'));
-      chip.classList.add('selected');
-    });
+    const input = document.getElementById('admin-plan-input');
+    const wrap  = document.getElementById('admin-plan-canvas-wrap');
 
     input?.addEventListener('change', e => {
       const file = e.target.files[0];
@@ -4058,8 +4056,7 @@ const Stock = (() => {
     });
 
     wrap?.addEventListener('click', e => {
-      const chip = zonesList?.querySelector('.plan-zone-chip.selected');
-      const rackId = chip?.dataset.rackId;
+      const rackId = document.getElementById('admin-plan-rack-sel')?.value;
       if (!rackId) { _notif('Sélectionnez une zone d\'abord', 'alerte'); return; }
       const rect = wrap.getBoundingClientRect();
       const x = +((e.clientX - rect.left)  / rect.width  * 100).toFixed(2);
@@ -4067,10 +4064,8 @@ const Stock = (() => {
       const positions = _chargerPlanPos();
       positions[rackId] = { x, y };
       _sauvegarderPlanPos(positions);
-      // Marquer la pastille comme placée
-      chip.classList.add('placed');
       const planSvg = document.getElementById('admin-plan-svg');
-      if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null);
+      if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null, true);
       const rack = _racks.find(r => r.id === rackId);
       _notif(`${rack?.nom || 'Zone'} placée sur le plan`, 'succes');
     });
