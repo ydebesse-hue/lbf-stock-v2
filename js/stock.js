@@ -258,6 +258,22 @@ const Stock = (() => {
     _majDatalistChantiers();
     _attacherEvenements();
     _initialiserModales();
+
+    // Rafraîchissement automatique des demandes pour les admins
+    if (Auth.hasRight('can_validate')) {
+      setInterval(async () => {
+        try {
+          const demandes = await window.SB.lire('demandes');
+          const nouvelles = demandes.filter(d => d.statut === 'en_attente');
+          const avant = _demandes.length;
+          _demandes = nouvelles;
+          if (nouvelles.length !== avant) {
+            _filtrer();
+            _majAlerteAttente();
+          }
+        } catch(e) {}
+      }, 30000);
+    }
   }
 
 
@@ -3211,8 +3227,11 @@ const Stock = (() => {
   async function validerElement(id) {
     if (id.startsWith('DEM-')) {
       // Validation d'une demande d'attribution
-      const store   = _chargerDemandes();
-      _selection     = store.demandes.find(d => d.id === id) || null;
+      _selection = _demandes.find(d => d.id === id) || null;
+      if (!_selection) {
+        // fallback localStorage
+        _selection = _chargerDemandes().demandes.find(d => d.id === id) || null;
+      }
       if (!_selection) return _notif('Demande introuvable', 'erreur');
       _remplirValidationDemande(_selection);
       _ouvrirModale('m-valider-demande');
@@ -3231,8 +3250,8 @@ const Stock = (() => {
    */
   async function refuserElement(id) {
     if (id.startsWith('DEM-')) {
-      const store = _chargerDemandes();
-      _selection   = store.demandes.find(d => d.id === id) || null;
+      _selection = _demandes.find(d => d.id === id) || null;
+      if (!_selection) _selection = _chargerDemandes().demandes.find(d => d.id === id) || null;
     } else {
       _selection = _parId(id);
     }
