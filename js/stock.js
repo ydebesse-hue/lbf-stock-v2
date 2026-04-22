@@ -2569,9 +2569,14 @@ const Stock = (() => {
         ctrl.type = 'number'; ctrl.min = '1'; ctrl.step = '1';
         ctrl.value = item.quantite ?? 1;
       } else if (field === 'chantier') {
-        ctrl.type = 'text';
-        ctrl.value = item.chantier_affectation ?? '';
-        ctrl.placeholder = 'Chantier…';
+        ctrl = document.createElement('select');
+        ctrl.className = 'cell-inline-input';
+        ctrl.innerHTML = `<option value="">— Aucun —</option>` +
+          _chantiers.map(c => {
+            const label = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
+            const sel   = c.nom === item.chantier_affectation ? ' selected' : '';
+            return `<option value="${_e(c.nom)}"${sel}>${_e(label)}</option>`;
+          }).join('');
       } else if (field === 'commentaire') {
         ctrl.type = 'text';
         ctrl.value = item.commentaire ?? '';
@@ -3601,7 +3606,7 @@ const Stock = (() => {
         <td><span class="badge-operation ${cls}">${_e(l.type_operation)}</span></td>
         <td>${avant}</td>
         <td>${apres}</td>
-        <td>${_e(l.chantier  || '—')}</td>
+        <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
         <td>${_e(l.operateur || '—')}</td>
       </tr>`;
     });
