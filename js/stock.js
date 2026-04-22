@@ -1901,6 +1901,7 @@ const Stock = (() => {
 
     // Réinitialiser le panel commande
     m.querySelectorAll('#ap-panel-commande input').forEach(el => { el.value = ''; });
+    _monterPickerChantier('ap-cmd-chantier-picker', 'ap-cmd-chantier');
     const tbody = m.querySelector('#ap-cmd-tbody');
     if (tbody) {
       tbody.innerHTML = '';
@@ -2397,6 +2398,7 @@ const Stock = (() => {
     });
 
     _monterSelecteurLieu(m.querySelector('#at-lieu'));
+    _monterPickerChantier('at-chantier-picker', 'at-chantier');
     _majNoteStatut(m, '.at-note-statut');
     _atMajApercu(m); // reset aperçu
 
@@ -2772,7 +2774,7 @@ const Stock = (() => {
     _setVal(m, '#mod-t-largeur',    tole.largeur_mm);
     _setVal(m, '#mod-t-longueur',   tole.longueur_mm);
     _setVal(m, '#mod-t-quantite',   tole.quantite);
-    _setVal(m, '#mod-t-chantier',   tole.chantier_origine);
+    _monterPickerChantier('mod-t-chantier-picker', 'mod-t-chantier', tole.chantier_origine || '');
     _setVal(m, '#mod-t-dispo',      tole.disponibilite);
     _setVal(m, '#mod-t-commentaire', tole.commentaire || '');
 
@@ -3807,6 +3809,61 @@ const Stock = (() => {
       opts.unshift(`<option value="${_e(valeurCourante)}" selected>${_e(valeurCourante)}</option>`);
     }
     sel.innerHTML = opts.join('');
+  }
+
+  function _monterPickerChantier(wrapId, selectId, valeurCourante = '') {
+    const wrap = typeof wrapId === 'string' ? document.getElementById(wrapId) : wrapId;
+    if (!wrap) return;
+
+    const opts = `<option value="">— Choisir un chantier —</option>` +
+      _chantiers.map(c => {
+        const lbl = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
+        const sel = c.nom === valeurCourante ? ' selected' : '';
+        return `<option value="${_e(c.nom)}"${sel}>${_e(lbl)}</option>`;
+      }).join('');
+
+    wrap.innerHTML = `
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="${selectId}" style="flex:1;min-width:0">${opts}</select>
+        <button type="button" class="btn btn-sec ch-btn-creer" style="white-space:nowrap;padding:4px 8px;font-size:.85em">+ Nouveau</button>
+      </div>
+      <div class="ch-form-nouv" style="display:none;margin-top:6px;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd">
+        <div style="display:flex;gap:6px;margin-bottom:5px">
+          <input type="text" class="ch-new-affaire" placeholder="N° affaire" style="width:110px">
+          <input type="text" class="ch-new-ville" placeholder="Ville" style="flex:1;min-width:0">
+        </div>
+        <div style="display:flex;gap:6px">
+          <input type="text" class="ch-new-nom" placeholder="Nom du chantier *" style="flex:1;min-width:0">
+          <button type="button" class="btn btn-ok ch-btn-confirmer" style="white-space:nowrap;padding:4px 8px;font-size:.85em">✓ Créer</button>
+          <button type="button" class="btn btn-sec ch-btn-annuler" style="padding:4px 8px;font-size:.85em">✗</button>
+        </div>
+      </div>`;
+
+    const formNouv = wrap.querySelector('.ch-form-nouv');
+    const inpNom   = wrap.querySelector('.ch-new-nom');
+    const inpAff   = wrap.querySelector('.ch-new-affaire');
+    const inpVille = wrap.querySelector('.ch-new-ville');
+
+    wrap.querySelector('.ch-btn-creer').addEventListener('click', () => {
+      formNouv.style.display = '';
+      inpAff.value = ''; inpVille.value = ''; inpNom.value = '';
+      inpNom.focus();
+    });
+    wrap.querySelector('.ch-btn-annuler').addEventListener('click', () => {
+      formNouv.style.display = 'none';
+    });
+    wrap.querySelector('.ch-btn-confirmer').addEventListener('click', async () => {
+      const nom     = inpNom.value.trim();
+      const affaire = inpAff.value.trim() || null;
+      const ville   = inpVille.value.trim() || null;
+      if (!nom) return;
+      const res = await window.SB.inserer('chantiers', { nom, numero_affaire: affaire, ville, actif: true });
+      if (res?.error) { alert('Erreur création chantier : ' + res.error.message); return; }
+      const rows = await window.SB.lire('chantiers', { order: 'nom' });
+      _chantiers = rows.filter(c => c.actif);
+      _majDatalistChantiers();
+      _monterPickerChantier(wrap, selectId, nom);
+    });
   }
 
   function _labelChantier(nom) {
