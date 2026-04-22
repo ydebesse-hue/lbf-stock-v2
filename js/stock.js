@@ -675,13 +675,13 @@ const Stock = (() => {
         return d ? new Date(d).toLocaleDateString('fr-FR') : '—';
       }
       case 'chantier':
-        return b.chantier_affectation ? _e(b.chantier_affectation) : '—';
+        return b.chantier_affectation ? _e(_labelChantier(b.chantier_affectation)) : '—';
       case 'lieu':
         return b.lieu_stockage
           ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(b.lieu_stockage)}" title="Voir sur le plan">${_e(b.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>`
           : '—';
       case 'origine':
-        return _e(b.chantier_origine) || '—';
+        return _e(_labelChantier(b.chantier_origine)) || '—';
       case 'ref_cmd':
         return _e(b.ref_commande) || '—';
       case 'fournisseur':
@@ -744,7 +744,7 @@ const Stock = (() => {
         h += `<td>${poids}</td>`;
         h += `<td>${_e(b.lieu_stockage || '—')}</td>`;
         h += `<td>${dateAjout}</td>`;
-        h += `<td>${_e(b.chantier_origine || '—')}</td>`;
+        h += `<td>${_e(_labelChantier(b.chantier_origine) || '—')}</td>`;
         h += `<td class="td-actions">
           <button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button>
         </td>`;
@@ -803,8 +803,8 @@ const Stock = (() => {
           ? `<td class="cell-editable" data-field="lieu">${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`
           : `<td>${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`;
         h += `<td>${dateAjout}</td>`;
-        h += `<td>${_e(t.chantier_origine)}${t.chantier_affectation
-          ? ` <span class="chip-chantier" title="Affecté à : ${_e(t.chantier_affectation)}">→ ${_e(t.chantier_affectation)}</span>`
+        h += `<td>${_e(_labelChantier(t.chantier_origine))}${t.chantier_affectation
+          ? ` <span class="chip-chantier" title="Affecté à : ${_e(_labelChantier(t.chantier_affectation))}">→ ${_e(_labelChantier(t.chantier_affectation))}</span>`
           : ''}</td>`;
         h += modif
           ? `<td class="cell-editable" data-field="dispo">${_badgeDispo(t)}</td>`
@@ -939,7 +939,7 @@ const Stock = (() => {
     _remplirSelect('p-type',
       [...new Set(profils.map(b => b.section_type))].sort()
     );
-    _remplirSelect('p-chantier',
+    _remplirSelectChantiers('p-chantier',
       [...new Set(profils.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))].sort()
     );
     _remplirSelect('p-lieu',
@@ -949,7 +949,7 @@ const Stock = (() => {
       [...new Set(toles.map(b => String(b.epaisseur_mm)))].sort((a,b) => +a - +b),
       'mm'
     );
-    _remplirSelect('t-chantier',
+    _remplirSelectChantiers('t-chantier',
       [...new Set(toles.map(b => b.chantier_origine))].sort()
     );
     _remplirSelect('t-lieu',
@@ -1023,6 +1023,20 @@ const Stock = (() => {
       const o = document.createElement('option');
       o.value = v;
       o.textContent = suffixe ? `${v} ${suffixe}` : v;
+      sel.appendChild(o);
+    });
+  }
+
+  function _remplirSelectChantiers(id, noms) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const premiere = sel.options[0];
+    sel.innerHTML = '';
+    sel.appendChild(premiere);
+    noms.forEach(nom => {
+      const o = document.createElement('option');
+      o.value = nom;
+      o.textContent = _labelChantier(nom) || nom;
       sel.appendChild(o);
     });
   }
@@ -1803,10 +1817,12 @@ const Stock = (() => {
       const affWrap    = mModAff.querySelector('#mod-affectation-wrap');
       const inpAff     = mModAff.querySelector('#mod-affectation');
       const btnCreer   = mModAff.querySelector('#mod-btn-creer-chantier');
-      const formNouv   = mModAff.querySelector('#mod-nouveau-chantier-form');
-      const inpNomNouv = mModAff.querySelector('#mod-new-chantier-nom');
-      const btnConf    = mModAff.querySelector('#mod-btn-confirmer-chantier');
-      const btnAnn     = mModAff.querySelector('#mod-btn-annuler-chantier');
+      const formNouv      = mModAff.querySelector('#mod-nouveau-chantier-form');
+      const inpNomNouv    = mModAff.querySelector('#mod-new-chantier-nom');
+      const inpAffaireNouv = mModAff.querySelector('#mod-new-chantier-affaire');
+      const inpVilleNouv  = mModAff.querySelector('#mod-new-chantier-ville');
+      const btnConf       = mModAff.querySelector('#mod-btn-confirmer-chantier');
+      const btnAnn        = mModAff.querySelector('#mod-btn-annuler-chantier');
 
       function _majVisibiliteChantierMod() {
         const estAffecte = selDispo?.value === 'affecte';
@@ -1819,7 +1835,9 @@ const Stock = (() => {
 
       if (btnCreer) btnCreer.addEventListener('click', () => {
         if (formNouv) formNouv.style.display = '';
-        if (inpNomNouv) { inpNomNouv.value = ''; inpNomNouv.focus(); }
+        if (inpAffaireNouv) inpAffaireNouv.value = '';
+        if (inpVilleNouv)  inpVilleNouv.value  = '';
+        if (inpNomNouv)    { inpNomNouv.value = ''; inpNomNouv.focus(); }
       });
 
       if (btnAnn) btnAnn.addEventListener('click', () => {
@@ -1827,9 +1845,11 @@ const Stock = (() => {
       });
 
       if (btnConf) btnConf.addEventListener('click', async () => {
-        const nom = inpNomNouv?.value?.trim();
+        const nom     = inpNomNouv?.value?.trim();
+        const affaire = inpAffaireNouv?.value?.trim() || null;
+        const ville   = inpVilleNouv?.value?.trim()   || null;
         if (!nom) return;
-        const res = await window.SB.inserer('chantiers', { nom, actif: true });
+        const res = await window.SB.inserer('chantiers', { nom, numero_affaire: affaire, ville, actif: true });
         if (res?.error) { alert('Erreur création chantier : ' + res.error.message); return; }
         const rows = await window.SB.lire('chantiers', { order: 'nom' });
         _chantiers = rows.filter(c => c.actif);
@@ -2699,7 +2719,7 @@ const Stock = (() => {
     const metaDiv = m.querySelector('#mod-barre-meta');
     if (metaDiv) {
       const chips = [];
-      if (barre.chantier_origine) chips.push(`<span class="mod-meta-chip"><strong>Origine :</strong>&nbsp;${_e(barre.chantier_origine)}</span>`);
+      if (barre.chantier_origine) chips.push(`<span class="mod-meta-chip"><strong>Origine :</strong>&nbsp;${_e(_labelChantier(barre.chantier_origine))}</span>`);
       if (barre.classe_acier)     chips.push(`<span class="mod-meta-chip"><strong>Classe :</strong>&nbsp;${_e(barre.classe_acier)}</span>`);
       if (barre.ref_commande)     chips.push(`<span class="mod-meta-chip"><strong>Réf :</strong>&nbsp;${_e(barre.ref_commande)}</span>`);
       if (barre.fournisseur)      chips.push(`<span class="mod-meta-chip"><strong>Fourn. :</strong>&nbsp;${_e(barre.fournisseur)}</span>`);
@@ -3782,6 +3802,13 @@ const Stock = (() => {
       opts.unshift(`<option value="${_e(valeurCourante)}" selected>${_e(valeurCourante)}</option>`);
     }
     sel.innerHTML = opts.join('');
+  }
+
+  function _labelChantier(nom) {
+    if (!nom) return '';
+    const c = _chantiers.find(x => x.nom === nom);
+    if (!c) return nom;
+    return [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
   }
 
   /**
