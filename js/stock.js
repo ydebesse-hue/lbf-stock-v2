@@ -1834,7 +1834,7 @@ const Stock = (() => {
         const rows = await window.SB.lire('chantiers', { order: 'nom' });
         _chantiers = rows.filter(c => c.actif);
         _majDatalistChantiers();
-        if (inpAff) inpAff.value = nom;
+        _peuplerSelectAffectation(inpAff, nom);
         if (formNouv) formNouv.style.display = 'none';
       });
     }
@@ -2710,7 +2710,7 @@ const Stock = (() => {
     _monterSelecteurLieu(m.querySelector('#mod-lieu'), barre.lieu_stockage || '');
     _setVal(m, '#mod-longueur',    barre.longueur_m);
     _setVal(m, '#mod-dispo',       barre.disponibilite);
-    _setVal(m, '#mod-affectation', barre.chantier_affectation || '');
+    _peuplerSelectAffectation(m.querySelector('#mod-affectation'), barre.chantier_affectation || '');
     _setVal(m, '#mod-commentaire', barre.commentaire || '');
     _apMajPoids(m, '#mod-longueur');
     const affWrapMod = m.querySelector('#mod-affectation-wrap');
@@ -3768,6 +3768,20 @@ const Stock = (() => {
     const dl = document.getElementById('dl-chantiers');
     if (!dl) return;
     dl.innerHTML = _chantiers.map(c => `<option value="${_e(c.nom)}">`).join('');
+  }
+
+  function _peuplerSelectAffectation(sel, valeurCourante) {
+    if (!sel) return;
+    const opts = _chantiers.map(c => {
+      const label = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
+      return `<option value="${_e(c.nom)}"${c.nom === valeurCourante ? ' selected' : ''}>${_e(label)}</option>`;
+    });
+    if (!valeurCourante || _chantiers.some(c => c.nom === valeurCourante)) {
+      opts.unshift(`<option value="">— Choisir un chantier —</option>`);
+    } else {
+      opts.unshift(`<option value="${_e(valeurCourante)}" selected>${_e(valeurCourante)}</option>`);
+    }
+    sel.innerHTML = opts.join('');
   }
 
   /**
