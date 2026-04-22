@@ -1797,16 +1797,16 @@ const Stock = (() => {
     _attacherNavAdmin();
 
     // ── Modale modification — dispo ↔ chantier ────────────────────
-    const mMod = document.getElementById('m-modification');
-    if (mMod) {
-      const selDispo   = mMod.querySelector('#mod-dispo');
-      const affWrap    = mMod.querySelector('#mod-affectation-wrap');
-      const inpAff     = mMod.querySelector('#mod-affectation');
-      const btnCreer   = mMod.querySelector('#mod-btn-creer-chantier');
-      const formNouv   = mMod.querySelector('#mod-nouveau-chantier-form');
-      const inpNomNouv = mMod.querySelector('#mod-new-chantier-nom');
-      const btnConf    = mMod.querySelector('#mod-btn-confirmer-chantier');
-      const btnAnn     = mMod.querySelector('#mod-btn-annuler-chantier');
+    const mModAff = document.getElementById('m-modification');
+    if (mModAff) {
+      const selDispo   = mModAff.querySelector('#mod-dispo');
+      const affWrap    = mModAff.querySelector('#mod-affectation-wrap');
+      const inpAff     = mModAff.querySelector('#mod-affectation');
+      const btnCreer   = mModAff.querySelector('#mod-btn-creer-chantier');
+      const formNouv   = mModAff.querySelector('#mod-nouveau-chantier-form');
+      const inpNomNouv = mModAff.querySelector('#mod-new-chantier-nom');
+      const btnConf    = mModAff.querySelector('#mod-btn-confirmer-chantier');
+      const btnAnn     = mModAff.querySelector('#mod-btn-annuler-chantier');
 
       function _majVisibiliteChantierMod() {
         const estAffecte = selDispo?.value === 'affecte';
