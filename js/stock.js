@@ -1813,6 +1813,7 @@ const Stock = (() => {
     _attacherAdminStockage();
     _attacherAdminPlan();
     _attacherAdminChantiers();
+    _attacherAdminFournisseurs();
     _attacherNavAdmin();
 
     // ── Modale modification — dispo ↔ chantier ────────────────────
@@ -4695,8 +4696,9 @@ const Stock = (() => {
     const panel = document.getElementById(`admin-panel-${onglet}`);
     if (panel) panel.style.display = 'block';
 
-    if (onglet === 'stockage')  { _rendreRacks(); _rendreAdminPlan(); }
-    if (onglet === 'chantiers') _rendreChantiers();
+    if (onglet === 'stockage')     { _rendreRacks(); _rendreAdminPlan(); }
+    if (onglet === 'chantiers')    _rendreChantiers();
+    if (onglet === 'fournisseurs') _rendreFournisseurs();
     if (onglet === 'comptes' && typeof chargerUsers === 'function') chargerUsers();
   }
 
@@ -4896,6 +4898,59 @@ const Stock = (() => {
     m.querySelector('#admin-btn-chantier')?.addEventListener('click', _adminAjouterChantier);
     ['#admin-ch-affaire','#admin-ch-ville','#admin-ch-nom'].forEach(sel => {
       m.querySelector(sel)?.addEventListener('keydown', e => { if (e.key === 'Enter') _adminAjouterChantier(); });
+    });
+  }
+
+  function _rendreFournisseurs() {
+    const zone = document.getElementById('admin-fournisseurs-liste');
+    if (!zone) return;
+    if (!_fournisseurs.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun fournisseur</div>'; return; }
+    zone.innerHTML = `
+      <table class="admin-rack-table">
+        <thead><tr><th>Nom du fournisseur</th><th></th></tr></thead>
+        <tbody>
+          ${_fournisseurs.map(f => `<tr>
+            <td><strong>${_e(f.nom)}</strong></td>
+            <td><button class="admin-ref-del" data-fv-id="${_e(f.id)}" data-nom="${_e(f.nom)}" title="Supprimer">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function _adminAjouterFournisseur() {
+    const m   = document.getElementById('admin-panel-fournisseurs');
+    const nom = m?.querySelector('#admin-fv-nom')?.value?.trim();
+    if (!nom) return;
+    try {
+      await window.SB.inserer('fournisseurs', { nom, actif: true });
+      const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
+      _fournisseurs = rows.filter(f => f.actif);
+      _rendreFournisseurs();
+      if (m) m.querySelector('#admin-fv-nom').value = '';
+      _notif('Fournisseur ajouté', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  async function _adminSupprimerFournisseur(id, nom) {
+    try {
+      await window.SB.supprimer('fournisseurs', id);
+      const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
+      _fournisseurs = rows.filter(f => f.actif);
+      _rendreFournisseurs();
+      _notif(`"${nom}" supprimé`, 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  function _attacherAdminFournisseurs() {
+    const m = document.getElementById('admin-panel-fournisseurs');
+    if (!m) return;
+    m.addEventListener('click', e => {
+      const del = e.target.closest('.admin-ref-del[data-fv-id]');
+      if (del) _adminSupprimerFournisseur(del.dataset.fvId, del.dataset.nom);
+    });
+    m.querySelector('#admin-btn-fournisseur')?.addEventListener('click', _adminAjouterFournisseur);
+    m.querySelector('#admin-fv-nom')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') _adminAjouterFournisseur();
     });
   }
 

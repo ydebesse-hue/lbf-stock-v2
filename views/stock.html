@@ -1499,6 +1499,7 @@
     <div class="sous-onglets">
       <button class="sous-onglet actif" data-admin-onglet="stockage">📦 Stockage</button>
       <button class="sous-onglet"       data-admin-onglet="chantiers">🏗 Chantiers</button>
+      <button class="sous-onglet"       data-admin-onglet="fournisseurs">🏭 Fournisseurs</button>
       <button class="sous-onglet"       data-admin-onglet="export">⬇ Export</button>
       <button class="sous-onglet"       data-admin-onglet="import">⬆ Import</button>
       <button class="sous-onglet"       data-admin-onglet="comptes">👤 Comptes</button>
@@ -1575,6 +1576,23 @@
           <div>
             <label style="visibility:hidden">_</label>
             <button id="admin-btn-chantier" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fournisseurs -->
+      <div id="admin-panel-fournisseurs" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Fournisseurs</h3>
+        <div id="admin-fournisseurs-liste" class="admin-ref-liste" style="max-height:380px"></div>
+        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un fournisseur</div>
+        <div class="admin-rack-form">
+          <div>
+            <label for="admin-fv-nom">Nom du fournisseur</label>
+            <input id="admin-fv-nom" type="text" placeholder="ex. Acier Pro" class="admin-ref-inp">
+          </div>
+          <div>
+            <label style="visibility:hidden">_</label>
+            <button id="admin-btn-fournisseur" class="btn-modale btn-modale-vert">+ Ajouter</button>
           </div>
         </div>
       </div>
