@@ -3018,7 +3018,10 @@ const Stock = (() => {
     };
 
     const enLigne = await _persisterDemande(demande);
+    _demandes.push(demande);
     _fermerModale('m-demande');
+    _filtrer();
+    _majAlerteAttente();
     _notif(`Demande ${demande.id} envoyée — en attente de validation admin` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'info' : 'alerte');
   }
 
