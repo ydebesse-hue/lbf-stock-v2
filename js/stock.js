@@ -2138,7 +2138,7 @@ const Stock = (() => {
     };
 
     const enLigne = await _persisterElement(barre);
-    await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null);
+    await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null, barre.lieu_stockage || null);
 
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
@@ -2222,7 +2222,7 @@ const Stock = (() => {
 
         const ok = await _persisterElement(barre);
         if (!ok) toutEnLigne = false;
-        await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, chantier || null, session?.identifiant || null, null, refCmd || null);
+        await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, chantier || null, session?.identifiant || null, null, refCmd || null, barre.lieu_stockage || null);
         idsLigne.push(nouvelleId);
       }
 
@@ -2678,32 +2678,34 @@ const Stock = (() => {
     _notif('Modification enregistrée' + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
 
     if (original.categorie === 'profil') {
-      const op = session?.identifiant || null;
+      const op  = session?.identifiant || null;
+      const lieuActuel = original.lieu_stockage || null;
       if (field === 'longueur') {
         const longAvant = original.longueur_m;
         const longueur  = modif.longueur_m;
         if (longueur === 0) {
           await _enregistrerHistorique(id, 'ARCHIVAGE', longAvant, 0,
-            original.chantier_origine || null, op, null, null);
+            original.chantier_origine || null, op, null, null, lieuActuel);
         } else if (longueur < longAvant) {
           await _enregistrerHistorique(id, 'RETOUR', longAvant, longueur,
-            original.chantier_origine || null, op, null, null);
+            original.chantier_origine || null, op, null, null, lieuActuel);
         } else if (longueur !== longAvant) {
           await _enregistrerHistorique(id, 'MODIFICATION', longAvant, longueur,
-            original.chantier_affectation || null, op, null, 'Correction longueur');
+            original.chantier_affectation || null, op, null, 'Correction longueur', lieuActuel);
         }
       } else if (field === 'chantier') {
         const chantier = rawVal || null;
         const type = chantier ? 'AFFECTATION' : 'RETOUR';
         await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
-          chantier, op, null, null);
+          chantier, op, null, null, lieuActuel);
       } else if (field === 'dispo') {
         const type = rawVal === 'affecte' ? 'AFFECTATION' : 'RETOUR';
         await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
-          original.chantier_affectation || null, op, null, null);
+          original.chantier_affectation || null, op, null, null, lieuActuel);
       } else if (field === 'lieu') {
+        const nouveauLieu = rawVal || null;
         await _enregistrerHistorique(id, 'MODIFICATION', original.longueur_m, original.longueur_m,
-          original.chantier_affectation || null, op, null, `Lieu : ${rawVal || '—'}`);
+          original.chantier_affectation || null, op, null, null, nouveauLieu);
       }
     }
 
@@ -2858,22 +2860,22 @@ const Stock = (() => {
       const op = session?.identifiant || null;
       if (estArchivage) {
         await _enregistrerHistorique(original.id, 'ARCHIVAGE', longAvant, 0,
-          affectation || original.chantier_origine || null, op, null, commentaire || null);
+          affectation || original.chantier_origine || null, op, null, commentaire || null, lieu || null);
       } else if (longueur < longAvant) {
         await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
-          original.chantier_origine || null, op, null, commentaire || null);
+          original.chantier_origine || null, op, null, commentaire || null, lieu || null);
       } else if (longueur > longAvant) {
         await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
-          affectation || original.chantier_affectation || null, op, null, 'Correction longueur');
+          affectation || original.chantier_affectation || null, op, null, 'Correction longueur', lieu || null);
       } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
         await _enregistrerHistorique(original.id, 'AFFECTATION', longAvant, longueur,
-          affectation || null, op, null, commentaire || null);
+          affectation || null, op, null, commentaire || null, lieu || null);
       } else if (dispo === 'disponible' && original.disponibilite === 'affecte') {
         await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
-          original.chantier_affectation || null, op, null, commentaire || null);
+          original.chantier_affectation || null, op, null, commentaire || null, lieu || null);
       } else if (lieu !== original.lieu_stockage) {
         await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
-          affectation || original.chantier_affectation || null, op, null, `Lieu : ${lieu || '—'}`);
+          affectation || original.chantier_affectation || null, op, null, null, lieu || null);
       }
 
     } else {
@@ -3379,7 +3381,8 @@ const Stock = (() => {
         el.chantier_origine || null,
         null,
         session?.identifiant || null,
-        null
+        null,
+        el.lieu_stockage || null
       );
     }
 
@@ -3446,7 +3449,8 @@ const Stock = (() => {
           dem.chantier_demande,
           dem.demandeur,
           session?.identifiant || null,
-          dem.commentaire || null
+          dem.commentaire || null,
+          barre.lieu_stockage || null
         );
       }
     }
@@ -3544,7 +3548,7 @@ const Stock = (() => {
    * @param {string|null} validePar
    * @param {string|null} commentaire
    */
-  async function _enregistrerHistorique(barreId, typeOperation, longueurAvant, longueurApres, chantier, operateur, validePar, commentaire) {
+  async function _enregistrerHistorique(barreId, typeOperation, longueurAvant, longueurApres, chantier, operateur, validePar, commentaire, lieu = null) {
     if (!barreId || !typeOperation) return;
     try {
       await window.SB.insererHistorique({
@@ -3556,6 +3560,7 @@ const Stock = (() => {
         operateur:        operateur      || null,
         valide_par:       validePar      || null,
         commentaire:      commentaire    || null,
+        lieu:             lieu           || null,
       });
     } catch(e) {
       console.warn('[Stock] Impossible d\'enregistrer l\'historique :', e);
@@ -3627,6 +3632,7 @@ const Stock = (() => {
         <th>Opération</th>
         <th>Long. avant</th>
         <th>Long. après</th>
+        <th>Lieu</th>
         <th>Chantier</th>
         <th>Opérateur</th>
       </tr></thead><tbody>`;
@@ -3644,6 +3650,7 @@ const Stock = (() => {
         <td><span class="badge-operation ${cls}">${_e(l.type_operation)}</span></td>
         <td>${avant}</td>
         <td>${apres}</td>
+        <td>${_e(l.lieu || '—')}</td>
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
         <td>${_e(l.operateur || '—')}</td>
       </tr>`;

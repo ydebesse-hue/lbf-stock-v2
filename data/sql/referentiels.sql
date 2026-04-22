@@ -53,3 +53,7 @@ ALTER TABLE fournisseurs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "acces_anon_fournisseurs" ON fournisseurs;
 CREATE POLICY "acces_anon_fournisseurs" ON fournisseurs
   FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- ── Historique barres — colonne lieu ─────────────────────────────
+-- Ajouter la colonne lieu à la table d'historique existante :
+ALTER TABLE lbf_barres_historique ADD COLUMN IF NOT EXISTS lieu text;
