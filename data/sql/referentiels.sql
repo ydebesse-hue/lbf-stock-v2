@@ -40,3 +40,16 @@ ALTER TABLE chantiers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "acces_anon_chantiers" ON chantiers;
 CREATE POLICY "acces_anon_chantiers" ON chantiers
   FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- ── Fournisseurs ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS fournisseurs (
+  id         uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  nom        text        NOT NULL,
+  actif      boolean     NOT NULL DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE fournisseurs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "acces_anon_fournisseurs" ON fournisseurs;
+CREATE POLICY "acces_anon_fournisseurs" ON fournisseurs
+  FOR ALL TO anon USING (true) WITH CHECK (true);

@@ -165,7 +165,8 @@ const Stock = (() => {
   let _synProfilsTous = false;
   let _racks     = [];  // { id, nom, nb_allees, nb_etages } depuis Supabase
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
-  let _chantiers = [];  // { id, nom, reference } depuis Supabase
+  let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
+  let _fournisseurs = [];  // { id, nom } depuis Supabase
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
@@ -240,6 +241,10 @@ const Stock = (() => {
       try {
         const rows = await window.SB.lire('chantiers', { order: 'nom' });
         _chantiers = rows.filter(c => c.actif);
+      } catch(e) {}
+      try {
+        const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
+        _fournisseurs = rows.filter(f => f.actif);
       } catch(e) {}
 
     } catch (err) {
@@ -1902,6 +1907,7 @@ const Stock = (() => {
     // Réinitialiser le panel commande
     m.querySelectorAll('#ap-panel-commande input').forEach(el => { el.value = ''; });
     _monterPickerChantier('ap-cmd-chantier-picker', 'ap-cmd-chantier');
+    _monterPickerFournisseur('ap-cmd-fournisseur-picker', 'ap-cmd-fournisseur');
     const tbody = m.querySelector('#ap-cmd-tbody');
     if (tbody) {
       tbody.innerHTML = '';
@@ -3795,6 +3801,52 @@ const Stock = (() => {
     const dl = document.getElementById('dl-chantiers');
     if (!dl) return;
     dl.innerHTML = _chantiers.map(c => `<option value="${_e(c.nom)}">`).join('');
+  }
+
+  function _monterPickerFournisseur(wrapId, selectId, valeurCourante = '') {
+    const wrap = typeof wrapId === 'string' ? document.getElementById(wrapId) : wrapId;
+    if (!wrap) return;
+
+    const opts = `<option value="">— Choisir un fournisseur —</option>` +
+      _fournisseurs.map(f => {
+        const sel = f.nom === valeurCourante ? ' selected' : '';
+        return `<option value="${_e(f.nom)}"${sel}>${_e(f.nom)}</option>`;
+      }).join('');
+
+    wrap.innerHTML = `
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="${selectId}" style="flex:1;min-width:0">${opts}</select>
+        <button type="button" class="btn btn-sec fv-btn-creer" style="white-space:nowrap;padding:4px 8px;font-size:.85em">+ Nouveau</button>
+      </div>
+      <div class="fv-form-nouv" style="display:none;margin-top:6px;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd">
+        <div style="display:flex;gap:6px">
+          <input type="text" class="fv-new-nom" placeholder="Nom du fournisseur *" style="flex:1;min-width:0">
+          <button type="button" class="btn btn-ok fv-btn-confirmer" style="white-space:nowrap;padding:4px 8px;font-size:.85em">✓ Ajouter</button>
+          <button type="button" class="btn btn-sec fv-btn-annuler" style="padding:4px 8px;font-size:.85em">✗</button>
+        </div>
+      </div>`;
+
+    const formNouv = wrap.querySelector('.fv-form-nouv');
+    const inpNom   = wrap.querySelector('.fv-new-nom');
+    const sel      = wrap.querySelector(`#${selectId}`);
+
+    wrap.querySelector('.fv-btn-creer').addEventListener('click', () => {
+      formNouv.style.display = '';
+      inpNom.value = '';
+      inpNom.focus();
+    });
+    wrap.querySelector('.fv-btn-annuler').addEventListener('click', () => {
+      formNouv.style.display = 'none';
+    });
+    wrap.querySelector('.fv-btn-confirmer').addEventListener('click', async () => {
+      const nom = inpNom.value.trim();
+      if (!nom) return;
+      const res = await window.SB.inserer('fournisseurs', { nom, actif: true });
+      if (res?.error) { alert('Erreur création fournisseur : ' + res.error.message); return; }
+      const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
+      _fournisseurs = rows.filter(f => f.actif);
+      _monterPickerFournisseur(wrap, selectId, nom);
+    });
   }
 
   function _peuplerSelectAffectation(sel, valeurCourante) {
