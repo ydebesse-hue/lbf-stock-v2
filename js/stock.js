@@ -2981,6 +2981,9 @@ const Stock = (() => {
     const inpDemandeur = m.querySelector('#dem-demandeur');
     if (inpDemandeur && session?.nom) inpDemandeur.value = session.nom;
 
+    // Picker chantier
+    _monterPickerChantier('dem-chantier-picker', 'dem-chantier');
+
     m.dataset.idBarre = id;
 
     _ouvrirModale('m-demande');
