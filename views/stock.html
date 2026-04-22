@@ -1945,9 +1945,19 @@
               <option value="affecte">Affecté à un chantier</option>
             </select>
           </div>
-          <div class="fr">
+          <div class="fr" id="mod-affectation-wrap">
             <label>Chantier d'affectation</label>
-            <input type="text" id="mod-affectation" placeholder="Nom ou référence du chantier" list="dl-chantiers">
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="text" id="mod-affectation" placeholder="Choisir ou saisir un chantier" list="dl-chantiers" style="flex:1;min-width:0">
+              <button type="button" id="mod-btn-creer-chantier" class="btn btn-sec" style="white-space:nowrap;padding:4px 8px;font-size:.85em">+ Nouveau</button>
+            </div>
+            <div id="mod-nouveau-chantier-form" style="display:none;margin-top:6px">
+              <div style="display:flex;gap:6px">
+                <input type="text" id="mod-new-chantier-nom" placeholder="Nom du nouveau chantier" style="flex:1;min-width:0">
+                <button type="button" id="mod-btn-confirmer-chantier" class="btn btn-ok" style="white-space:nowrap;padding:4px 8px;font-size:.85em">✓ Créer</button>
+                <button type="button" id="mod-btn-annuler-chantier" class="btn btn-sec" style="padding:4px 8px;font-size:.85em">✗</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2470,10 +2480,11 @@
   </div>
 
   <script src="../js/supabase.js?v=20260422"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260505"></script>
+  <script src="../js/stock.js?v=20260522"></script>
 
 </body>
 </html>

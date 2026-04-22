@@ -1795,6 +1795,49 @@ const Stock = (() => {
     _attacherAdminPlan();
     _attacherAdminChantiers();
     _attacherNavAdmin();
+
+    // ── Modale modification — dispo ↔ chantier ────────────────────
+    const mMod = document.getElementById('m-modification');
+    if (mMod) {
+      const selDispo   = mMod.querySelector('#mod-dispo');
+      const affWrap    = mMod.querySelector('#mod-affectation-wrap');
+      const inpAff     = mMod.querySelector('#mod-affectation');
+      const btnCreer   = mMod.querySelector('#mod-btn-creer-chantier');
+      const formNouv   = mMod.querySelector('#mod-nouveau-chantier-form');
+      const inpNomNouv = mMod.querySelector('#mod-new-chantier-nom');
+      const btnConf    = mMod.querySelector('#mod-btn-confirmer-chantier');
+      const btnAnn     = mMod.querySelector('#mod-btn-annuler-chantier');
+
+      function _majVisibiliteChantierMod() {
+        const estAffecte = selDispo?.value === 'affecte';
+        if (affWrap) affWrap.style.display = estAffecte ? '' : 'none';
+        if (!estAffecte && inpAff) inpAff.value = '';
+        if (formNouv) formNouv.style.display = 'none';
+      }
+
+      if (selDispo) selDispo.addEventListener('change', _majVisibiliteChantierMod);
+
+      if (btnCreer) btnCreer.addEventListener('click', () => {
+        if (formNouv) formNouv.style.display = '';
+        if (inpNomNouv) { inpNomNouv.value = ''; inpNomNouv.focus(); }
+      });
+
+      if (btnAnn) btnAnn.addEventListener('click', () => {
+        if (formNouv) formNouv.style.display = 'none';
+      });
+
+      if (btnConf) btnConf.addEventListener('click', async () => {
+        const nom = inpNomNouv?.value?.trim();
+        if (!nom) return;
+        const res = await window.SB.inserer('chantiers', { nom, actif: true });
+        if (res?.error) { alert('Erreur création chantier : ' + res.error.message); return; }
+        const rows = await window.SB.lire('chantiers', { order: 'nom' });
+        _chantiers = rows.filter(c => c.actif);
+        _majDatalistChantiers();
+        if (inpAff) inpAff.value = nom;
+        if (formNouv) formNouv.style.display = 'none';
+      });
+    }
   }
 
 
@@ -2670,6 +2713,10 @@ const Stock = (() => {
     _setVal(m, '#mod-affectation', barre.chantier_affectation || '');
     _setVal(m, '#mod-commentaire', barre.commentaire || '');
     _apMajPoids(m, '#mod-longueur');
+    const affWrapMod = m.querySelector('#mod-affectation-wrap');
+    if (affWrapMod) affWrapMod.style.display = barre.disponibilite === 'affecte' ? '' : 'none';
+    const formNouvMod = m.querySelector('#mod-nouveau-chantier-form');
+    if (formNouvMod) formNouvMod.style.display = 'none';
 
     // Stocker l'id et les données immuables
     m.dataset.idEnCours         = barre.id;
