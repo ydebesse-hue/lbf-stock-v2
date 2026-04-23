@@ -1,6 +1,44 @@
 /**
  * stock.js — Module Stock Métallerie Le Bras Frères
  * Conv. 5 — Formulaires, modales et persistance localStorage
+ *
+ * SOMMAIRE (Ctrl+G pour aller à la ligne)
+ * ─────────────────────────────────────────────────────────
+ *   L.  23  CONSTANTES
+ *   L. 162  ÉTAT INTERNE
+ *   L. 183  INITIALISATION
+ *   L. 292  PERSISTANCE LOCALSTORAGE
+ *   L. 440  VISIBILITÉ DES COLONNES
+ *   L. 476  FILTRAGE
+ *   L. 587  TRI
+ *   L. 625  RENDU DU TABLEAU
+ *   L. 854  HELPERS CALCUL
+ *   L. 893  BADGES ET BOUTONS LIGNE
+ *   L. 962  PEUPLEMENT DES FILTRES
+ *   L.1078  SYNTHÈSE
+ *   L.1333  ONGLETS
+ *   L.1384  COMPTEUR ET ALERTE
+ *   L.1417  ÉVÉNEMENTS PRINCIPAUX
+ *   L.1621  INITIALISATION DES MODALES
+ *   L.1899  MODALE AJOUT PROFILÉ
+ *   L.2422  MODALE AJOUT TÔLE
+ *   L.2543  MODALE MODIFICATION
+ *   L.2971  MODALE DEMANDE D'ATTRIBUTION
+ *   L.3063  MODALE DÉTAIL TÔLE
+ *   L.3115  ACTIONS PUBLIQUES
+ *   L.3236  VALIDATION ADMIN
+ *   L.3596  HISTORIQUE DES BARRES
+ *   L.3724  HELPERS MODALES
+ *   L.4268  UTILITAIRES INTERNES
+ *   L.4309  PLAN DE STOCKAGE
+ *   L.4451  SUPPRESSION D'UNE BARRE
+ *   L.4522  ZOOM IMAGE FICHE SECTION
+ *   L.4579  EXPORT / IMPORT CSV
+ *   L.4836  NAVIGATION STOCK ↔ ADMINISTRATION
+ *   L.4900  ADMIN STOCKAGE
+ *   L.5006  ADMIN CHANTIERS
+ *   L.5189  API PUBLIQUE (return)
+ * ─────────────────────────────────────────────────────────
  * Dépendance : auth/auth.js doit être chargé avant ce fichier
  *
  * IDs HTML utilisés :
