@@ -95,7 +95,7 @@ function _rendreTableau() {
   if (!tbody) return;
 
   if (!_users.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="zone-vide">Aucun compte trouvé.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="zone-vide">Aucun compte trouvé.</td></tr>';
     return;
   }
 
@@ -126,12 +126,14 @@ function _rendreTableau() {
 
     return `<tr>
       <td><strong>${_esc(u.identifiant)}</strong>${estMoi ? ' <span style="color:#aaa;font-size:10px">(vous)</span>' : ''}</td>
-      <td>${_esc(u.nomComplet)}</td>
+      <td>${_esc(u.prenom || '')}</td>
+      <td>${_esc(u.nom || u.nomComplet || '')}</td>
+      <td>${_esc(u.email || '')}</td>
       <td>${profilHtml}</td>
       <td>${statutHtml}</td>
       <td>
         <button class="btn-ligne bl-modifier" onclick="ouvrirModification('${_esc(u.id)}')">Modifier</button>
-        <button class="btn-ligne bl-mdp" onclick="ouvrirChangeMdp('${_esc(u.id)}','${_esc(u.nomComplet)}')">🔑 MDP</button>
+        <button class="btn-ligne bl-mdp" onclick="ouvrirChangeMdp('${_esc(u.id)}','${_esc(u.nomComplet || u.nom || '')}')">🔑 MDP</button>
         ${btnSup}
       </td>
     </tr>`;
@@ -146,11 +148,13 @@ function ouvrirCreation() {
   _editId = null;
   document.getElementById('m-compte-titre').textContent = 'Nouveau compte';
   document.getElementById('mc-identifiant').value = '';
-  document.getElementById('mc-nom').value         = '';
-  document.getElementById('mc-profil').value      = 'consultation';
-  document.getElementById('mc-mdp').value         = '';
-  document.getElementById('mc-mdp2').value        = '';
-  document.getElementById('mc-actif').value       = 'true';
+  document.getElementById('mc-prenom').value       = '';
+  document.getElementById('mc-nom').value          = '';
+  document.getElementById('mc-email').value        = '';
+  document.getElementById('mc-profil').value       = 'consultation';
+  document.getElementById('mc-mdp').value          = '';
+  document.getElementById('mc-mdp2').value         = '';
+  document.getElementById('mc-actif').value        = 'true';
   document.getElementById('mc-mdp-zone').style.display  = '';
   document.getElementById('mc-mdp2-zone').style.display = '';
   document.getElementById('m-compte-info').style.display = 'none';
@@ -170,9 +174,11 @@ function ouvrirModification(id) {
   _editId = id;
   document.getElementById('m-compte-titre').textContent = 'Modifier le compte';
   document.getElementById('mc-identifiant').value = u.identifiant;
-  document.getElementById('mc-nom').value         = u.nomComplet;
-  document.getElementById('mc-profil').value      = u.profil;
-  document.getElementById('mc-actif').value       = String(u.actif);
+  document.getElementById('mc-prenom').value       = u.prenom  || '';
+  document.getElementById('mc-nom').value          = u.nom     || u.nomComplet || '';
+  document.getElementById('mc-email').value        = u.email   || '';
+  document.getElementById('mc-profil').value       = u.profil;
+  document.getElementById('mc-actif').value        = String(u.actif);
 
   // Pas de champs MDP en modification (utiliser modale dédiée)
   document.getElementById('mc-mdp-zone').style.display  = 'none';
@@ -192,15 +198,18 @@ function ouvrirModification(id) {
 
 async function sauvegarderCompte() {
   const identifiant = document.getElementById('mc-identifiant').value.trim();
-  const nomComplet  = document.getElementById('mc-nom').value.trim();
+  const prenom      = document.getElementById('mc-prenom').value.trim();
+  const nom         = document.getElementById('mc-nom').value.trim();
+  const email       = document.getElementById('mc-email').value.trim();
   const profil      = document.getElementById('mc-profil').value;
   const actif       = document.getElementById('mc-actif').value === 'true';
   const mdp1        = document.getElementById('mc-mdp').value;
   const mdp2        = document.getElementById('mc-mdp2').value;
+  const nomComplet  = [prenom, nom].filter(Boolean).join(' ');
 
   // Validations
-  if (!identifiant || !nomComplet) {
-    afficherErreurModale('mc-erreur', 'Identifiant et nom complet sont obligatoires.');
+  if (!identifiant || !nom) {
+    afficherErreurModale('mc-erreur', 'Identifiant et nom sont obligatoires.');
     return;
   }
 
@@ -227,6 +236,9 @@ async function sauvegarderCompte() {
     // Modification — conserver le MDP existant
     user = { ..._users.find(u => u.id === _editId) };
     user.identifiant = identifiant;
+    user.prenom      = prenom;
+    user.nom         = nom;
+    user.email       = email;
     user.nomComplet  = nomComplet;
     user.profil      = profil;
     user.actif       = actif;
@@ -236,6 +248,9 @@ async function sauvegarderCompte() {
     user = {
       id:          _genIdUser(),
       identifiant: identifiant,
+      prenom:      prenom,
+      nom:         nom,
+      email:       email,
       nomComplet:  nomComplet,
       profil:      profil,
       motDePasse:  hashMdp,

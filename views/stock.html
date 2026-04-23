@@ -1648,11 +1648,11 @@
           <table class="cpt-table">
             <thead>
               <tr>
-                <th>Identifiant</th><th>Nom complet</th><th>Profil</th><th>Statut</th><th>Actions</th>
+                <th>Identifiant</th><th>Prénom</th><th>Nom</th><th>Email</th><th>Profil</th><th>Statut</th><th>Actions</th>
               </tr>
             </thead>
             <tbody id="comptes-tbody">
-              <tr><td colspan="5" class="vide" style="padding:20px;text-align:center;color:#aaa">Chargement…</td></tr>
+              <tr><td colspan="7" class="vide" style="padding:20px;text-align:center;color:#aaa">Chargement…</td></tr>
             </tbody>
           </table>
         </div>
@@ -2449,9 +2449,19 @@
         <label for="mc-identifiant">Identifiant *</label>
         <input type="text" id="mc-identifiant" placeholder="ex : p.dupont" autocapitalize="none" spellcheck="false">
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="champ">
+          <label for="mc-prenom">Prénom</label>
+          <input type="text" id="mc-prenom" placeholder="ex : Pierre">
+        </div>
+        <div class="champ">
+          <label for="mc-nom">Nom *</label>
+          <input type="text" id="mc-nom" placeholder="ex : Dupont">
+        </div>
+      </div>
       <div class="champ">
-        <label for="mc-nom">Nom complet *</label>
-        <input type="text" id="mc-nom" placeholder="ex : Pierre Dupont">
+        <label for="mc-email">Email</label>
+        <input type="email" id="mc-email" placeholder="ex : p.dupont@entreprise.fr">
       </div>
       <div class="champ">
         <label for="mc-profil">Profil *</label>
