@@ -4357,7 +4357,7 @@ const Stock = (() => {
   function _sauvegarderPlanPos(p) { localStorage.setItem(CLE_PLAN_POS, JSON.stringify(p)); }
 
   /** Génère les marqueurs SVG à superposer sur l'image du plan.
-   *  showNames=true : tous les marqueurs avec nom (vue admin).
+   *  showNames=true : tous les marqueurs avec nom + bouton ✕ (vue admin).
    *  showNames=false : uniquement le rack actif en rouge, sans texte (vue localisation). */
   function _svgMarqueursPlan(positions, rackActif, showNames = false) {
     return _racks.map(r => {
@@ -4369,12 +4369,28 @@ const Stock = (() => {
       const cx = `${pos.x}%`;
       const cy = `${pos.y}%`;
       if (showNames) {
-        // Vue admin : pastille verte + nom sous le cercle
+        // Bouton ✕ décalé en haut à droite du marqueur
+        const bx = `${Math.min(pos.x + 1.2, 98)}%`;
+        const by = `${Math.max(pos.y - 2.8, 1)}%`;
+        // Vue admin : pastille verte + nom + bouton ✕ de suppression individuelle
+        // pointer-events:none sur les décorations → les clics passent au canvas en dessous
+        // pointer-events:all uniquement sur le bouton ✕
         return `
-          <circle cx="${cx}" cy="${cy}" r="10" fill="rgb(45,95,50)" fill-opacity=".85"/>
-          <text x="${cx}" y="${cy}" dy="22" text-anchor="middle" fill="rgb(45,95,50)"
-            font-size="11" font-family="Tahoma" font-weight="bold"
-            style="text-shadow:0 0 3px white,0 0 3px white">${_e(r.nom)}</text>`;
+          <g pointer-events="none">
+            <circle cx="${cx}" cy="${cy}" r="10" fill="rgb(45,95,50)" fill-opacity=".85"/>
+            <text x="${cx}" y="${cy}" dy="22" text-anchor="middle" fill="rgb(45,95,50)"
+              font-size="11" font-family="Tahoma" font-weight="bold"
+              style="text-shadow:0 0 3px white,0 0 3px white">${_e(r.nom)}</text>
+          </g>
+          <g pointer-events="all" style="cursor:pointer"
+             onclick="window._supprimerMarqueurRack('${_e(r.id)}')"
+             title="Retirer ${_e(r.nom)} du plan">
+            <rect x="${bx}" y="${by}" width="14" height="14" rx="3"
+              fill="rgb(210,35,42)" fill-opacity=".9" transform="translate(-7,-7)"/>
+            <text x="${bx}" y="${by}" text-anchor="middle" dominant-baseline="middle"
+              fill="white" font-size="11" font-family="Tahoma" font-weight="bold"
+              pointer-events="none">✕</text>
+          </g>`;
       }
       // Vue localisation : cercle rouge avec pulsation
       return `
@@ -4384,6 +4400,18 @@ const Stock = (() => {
         <circle cx="${cx}" cy="${cy}" r="18" fill="rgb(210,35,42)"/>`;
     }).join('');
   }
+
+  /** Supprime la position d'un seul rack sur le plan (sans effacer les autres). */
+  window._supprimerMarqueurRack = function(rackId) {
+    const positions = _chargerPlanPos();
+    if (!positions[rackId]) return;
+    delete positions[rackId];
+    _sauvegarderPlanPos(positions);
+    const planSvg = document.getElementById('admin-plan-svg');
+    if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null, true);
+    const rack = _racks.find(r => r.id === rackId);
+    _notif(`Marqueur "${rack?.nom || '…'}" retiré du plan`, 'info');
+  };
 
   /**
    * Ouvre la modale de plan et met en évidence le rack correspondant.
