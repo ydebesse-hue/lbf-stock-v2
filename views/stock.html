@@ -1501,6 +1501,7 @@
       <button class="sous-onglet actif" data-admin-onglet="stockage">📦 Stockage</button>
       <button class="sous-onglet"       data-admin-onglet="chantiers">🏗 Chantiers</button>
       <button class="sous-onglet"       data-admin-onglet="fournisseurs">🏭 Fournisseurs</button>
+      <button class="sous-onglet"       data-admin-onglet="demandeurs">📋 Demandeurs</button>
       <button class="sous-onglet"       data-admin-onglet="export">⬇ Export</button>
       <button class="sous-onglet"       data-admin-onglet="import">⬆ Import</button>
       <button class="sous-onglet"       data-admin-onglet="comptes">👤 Comptes</button>
@@ -1594,6 +1595,31 @@
           <div>
             <label style="visibility:hidden">_</label>
             <button id="admin-btn-fournisseur" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demandeurs -->
+      <div id="admin-panel-demandeurs" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Demandeurs</h3>
+        <div id="admin-demandeurs-liste" class="admin-ref-liste" style="max-height:380px"></div>
+        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un demandeur</div>
+        <div class="admin-rack-form" style="grid-template-columns:1fr 1fr 1fr auto">
+          <div>
+            <label for="admin-dem-prenom">Prénom</label>
+            <input id="admin-dem-prenom" type="text" placeholder="ex. Jean" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-dem-nom">Nom</label>
+            <input id="admin-dem-nom" type="text" placeholder="ex. Dupont" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-dem-email">Email</label>
+            <input id="admin-dem-email" type="email" placeholder="ex. j.dupont@lbf.fr" class="admin-ref-inp">
+          </div>
+          <div>
+            <label style="visibility:hidden">_</label>
+            <button id="admin-btn-demandeur" class="btn-modale btn-modale-vert">+ Ajouter</button>
           </div>
         </div>
       </div>
@@ -2069,8 +2095,8 @@
       <div id="dem-info-barre" class="resume-barre">—</div>
 
       <div class="fr">
-        <label>Nom du demandeur <span style="color:var(--rouge)">*</span></label>
-        <input type="text" id="dem-demandeur" placeholder="Prénom Nom">
+        <label>Demandeur <span style="color:var(--rouge)">*</span></label>
+        <div id="dem-demandeur-picker"></div>
       </div>
 
       <div class="fr">
@@ -2504,6 +2530,7 @@
 
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>

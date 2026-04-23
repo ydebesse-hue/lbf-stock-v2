@@ -73,6 +73,13 @@ const Stock = (() => {
   /** Clé localStorage pour l'image du plan de stockage (base64) */
   const CLE_PLAN_IMG = 'lbf_plan_image';
 
+  // ── Configuration email (EmailJS) ───────────────────────────────
+  // Renseigner ces valeurs après création d'un compte sur emailjs.com
+  const EMAILJS_PUBLIC_KEY       = '';  // clé publique EmailJS
+  const EMAILJS_SERVICE_ID       = '';  // ID du service (ex. 'service_abc123')
+  const EMAILJS_TPL_ACCEPTATION  = '';  // ID template acceptation
+  const EMAILJS_TPL_REFUS        = '';  // ID template refus
+
   /** Clé localStorage pour les positions des racks sur le plan { rackId: {x,y} } */
   const CLE_PLAN_POS = 'lbf_plan_positions';
 
@@ -167,6 +174,7 @@ const Stock = (() => {
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
   let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
   let _fournisseurs = [];  // { id, nom } depuis Supabase
+  let _demandeurs   = [];  // { id, nom, prenom, email } depuis Supabase
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
@@ -245,6 +253,10 @@ const Stock = (() => {
       try {
         const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
         _fournisseurs = rows.filter(f => f.actif);
+      } catch(e) {}
+      try {
+        const rows = await window.SB.lire('demandeurs', { order: 'nom' });
+        _demandeurs = rows.filter(d => d.actif);
       } catch(e) {}
 
     } catch (err) {
@@ -1830,6 +1842,7 @@ const Stock = (() => {
     _attacherAdminPlan();
     _attacherAdminChantiers();
     _attacherAdminFournisseurs();
+    _attacherAdminDemandeurs();
     _attacherNavAdmin();
 
     // ── Modale modification — dispo ↔ chantier ────────────────────
@@ -2992,10 +3005,10 @@ const Stock = (() => {
       }
     }
 
-    // Pré-remplir le demandeur depuis la session
+    // Picker demandeur
     const session = Auth.getSession();
-    const inpDemandeur = m.querySelector('#dem-demandeur');
-    if (inpDemandeur && session?.nom) inpDemandeur.value = session.nom;
+    const pickWrap = m.querySelector('#dem-demandeur-picker');
+    _monterPickerDemandeur(pickWrap);
 
     // Picker chantier
     _monterPickerChantier('dem-chantier-picker', 'dem-chantier');
@@ -3010,27 +3023,32 @@ const Stock = (() => {
    * @param {HTMLElement} m
    */
   async function _soumettreDemande(m) {
-    const demandeur = m.querySelector('#dem-demandeur')?.value?.trim();
-    const chantier  = m.querySelector('#dem-chantier')?.value?.trim();
-    const commentaire = m.querySelector('#dem-commentaire')?.value?.trim() || '';
-    const idBarre   = m.dataset.idBarre;
+    const demandeurInfo = _lireDemandeurPicker(m);
+    const chantier      = m.querySelector('#dem-chantier')?.value?.trim();
+    const commentaire   = m.querySelector('#dem-commentaire')?.value?.trim() || '';
+    const idBarre       = m.dataset.idBarre;
 
-    if (!demandeur) return _signalerErreur(m, '#dem-demandeur', 'Le nom du demandeur est obligatoire');
-    if (!chantier)  return _signalerErreur(m, '#dem-chantier',  'Le chantier est obligatoire');
+    if (!demandeurInfo) return _notif('Le demandeur est obligatoire', 'erreur');
+    if (!chantier)      return _signalerErreur(m, '#dem-chantier', 'Le chantier est obligatoire');
+
+    const nomComplet = [demandeurInfo.prenom, demandeurInfo.nom].filter(Boolean).join(' ');
 
     const store = _chargerDemandes();
     const nb    = (store.compteur || 0) + 1;
 
-    /** @type {Object} Structure identique à demandes.json */
     const demande = {
-      id: `DEM-${String(nb).padStart(4, '0')}`,
-      id_barre: idBarre,
-      demandeur,
+      id:               `DEM-${String(nb).padStart(4, '0')}`,
+      id_barre:         idBarre,
+      demandeur:        nomComplet,
+      demandeur_email:  demandeurInfo.email || null,
+      demandeur_id:     demandeurInfo.id    || null,
+      demandeur_nom:    demandeurInfo.nom   || null,
+      demandeur_prenom: demandeurInfo.prenom || null,
       chantier_demande: chantier,
       commentaire,
-      statut: 'en_attente',
+      statut:      'en_attente',
       date_demande: _dateAujourdhui(),
-      demande_par: Auth.getSession()?.identifiant || 'visiteur'
+      demande_par:  Auth.getSession()?.identifiant || 'visiteur'
     };
 
     const enLigne = await _persisterDemande(demande);
@@ -3488,6 +3506,23 @@ const Stock = (() => {
       _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
     }
 
+    // Sauvegarder le nouveau demandeur s'il n'était pas encore dans la liste
+    if (!dem.demandeur_id && dem.demandeur_nom) {
+      try {
+        const res = await window.SB.inserer('demandeurs', {
+          nom:    dem.demandeur_nom,
+          prenom: dem.demandeur_prenom || null,
+          email:  dem.demandeur_email  || null,
+          actif:  true
+        });
+        const rows = await window.SB.lire('demandeurs', { order: 'nom' });
+        _demandeurs = rows.filter(d => d.actif);
+      } catch(e) { console.warn('[Stock] Impossible de sauvegarder le demandeur :', e); }
+    }
+
+    // Envoyer email de confirmation
+    await _envoyerMailConfirmation(dem, 'accepte');
+
     _fermerModale('m-valider-demande');
     _filtrer();
     _majAlerteAttente();
@@ -3526,6 +3561,7 @@ const Stock = (() => {
           try { localStorage.setItem(CLE_DEMANDES, JSON.stringify(store)); } catch {}
         }
       }
+      if (dem) await _envoyerMailConfirmation(dem, 'refuse', motif);
       try {
         const demandes = await window.SB.lire('demandes');
         _demandes = demandes.filter(d => d.statut === 'en_attente');
@@ -3978,6 +4014,83 @@ const Stock = (() => {
       _majDatalistChantiers();
       _monterPickerChantier(wrap, selectId, nom);
     });
+  }
+
+  function _monterPickerDemandeur(wrap, demandeurId = '') {
+    if (!wrap) return;
+    const opts = `<option value="">— Choisir un demandeur —</option>` +
+      _demandeurs.map(d => {
+        const label = [d.prenom, d.nom].filter(Boolean).join(' ') + (d.email ? ` (${d.email})` : '');
+        return `<option value="${_e(d.id)}"${d.id === demandeurId ? ' selected' : ''}>${_e(label)}</option>`;
+      }).join('') +
+      `<option value="__nouveau__">— Nouveau demandeur —</option>`;
+
+    wrap.innerHTML = `
+      <select id="dem-demandeur-sel" style="width:100%">${opts}</select>
+      <div id="dem-demandeur-email-affiche" style="margin-top:4px;font-size:12px;color:#666;min-height:18px"></div>
+      <div id="dem-nouveau-form" style="display:none;margin-top:8px;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" id="dem-new-prenom" placeholder="Prénom" style="flex:1;min-width:0">
+          <input type="text" id="dem-new-nom" placeholder="Nom *" style="flex:1;min-width:0">
+        </div>
+        <input type="email" id="dem-new-email" placeholder="Email (confirmation de demande)" style="width:100%;box-sizing:border-box">
+      </div>`;
+
+    const sel = wrap.querySelector('#dem-demandeur-sel');
+    const emailAffiche = wrap.querySelector('#dem-demandeur-email-affiche');
+    const formNouv = wrap.querySelector('#dem-nouveau-form');
+
+    function majEmail() {
+      const v = sel.value;
+      if (v === '__nouveau__') {
+        formNouv.style.display = '';
+        emailAffiche.textContent = '';
+      } else if (v) {
+        formNouv.style.display = 'none';
+        const d = _demandeurs.find(x => x.id === v);
+        emailAffiche.innerHTML = d?.email ? `📧 ${_e(d.email)}` : '';
+      } else {
+        formNouv.style.display = 'none';
+        emailAffiche.textContent = '';
+      }
+    }
+    sel.addEventListener('change', majEmail);
+    majEmail();
+  }
+
+  function _lireDemandeurPicker(m) {
+    const sel = m?.querySelector('#dem-demandeur-sel');
+    if (!sel) return null;
+    const v = sel.value;
+    if (!v) return null;
+    if (v === '__nouveau__') {
+      const prenom = m.querySelector('#dem-new-prenom')?.value?.trim() || '';
+      const nom    = m.querySelector('#dem-new-nom')?.value?.trim() || '';
+      const email  = m.querySelector('#dem-new-email')?.value?.trim() || '';
+      if (!nom) return null;
+      return { id: null, nom, prenom, email, isNew: true };
+    }
+    const d = _demandeurs.find(x => x.id === v);
+    return d ? { ...d, isNew: false } : null;
+  }
+
+  async function _envoyerMailConfirmation(dem, statut, motif = '') {
+    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID) return;
+    const email = dem.demandeur_email;
+    if (!email) return;
+    const tplId = statut === 'accepte' ? EMAILJS_TPL_ACCEPTATION : EMAILJS_TPL_REFUS;
+    if (!tplId) return;
+    try {
+      await window.emailjs.send(EMAILJS_SERVICE_ID, tplId, {
+        to_email:   email,
+        to_name:    dem.demandeur,
+        demande_id: dem.id,
+        chantier:   _labelChantier(dem.chantier_demande) || dem.chantier_demande,
+        motif:      motif || '',
+      }, EMAILJS_PUBLIC_KEY);
+    } catch(e) {
+      console.warn('[Stock] Envoi email échoué :', e);
+    }
   }
 
   function _labelChantier(nom) {
@@ -4760,6 +4873,7 @@ const Stock = (() => {
     if (onglet === 'stockage')     { _rendreRacks(); _rendreAdminPlan(); }
     if (onglet === 'chantiers')    _rendreChantiers();
     if (onglet === 'fournisseurs') _rendreFournisseurs();
+    if (onglet === 'demandeurs')   _rendreDemandeurs();
     if (onglet === 'comptes' && typeof chargerUsers === 'function') chargerUsers();
   }
 
@@ -5012,6 +5126,63 @@ const Stock = (() => {
     m.querySelector('#admin-btn-fournisseur')?.addEventListener('click', _adminAjouterFournisseur);
     m.querySelector('#admin-fv-nom')?.addEventListener('keydown', e => {
       if (e.key === 'Enter') _adminAjouterFournisseur();
+    });
+  }
+
+  function _rendreDemandeurs() {
+    const zone = document.getElementById('admin-demandeurs-liste');
+    if (!zone) return;
+    if (!_demandeurs.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun demandeur enregistré</div>'; return; }
+    zone.innerHTML = `
+      <table class="admin-rack-table">
+        <thead><tr><th>Prénom</th><th>Nom</th><th>Email</th><th></th></tr></thead>
+        <tbody>
+          ${_demandeurs.map(d => `<tr>
+            <td>${_e(d.prenom || '—')}</td>
+            <td><strong>${_e(d.nom)}</strong></td>
+            <td>${d.email ? `<a href="mailto:${_e(d.email)}">${_e(d.email)}</a>` : '—'}</td>
+            <td><button class="admin-ref-del" data-dem-id="${_e(d.id)}" data-nom="${_e(d.nom)}" title="Supprimer">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function _adminAjouterDemandeur() {
+    const m      = document.getElementById('admin-panel-demandeurs');
+    const prenom = m?.querySelector('#admin-dem-prenom')?.value?.trim();
+    const nom    = m?.querySelector('#admin-dem-nom')?.value?.trim();
+    const email  = m?.querySelector('#admin-dem-email')?.value?.trim();
+    if (!nom) return;
+    try {
+      await window.SB.inserer('demandeurs', { nom, prenom: prenom || null, email: email || null, actif: true });
+      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
+      _demandeurs = rows.filter(d => d.actif);
+      _rendreDemandeurs();
+      if (m) { m.querySelector('#admin-dem-prenom').value = ''; m.querySelector('#admin-dem-nom').value = ''; m.querySelector('#admin-dem-email').value = ''; }
+      _notif('Demandeur ajouté', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  async function _adminSupprimerDemandeur(id, nom) {
+    try {
+      await window.SB.supprimer('demandeurs', id);
+      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
+      _demandeurs = rows.filter(d => d.actif);
+      _rendreDemandeurs();
+      _notif(`"${nom}" supprimé`, 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  function _attacherAdminDemandeurs() {
+    const m = document.getElementById('admin-panel-demandeurs');
+    if (!m) return;
+    m.addEventListener('click', e => {
+      const del = e.target.closest('.admin-ref-del[data-dem-id]');
+      if (del) _adminSupprimerDemandeur(del.dataset.demId, del.dataset.nom);
+    });
+    m.querySelector('#admin-btn-demandeur')?.addEventListener('click', _adminAjouterDemandeur);
+    m.querySelector('#admin-dem-nom')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') _adminAjouterDemandeur();
     });
   }
 
