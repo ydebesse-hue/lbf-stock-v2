@@ -216,6 +216,8 @@ const Stock = (() => {
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
+  let _planImg   = null;        // image plan (base64), chargée au démarrage depuis Supabase
+  let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
 
 
   /* ──────────────────────────────────────────────────────────────
@@ -296,6 +298,9 @@ const Stock = (() => {
         const rows = await window.SB.lire('demandeurs', { order: 'nom' });
         _demandeurs = rows.filter(d => d.actif);
       } catch(e) {}
+
+      // Charger les données du plan (positions + image) depuis Supabase
+      await _chargerDonnesPlan();
 
     } catch (err) {
       _erreurChargement(err.message);
@@ -4348,13 +4353,58 @@ const Stock = (() => {
      PLAN DE STOCKAGE
      ────────────────────────────────────────────────────────────── */
 
-  function _chargerPlanImg() { return localStorage.getItem(CLE_PLAN_IMG) || null; }
+  function _chargerPlanImg() { return _planImg; }
 
-  function _chargerPlanPos() {
-    try { return JSON.parse(localStorage.getItem(CLE_PLAN_POS) || '{}'); } catch { return {}; }
+  function _chargerPlanPos() { return { ..._planPos }; }
+
+  function _sauvegarderPlanPos(positions) {
+    _planPos = { ...positions };
+    localStorage.setItem(CLE_PLAN_POS, JSON.stringify(positions));
+    // Sauvegarder pos_x/pos_y sur chaque rack dans Supabase (fire-and-forget)
+    if (window.SB) {
+      _racks.forEach(r => {
+        const pos  = positions[r.id];
+        const data = pos ? { pos_x: pos.x, pos_y: pos.y } : { pos_x: null, pos_y: null };
+        window.SB.mettreAJour('racks', r.id, data).catch(e =>
+          console.warn('[Plan] Erreur sauvegarde position rack :', e)
+        );
+      });
+    }
   }
 
-  function _sauvegarderPlanPos(p) { localStorage.setItem(CLE_PLAN_POS, JSON.stringify(p)); }
+  /**
+   * Charge au démarrage les positions et l'image du plan depuis Supabase,
+   * avec fallback sur localStorage si Supabase est indisponible.
+   * Doit être appelée APRÈS le chargement de _racks.
+   */
+  async function _chargerDonnesPlan() {
+    // Positions : lire pos_x/pos_y depuis les racks déjà en mémoire
+    const posSupabase = {};
+    _racks.forEach(r => {
+      if (r.pos_x != null && r.pos_y != null) posSupabase[r.id] = { x: r.pos_x, y: r.pos_y };
+    });
+    if (Object.keys(posSupabase).length) {
+      _planPos = posSupabase;
+      localStorage.setItem(CLE_PLAN_POS, JSON.stringify(_planPos));
+    } else {
+      try { _planPos = JSON.parse(localStorage.getItem(CLE_PLAN_POS) || '{}'); } catch { _planPos = {}; }
+    }
+
+    // Image : lire depuis la table config
+    try {
+      if (window.SB) {
+        const img = await window.SB.lireConfig('plan_image');
+        if (img) {
+          _planImg = img;
+          localStorage.setItem(CLE_PLAN_IMG, img);
+          return;
+        }
+      }
+    } catch(e) {
+      console.warn('[Plan] Supabase config indisponible, fallback localStorage :', e);
+    }
+    _planImg = localStorage.getItem(CLE_PLAN_IMG) || null;
+  }
 
   /** Génère les marqueurs SVG à superposer sur l'image du plan.
    *  showNames=true : tous les marqueurs avec nom + bouton ✕ (vue admin).
@@ -4483,17 +4533,34 @@ const Stock = (() => {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = ev => {
-        localStorage.setItem(CLE_PLAN_IMG, ev.target.result);
+        const imgData = ev.target.result;
+        _planImg = imgData;
+        localStorage.setItem(CLE_PLAN_IMG, imgData);
+        // Sauvegarder dans Supabase (fire-and-forget)
+        if (window.SB) {
+          window.SB.sauvegarderConfig('plan_image', imgData).catch(e =>
+            console.warn('[Plan] Erreur sauvegarde image :', e)
+          );
+        }
         _rendreAdminPlan();
-        _notif('Plan chargé', 'succes');
+        _notif('Plan chargé et synchronisé', 'succes');
       };
       reader.readAsDataURL(file);
       input.value = '';
     });
 
     document.getElementById('admin-plan-clear')?.addEventListener('click', () => {
+      _planImg = null;
+      _planPos = {};
       localStorage.removeItem(CLE_PLAN_IMG);
       localStorage.removeItem(CLE_PLAN_POS);
+      // Effacer dans Supabase (fire-and-forget)
+      if (window.SB) {
+        window.SB.sauvegarderConfig('plan_image', null).catch(() => {});
+        _racks.forEach(r =>
+          window.SB.mettreAJour('racks', r.id, { pos_x: null, pos_y: null }).catch(() => {})
+        );
+      }
       _rendreAdminPlan();
       _notif('Plan supprimé', 'info');
     });

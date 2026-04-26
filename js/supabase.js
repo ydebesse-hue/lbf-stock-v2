@@ -156,6 +156,43 @@ async function sbInsererHistorique(data) {
 }
 
 // ═══════════════════════════════════════════════════════
+//  CONFIGURATION APPLICATIVE
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Lit une valeur dans la table config.
+ * @param {string} cle
+ * @returns {Promise<string|null>}
+ */
+async function sbLireConfig(cle) {
+  const rep = await fetch(
+    `${SUPABASE_URL}/rest/v1/config?key=eq.${encodeURIComponent(cle)}&select=value`,
+    { headers: _headers }
+  );
+  if (!rep.ok) throw new Error(`Erreur lecture config "${cle}" : ${rep.status}`);
+  const rows = await rep.json();
+  return rows.length ? rows[0].value : null;
+}
+
+/**
+ * Insère ou met à jour une valeur dans la table config.
+ * @param {string} cle
+ * @param {string|null} valeur
+ * @returns {Promise<void>}
+ */
+async function sbSauvegarderConfig(cle, valeur) {
+  const rep = await fetch(`${SUPABASE_URL}/rest/v1/config`, {
+    method:  'POST',
+    headers: { ..._headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body:    JSON.stringify({ key: cle, value: valeur, updated_at: new Date().toISOString() }),
+  });
+  if (!rep.ok) {
+    const err = await rep.text();
+    throw new Error(`Erreur sauvegarde config "${cle}" : ${err}`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 //  EXPORT
 // ═══════════════════════════════════════════════════════
 
@@ -167,4 +204,6 @@ window.SB = {
   upsert:                 sbUpsert,
   lireHistoriqueParBarre: sbLireHistoriqueParBarre,
   insererHistorique:      sbInsererHistorique,
+  lireConfig:             sbLireConfig,
+  sauvegarderConfig:      sbSauvegarderConfig,
 };
