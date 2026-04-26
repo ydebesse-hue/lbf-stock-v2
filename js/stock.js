@@ -215,7 +215,8 @@ const Stock = (() => {
   let _demandeurs   = [];  // { id, nom, prenom, email } depuis Supabase
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
-  let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
+  let _demandes  = [];          // demandes en_attente chargées depuis Supabase (Conv. 6)
+  let _demandCompteur = 0;      // compteur max des IDs DEM-XXXX connus (Supabase + localStorage)
   let _planImg   = null;        // image plan (base64), chargée au démarrage depuis Supabase
   let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
   let _filtreEnAttente = false; // true quand l'admin clique l'alerte pour voir les en_attente
@@ -273,12 +274,16 @@ const Stock = (() => {
         _sections = sectionsJson || { standard: [], custom: [] };
       }
 
-      // Charger les demandes en attente depuis Supabase
+      // Charger les demandes depuis Supabase (toutes, pour calculer le compteur max)
       try {
         const demandes = await window.SB.lire('demandes');
+        const nums = demandes.map(d => parseInt((d.id||'').replace(/[^0-9]/g,''), 10)).filter(n => !isNaN(n));
+        _demandCompteur = nums.length ? Math.max(...nums) : 0;
         _demandes = demandes.filter(d => d.statut === 'en_attente');
       } catch(e) {
-        _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
+        const store = _chargerDemandes();
+        _demandCompteur = store.compteur || 0;
+        _demandes = store.demandes.filter(d => d.statut === 'en_attente');
       }
 
       // Charger les référentiels administrables
@@ -469,12 +474,18 @@ const Stock = (() => {
   async function _persisterDemande(demande) {
     try {
       await window.SB.upsert('demandes', demande);
+      // Synchroniser le compteur localStorage pour la cohérence offline
+      try {
+        const store = _chargerDemandes();
+        store.compteur = _demandCompteur;
+        localStorage.setItem(CLE_DEMANDES, JSON.stringify(store));
+      } catch {}
       return true; // ✅ sauvegardé en base
     } catch(e) {
       console.warn('[Stock] Supabase indisponible, fallback localStorage demande :', e);
       const store = _chargerDemandes();
       store.demandes.push(demande);
-      store.compteur = (store.compteur || 0) + 1;
+      store.compteur = _demandCompteur;
       try { localStorage.setItem(CLE_DEMANDES, JSON.stringify(store)); } catch {}
       return false; // ⚠ sauvegardé localement uniquement
     }
@@ -3116,8 +3127,8 @@ const Stock = (() => {
 
     const nomComplet = [demandeurInfo.prenom, demandeurInfo.nom].filter(Boolean).join(' ');
 
-    const store = _chargerDemandes();
-    const nb    = (store.compteur || 0) + 1;
+    const nb = _demandCompteur + 1;
+    _demandCompteur = nb;
 
     const demande = {
       id:               `DEM-${String(nb).padStart(4, '0')}`,
