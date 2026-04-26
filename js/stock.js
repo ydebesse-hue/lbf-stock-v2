@@ -843,6 +843,7 @@ const Stock = (() => {
         h += `<td>${_e(_labelChantier(b.chantier_origine) || '—')}</td>`;
         h += `<td class="td-actions">
           <button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button>
+          ${Auth.hasRight('can_validate') ? `<button class="btn-ligne btn-supprimer-def" onclick="Stock.ouvrirSuppressionDefinitive('${_e(b.id)}')" title="Supprimer définitivement">🗑</button>` : ''}
         </td>`;
         h += `</tr>`;
       });
@@ -4644,62 +4645,122 @@ const Stock = (() => {
     const el = _parId(id);
     if (!el) return;
 
-    // Remplir le résumé de la barre
-    const info = document.getElementById('sup-info-barre');
+    const mSup = document.getElementById('m-supprimer');
+    if (!mSup) return;
+
+    mSup.dataset.idEnCours = id;
+    mSup.dataset.mode = 'archiver';
+
+    // Titre et couleurs mode archivage
+    const titre = document.getElementById('sup-titre');
+    const info  = document.getElementById('sup-info-barre');
+    const desc  = document.getElementById('sup-description');
+    const btn   = document.getElementById('sup-btn-confirmer');
+
+    if (titre) { titre.textContent = '📦 Archiver cet élément'; titre.style.color = 'var(--bleu-info)'; }
     if (info) {
+      info.style.background = '#e8f0fe';
+      info.style.border = '1px solid var(--bleu-info)';
+      info.style.color = 'var(--bleu-info)';
       if (el.categorie === 'profil') {
         info.innerHTML = `<strong>${_e(el.id)}</strong> — ${_e(el.section_type)} ${_e(el.designation)} · ${el.longueur_m.toFixed(2)} m · ${_e(el.lieu_stockage)}`;
       } else {
         info.innerHTML = `<strong>${_e(el.id)}</strong> — Tôle ${el.epaisseur_mm} mm · ${el.largeur_mm}×${el.longueur_mm} mm · ${el.quantite} pièce(s) · ${_e(el.lieu_stockage)}`;
       }
     }
+    if (desc) desc.innerHTML = `L'élément sera <strong>archivé</strong> et consultable dans l'onglet <em>Archivées</em>. Il ne sera plus visible dans le stock actif.`;
+    if (btn) { btn.textContent = '📦 Archiver'; btn.className = 'btn-modale btn-modale-bleu btn-confirmer-sup'; }
 
-    // Mémoriser l'ID pour la confirmation
-    const mSup = document.getElementById('m-supprimer');
-    if (mSup) mSup.dataset.idEnCours = id;
-
-    // Fermer la modale modification et ouvrir la confirmation
     _fermerModale('m-modification');
     _ouvrirModale('m-supprimer');
   }
 
+  function _ouvrirConfirmationSuppressionDefinitive(id) {
+    const el = _parId(id);
+    if (!el) return;
+
+    const mSup = document.getElementById('m-supprimer');
+    if (!mSup) return;
+
+    mSup.dataset.idEnCours = id;
+    mSup.dataset.mode = 'supprimer';
+
+    const titre = document.getElementById('sup-titre');
+    const info  = document.getElementById('sup-info-barre');
+    const desc  = document.getElementById('sup-description');
+    const btn   = document.getElementById('sup-btn-confirmer');
+
+    if (titre) { titre.textContent = '🗑 Suppression définitive'; titre.style.color = 'var(--rouge)'; }
+    if (info) {
+      info.style.background = '#fde8e8';
+      info.style.border = '1px solid var(--rouge)';
+      info.style.color = 'var(--rouge)';
+      if (el.categorie === 'profil') {
+        info.innerHTML = `<strong>${_e(el.id)}</strong> — ${_e(el.section_type)} ${_e(el.designation)} · ${_e(el.lieu_stockage)}`;
+      } else {
+        info.innerHTML = `<strong>${_e(el.id)}</strong> — Tôle ${el.epaisseur_mm} mm · ${el.largeur_mm}×${el.longueur_mm} mm`;
+      }
+    }
+    if (desc) desc.innerHTML = `Cette action est <strong>irréversible</strong>. L'élément sera définitivement supprimé de la base de données.`;
+    if (btn) { btn.textContent = '🗑 Supprimer définitivement'; btn.className = 'btn-modale btn-modale-rouge btn-confirmer-sup'; }
+
+    _ouvrirModale('m-supprimer');
+  }
+
   /**
-   * Exécute la suppression après confirmation
+   * Exécute l'archivage ou la suppression définitive après confirmation
    */
   async function _confirmerSuppression() {
     const mSup = document.getElementById('m-supprimer');
     if (!mSup) return;
 
-    const id = mSup.dataset.idEnCours;
+    const id   = mSup.dataset.idEnCours;
+    const mode = mSup.dataset.mode || 'archiver';
     if (!id) return;
 
-    // Supprimer de Supabase
     let enLigne = true;
-    try {
-      await window.SB.supprimer('stock', id);
-    } catch(e) {
-      console.warn('[Stock] Supabase indisponible, suppression locale :', e);
-      // Fallback : marquer comme supprimé en localStorage
-      const local = _chargerLocal();
-      const idx = local.barres.findIndex(b => b.id === id);
-      if (idx !== -1) {
-        local.barres.splice(idx, 1);
-      } else {
-        // Marquer pour exclusion si la barre vient de stock.json
-        local.barres.push({ id, _supprime: true });
+
+    if (mode === 'archiver') {
+      // ── Archivage : PATCH statut → archivee ──────────────────
+      const el = _parId(id);
+      const longAvant = el?.longueur_m ?? 0;
+      try {
+        await window.SB.mettreAJour('stock', id, { statut: 'archivee' });
+        await _enregistrerHistorique(id, 'ARCHIVAGE', longAvant, 0,
+          null, Auth.getSession()?.identifiant || null, null, 'Archivage manuel');
+      } catch(e) {
+        console.warn('[Stock] Supabase indisponible, archivage local :', e);
+        enLigne = false;
       }
-      _sauvegarderLocal(local);
-      enLigne = false;
+      // Mise à jour en mémoire
+      const barre = _data.barres.find(b => b.id === id);
+      if (barre) barre.statut = 'archivee';
+      _fermerModale('m-supprimer');
+      _peuplerFiltres();
+      _filtrer();
+      _majAlerteAttente();
+      _notif(`${id} archivé` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
+
+    } else {
+      // ── Suppression définitive : DELETE ──────────────────────
+      try {
+        await window.SB.supprimer('stock', id);
+      } catch(e) {
+        console.warn('[Stock] Supabase indisponible, suppression locale :', e);
+        const local = _chargerLocal();
+        const idx = local.barres.findIndex(b => b.id === id);
+        if (idx !== -1) local.barres.splice(idx, 1);
+        else local.barres.push({ id, _supprime: true });
+        _sauvegarderLocal(local);
+        enLigne = false;
+      }
+      _data.barres = _data.barres.filter(b => b.id !== id);
+      _fermerModale('m-supprimer');
+      _peuplerFiltres();
+      _filtrer();
+      _majAlerteAttente();
+      _notif(`${id} supprimé définitivement` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
     }
-
-    // Supprimer de _data en mémoire
-    _data.barres = _data.barres.filter(b => b.id !== id);
-
-    _fermerModale('m-supprimer');
-    _peuplerFiltres();
-    _filtrer();
-    _majAlerteAttente();
-    _notif(`Élément ${id} supprimé` + (enLigne ? ' du stock' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
   }
 
 
@@ -5383,6 +5444,7 @@ const Stock = (() => {
     refuserElement,
     getSelection,
     ouvrirHistoriqueBarre,
+    ouvrirSuppressionDefinitive: _ouvrirConfirmationSuppressionDefinitive,
     ouvrirAdminStockage,
     ouvrirAdminChantiers,
     exporterCSV: _exporterCSV,
