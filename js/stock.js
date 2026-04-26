@@ -570,7 +570,10 @@ const Stock = (() => {
     const texte    = _val('p-recherche').toLowerCase().trim();
 
     return source.filter(b => {
-      if (_filtreEnAttente && b.statut !== 'en_attente') return false;
+      if (_filtreEnAttente) {
+        const aDemande = _demandes.some(d => d.id_barre === b.id);
+        if (b.statut !== 'en_attente' && !aDemande) return false;
+      }
       if (type     && b.section_type     !== type)     return false;
       if (desig    && b.designation      !== desig)    return false;
       if (chantier && b.chantier_affectation !== chantier) return false;
@@ -593,7 +596,10 @@ const Stock = (() => {
     const texte    = _val('t-recherche').toLowerCase().trim();
 
     return source.filter(b => {
-      if (_filtreEnAttente && b.statut !== 'en_attente') return false;
+      if (_filtreEnAttente) {
+        const aDemande = _demandes.some(d => d.id_barre === b.id);
+        if (b.statut !== 'en_attente' && !aDemande) return false;
+      }
       if (epais    && String(b.epaisseur_mm) !== epais)    return false;
       if (chantier && b.chantier_origine     !== chantier) return false;
       if (lieu     && b.lieu_stockage        !== lieu)     return false;
@@ -1469,7 +1475,9 @@ const Stock = (() => {
       if (z) z.style.display = 'none';
       return;
     }
-    const nb = _data.barres.filter(b => b.statut === 'en_attente').length;
+    const nbItems   = _data.barres.filter(b => b.statut === 'en_attente').length;
+    const nbDemandes = _demandes.length;
+    const nb = nbItems + nbDemandes;
     if (nb === 0) {
       z.style.display = 'none';
     } else {
