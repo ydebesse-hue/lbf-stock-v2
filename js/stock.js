@@ -1493,6 +1493,7 @@ const Stock = (() => {
     // Alerte admin : clic pour voir les éléments en attente de validation
     document.getElementById('stock-alerte-attente')?.addEventListener('click', () => {
       _filtreEnAttente = true;
+      if (_sectionActive === 'admin') _activerSectionStock();
       _basculerOnglet('profils', true);
       _majBadgeAttente();
       _filtrer();
