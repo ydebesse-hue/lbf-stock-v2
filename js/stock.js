@@ -218,6 +218,7 @@ const Stock = (() => {
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
   let _planImg   = null;        // image plan (base64), chargée au démarrage depuis Supabase
   let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
+  let _filtreEnAttente = false; // true quand l'admin clique l'alerte pour voir les en_attente
 
 
   /* ──────────────────────────────────────────────────────────────
@@ -569,6 +570,7 @@ const Stock = (() => {
     const texte    = _val('p-recherche').toLowerCase().trim();
 
     return source.filter(b => {
+      if (_filtreEnAttente && b.statut !== 'en_attente') return false;
       if (type     && b.section_type     !== type)     return false;
       if (desig    && b.designation      !== desig)    return false;
       if (chantier && b.chantier_affectation !== chantier) return false;
@@ -591,6 +593,7 @@ const Stock = (() => {
     const texte    = _val('t-recherche').toLowerCase().trim();
 
     return source.filter(b => {
+      if (_filtreEnAttente && b.statut !== 'en_attente') return false;
       if (epais    && String(b.epaisseur_mm) !== epais)    return false;
       if (chantier && b.chantier_origine     !== chantier) return false;
       if (lieu     && b.lieu_stockage        !== lieu)     return false;
@@ -1377,10 +1380,15 @@ const Stock = (() => {
      ONGLETS
      ────────────────────────────────────────────────────────────── */
 
-  function _basculerOnglet(onglet) {
+  function _basculerOnglet(onglet, garderFiltreAttente = false) {
     const precedent = _onglet;
     _onglet = onglet;
     _tri    = { col: null, ordre: 'asc' };
+
+    if (!garderFiltreAttente) {
+      _filtreEnAttente = false;
+      _majBadgeAttente();
+    }
 
     document.querySelectorAll('.sous-onglet').forEach(b => {
       b.classList.toggle('actif', b.dataset.onglet === onglet);
@@ -1421,7 +1429,22 @@ const Stock = (() => {
       archivees: ['a-type','a-desig','a-recherche'],
     };
     (map[onglet] || []).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    if (onglet === 'profils' || onglet === 'toles') {
+      _filtreEnAttente = false;
+      _majBadgeAttente();
+    }
   }
+
+  function _majBadgeAttente() {
+    const badge = document.getElementById('badge-filtre-attente');
+    if (badge) badge.style.display = _filtreEnAttente ? 'inline-flex' : 'none';
+  }
+
+  window._clearFiltreAttente = function() {
+    _filtreEnAttente = false;
+    _majBadgeAttente();
+    _filtrer();
+  };
 
 
   /* ──────────────────────────────────────────────────────────────
@@ -1465,6 +1488,14 @@ const Stock = (() => {
     // Onglets
     document.querySelectorAll('.sous-onglet').forEach(b => {
       b.addEventListener('click', () => _basculerOnglet(b.dataset.onglet));
+    });
+
+    // Alerte admin : clic pour voir les éléments en attente de validation
+    document.getElementById('stock-alerte-attente')?.addEventListener('click', () => {
+      _filtreEnAttente = true;
+      _basculerOnglet('profils', true);
+      _majBadgeAttente();
+      _filtrer();
     });
 
     // Liens de navigation depuis la synthèse (event delegation)
