@@ -1189,7 +1189,7 @@ const Stock = (() => {
             </tr></thead>
             <tbody>
               <tr>
-                <td><span class="syn-dot s-vert"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils">Disponible →</span></td>
+                <td><span class="syn-dot s-vert"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils" data-syn-dispo="disponible">Disponible →</span></td>
                 <td><strong>${profilsDispo.length}</strong></td>
                 <td>${fmt(mlDispo)} m</td>
                 <td>${fmtT(poidsProfils)}</td>
@@ -1327,7 +1327,7 @@ const Stock = (() => {
             </tr></thead>
             <tbody>
               <tr>
-                <td><span class="syn-dot s-vert"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles">Disponible →</span></td>
+                <td><span class="syn-dot s-vert"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="disponible">Disponible →</span></td>
                 <td><strong>${tolesDispo.length}</strong></td>
                 <td>${fmt(surfaceDispo)} m²</td>
                 <td>${fmtT(poidsTolesTot)}</td>
