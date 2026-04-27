@@ -1610,6 +1610,11 @@ const Stock = (() => {
     const btnImp = document.getElementById('btn-importer');
     if (btnImp) btnImp.addEventListener('click', _ouvrirImport);
 
+    // Boutons impression PDF (toolbar de chaque onglet)
+    ['btn-imprimer-profils', 'btn-imprimer-toles', 'btn-imprimer-archivees'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', _imprimerListe);
+    });
+
     // Boutons ajout → ouvrir modales
     // Focus ligne au clic cellule
     const zoneTab = document.getElementById('tableau-stock');
@@ -4870,6 +4875,176 @@ const Stock = (() => {
     URL.revokeObjectURL(url);
 
     _notif(`Export réussi — ${elements.length} élément(s) téléchargé(s)`, 'succes');
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     IMPRESSION / PDF
+     ────────────────────────────────────────────────────────────── */
+
+  function _imprimerListe() {
+    if (!_data) return;
+
+    // Recalculer les données filtrées courantes
+    const session   = window.Auth ? window.Auth.getSession() : null;
+    const voirRefus = session?.profil === 'administration';
+
+    let source;
+    if (_onglet === 'archivees') {
+      source = _data.barres.filter(b => b.categorie === 'profil' && b.statut === 'archivee');
+    } else {
+      source = _data.barres.filter(b => {
+        if (b.statut === 'archivee') return false;
+        if (!voirRefus && b.statut === 'refuse') return false;
+        return _onglet === 'profils' ? b.categorie === 'profil' : b.categorie === 'tole';
+      });
+    }
+    let resultats = _onglet === 'profils' ? _filtrerProfils(source)
+                  : _onglet === 'toles'   ? _filtrerToles(source)
+                  : _filtrerArchivees(source);
+    if (_tri.col) resultats = _trier(resultats);
+
+    // Collecter les filtres actifs pour l'en-tête
+    const filtresActifs = [];
+    if (_onglet === 'profils') {
+      if (_val('p-type'))     filtresActifs.push(`Type : ${_val('p-type')}`);
+      if (_val('p-desig'))    filtresActifs.push(`Désignation : ${_val('p-desig')}`);
+      if (_val('p-chantier')) filtresActifs.push(`Chantier : ${_val('p-chantier')}`);
+      if (_val('p-lieu'))     filtresActifs.push(`Lieu : ${_val('p-lieu')}`);
+      if (_val('p-dispo'))    filtresActifs.push(`Dispo : ${_val('p-dispo')}`);
+      if (_val('p-recherche')) filtresActifs.push(`Recherche : "${_val('p-recherche')}"`);
+    } else if (_onglet === 'toles') {
+      if (_val('t-epaisseur')) filtresActifs.push(`Épaisseur : ${_val('t-epaisseur')} mm`);
+      if (_val('t-chantier'))  filtresActifs.push(`Chantier : ${_val('t-chantier')}`);
+      if (_val('t-lieu'))      filtresActifs.push(`Lieu : ${_val('t-lieu')}`);
+      if (_val('t-dispo'))     filtresActifs.push(`Dispo : ${_val('t-dispo')}`);
+      if (_val('t-recherche')) filtresActifs.push(`Recherche : "${_val('t-recherche')}"`);
+    } else {
+      if (_val('a-type'))      filtresActifs.push(`Type : ${_val('a-type')}`);
+      if (_val('a-desig'))     filtresActifs.push(`Désignation : ${_val('a-desig')}`);
+      if (_val('a-recherche')) filtresActifs.push(`Recherche : "${_val('a-recherche')}"`);
+    }
+
+    const titreOnglet = _onglet === 'profils' ? 'Profilés'
+                      : _onglet === 'toles'   ? 'Tôles'
+                      : 'Archivées';
+    const dateStr = new Date().toLocaleDateString('fr-FR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+
+    // Générer les lignes du tableau selon l'onglet
+    let enTetes = '';
+    let lignes  = '';
+
+    if (_onglet === 'profils') {
+      enTetes = `<tr>
+        <th>ID</th><th>Type</th><th>Désignation</th><th>Long. (m)</th>
+        <th>Poids (kg)</th><th>Classe</th><th>Statut</th>
+        <th>Lieu stockage</th><th>Chantier</th><th>Commentaire</th>
+      </tr>`;
+      lignes = resultats.map(b => {
+        const poids = _poidsEffectifProfil(b);
+        const statut = b.statut === 'en_attente' ? 'En attente'
+                     : b.disponibilite === 'disponible' ? 'Disponible' : 'Affecté';
+        return `<tr>
+          <td>${_e(b.id)}</td>
+          <td>${_e(b.section_type)}</td>
+          <td>${_e(b.designation)}</td>
+          <td>${typeof b.longueur_m === 'number' ? b.longueur_m.toFixed(2) : '—'}</td>
+          <td>${poids > 0 ? poids.toFixed(1) : '—'}</td>
+          <td>${_e(b.classe_acier || '—')}</td>
+          <td>${statut}</td>
+          <td>${_e(b.lieu_stockage || '—')}</td>
+          <td>${_e(_labelChantier(b.chantier_affectation) || b.chantier_affectation || '—')}</td>
+          <td>${_e(b.commentaire || '—')}</td>
+        </tr>`;
+      }).join('');
+    } else if (_onglet === 'toles') {
+      enTetes = `<tr>
+        <th>ID</th><th>Ép. (mm)</th><th>Dimensions (mm)</th><th>Qté</th>
+        <th>Poids unit. (kg)</th><th>Classe</th><th>Statut</th>
+        <th>Lieu stockage</th><th>Chantier</th>
+      </tr>`;
+      lignes = resultats.map(b => {
+        const poids = b.largeur_mm && b.longueur_mm && b.epaisseur_mm
+          ? (b.largeur_mm / 1000) * (b.longueur_mm / 1000) * (b.epaisseur_mm / 1000) * 7850
+          : 0;
+        const statut = b.statut === 'en_attente' ? 'En attente'
+                     : b.disponibilite === 'disponible' ? 'Disponible' : 'Affecté';
+        return `<tr>
+          <td>${_e(b.id)}</td>
+          <td>${b.epaisseur_mm}</td>
+          <td>${b.largeur_mm} × ${b.longueur_mm}</td>
+          <td>${b.quantite}</td>
+          <td>${poids > 0 ? poids.toFixed(1) : '—'}</td>
+          <td>${_e(b.classe_acier || '—')}</td>
+          <td>${statut}</td>
+          <td>${_e(b.lieu_stockage || '—')}</td>
+          <td>${_e(_labelChantier(b.chantier_affectation) || b.chantier_affectation || '—')}</td>
+        </tr>`;
+      }).join('');
+    } else {
+      enTetes = `<tr>
+        <th>ID</th><th>Type</th><th>Désignation</th><th>Long. (m)</th>
+        <th>Poids (kg)</th><th>Lieu stockage</th><th>Chantier origine</th><th>Date ajout</th>
+      </tr>`;
+      lignes = resultats.map(b => {
+        const poids = _poidsEffectifProfil(b);
+        const dateAjout = b.date_ajout
+          ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—';
+        return `<tr>
+          <td>${_e(b.id)}</td>
+          <td>${_e(b.section_type)}</td>
+          <td>${_e(b.designation)}</td>
+          <td>${typeof b.longueur_m === 'number' ? b.longueur_m.toFixed(2) : '—'}</td>
+          <td>${poids > 0 ? poids.toFixed(1) : '—'}</td>
+          <td>${_e(b.lieu_stockage || '—')}</td>
+          <td>${_e(_labelChantier(b.chantier_origine) || b.chantier_origine || '—')}</td>
+          <td>${dateAjout}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Stock ${titreOnglet} — Le Bras Frères</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #222; padding: 16px; }
+    .entete { margin-bottom: 14px; border-bottom: 2px solid #d22323; padding-bottom: 10px; }
+    .entete h1 { font-size: 16px; color: #d22323; margin-bottom: 4px; }
+    .entete .meta { font-size: 11px; color: #555; margin-bottom: 3px; }
+    .entete .filtres { font-size: 10px; color: #888; font-style: italic; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #222; color: white; padding: 5px 6px; text-align: left; font-size: 10px; white-space: nowrap; }
+    td { padding: 4px 6px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+    tr:nth-child(even) td { background: #f7f7f7; }
+    .pied { margin-top: 12px; font-size: 10px; color: #aaa; text-align: right; }
+    @page { margin: 1.2cm; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="entete">
+    <h1>Le Bras Frères — Stock Métallerie · ${titreOnglet}</h1>
+    <div class="meta">${resultats.length} élément(s) · Imprimé le ${dateStr}</div>
+    ${filtresActifs.length ? `<div class="filtres">Filtres : ${filtresActifs.join(' · ')}</div>` : ''}
+  </div>
+  <table>
+    <thead>${enTetes}</thead>
+    <tbody>${lignes || '<tr><td colspan="10" style="text-align:center;padding:12px;color:#aaa">Aucun élément</td></tr>'}</tbody>
+  </table>
+  <div class="pied">LBF Stock v2 — ${dateStr}</div>
+  <script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) { _notif('Popup bloquée — autoriser les popups pour ce site', 'erreur'); return; }
+    w.document.write(html);
+    w.document.close();
   }
 
   /** Données parsées en attente de confirmation d'import */
