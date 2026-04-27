@@ -609,6 +609,10 @@
     .btn-modale-bleu     { background: var(--bleu-info); color: white; }
     .btn-supprimer-def   { color: var(--rouge); background: none; border: 1px solid var(--rouge); border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 13px; }
     .btn-supprimer-def:hover { background: #fde8e8; }
+    .badge-stock-bas     { display:inline-flex; align-items:center; gap:5px; background:#fff3cd; color:#856404; border:1px solid #ffc107; border-radius:12px; padding:2px 10px; font-size:12px; font-weight:600; }
+    tr.ligne-stock-bas td { background: #fff8e1; }
+    tr.ligne-stock-bas:hover td { background: #fff0b3; }
+    .chip-stock-bas      { display:inline-block; background:#ffc107; color:#333; border-radius:4px; padding:0 5px; font-size:11px; font-weight:700; margin-left:4px; }
 
     /* ── Modale référentiels admin ───────────────────────────── */
     .admin-ref-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -1493,6 +1497,9 @@
     <div class="toolbar-sep"></div>
     <button id="btn-reset-toles" class="btn-action btn-gris" title="Réinitialiser">✕ Réinitialiser</button>
     <input id="t-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
+    <div id="badge-stock-bas" class="badge-stock-bas" style="display:none">
+      ⚠ <span class="stock-bas-nb">0</span> en stock bas
+    </div>
     <button id="btn-imprimer-toles" class="btn-action btn-gris" title="Imprimer / PDF" style="margin-left:auto">🖨</button>
   </div>
 
@@ -1937,6 +1944,10 @@
         <div class="fr">
           <label>Quantité</label>
           <input type="number" id="at-quantite" placeholder="1" min="1" value="1">
+        </div>
+        <div class="fr">
+          <label>Seuil d'alerte <span style="color:#888;font-size:11px">(qté min)</span></label>
+          <input type="number" id="at-seuil" placeholder="—" min="0" step="1">
         </div>
         <div class="fr">
           <label>Chantier d'origine</label>

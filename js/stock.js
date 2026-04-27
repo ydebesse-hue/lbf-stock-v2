@@ -543,8 +543,8 @@ const Stock = (() => {
 
     let source;
     if (_onglet === 'archivees') {
-      // Onglet archivées : uniquement les profilés avec statut archivee
-      source = _data.barres.filter(b => b.categorie === 'profil' && b.statut === 'archivee');
+      // Onglet archivées : tous éléments avec statut archivee (profils + tôles)
+      source = _data.barres.filter(b => b.statut === 'archivee');
     } else {
       // Onglets actifs : exclure les archivées et masquer les refusés selon le profil
       source = _data.barres.filter(b => {
@@ -567,6 +567,7 @@ const Stock = (() => {
 
     _rendrTableau(resultats);
     _majCompteur(resultats.length, source.length);
+    _majAlerteSeuil();
 
     if (_onglet === 'profils')   _peuplerDesignations(_val('p-type'));
     if (_onglet === 'archivees') _peuplerDesignationsArchivees(_val('a-type'));
@@ -797,53 +798,60 @@ const Stock = (() => {
    * @returns {string}
    */
   function _htmlArchivees(data) {
+    const admin = Auth.hasRight('can_validate');
     const cols = [
       { col: 'id',          label: 'ID'               },
-      { col: null,          label: 'Code'             },
-      { col: 'type',        label: 'Type'             },
-      { col: 'designation', label: 'Désignation'      },
-      { col: 'longueur',    label: 'Longueur (m)'     },
-      { col: 'poids',       label: 'Poids (kg)'       },
-      { col: 'lieu',        label: 'Stockage'         },
-      { col: 'date',        label: 'Date ajout'       },
-      { col: 'chantier',    label: 'Chantier origine' },
+      { col: 'type',        label: 'Type / Catégorie'  },
+      { col: 'designation', label: 'Description'       },
+      { col: 'longueur',    label: 'Long. / Qté'       },
+      { col: 'poids',       label: 'Poids (kg)'        },
+      { col: 'lieu',        label: 'Stockage'          },
+      { col: 'date',        label: 'Date ajout'        },
+      { col: 'chantier',    label: 'Chantier origine'  },
     ];
 
     let h = '<table><thead><tr>';
     cols.forEach(c => {
-      if (!c.col) { h += `<th>${c.label}</th>`; return; }
       const actif = _tri.col === c.col;
       const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
       h += `<th data-col="${c.col}" class="${actif ? 'tri-actif' : ''}">${c.label} <span class="tri-ind">${ind}</span></th>`;
     });
-    h += '<th>Historique</th></tr></thead><tbody>';
+    h += '<th>Actions</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="10" class="vide">Aucune barre archivée.</td></tr>`;
+      h += `<tr><td colspan="9" class="vide">Aucun élément archivé.</td></tr>`;
     } else {
       data.forEach(b => {
-        const poidsEff = _poidsEffectifProfil(b);
-        const poids = poidsEff > 0 ? poidsEff.toFixed(1) : '—';
         const dateAjout = b.date_ajout
-          ? new Date(b.date_ajout).toLocaleDateString('fr-FR')
-          : '—';
-        const codeAff = b.code_barre
-          ? `<span class="chip-code chip-code-arc">ARC-${_e(b.code_barre)}</span>`
-          : '<span style="color:#bbb;font-size:11px">—</span>';
+          ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—';
+
+        let typeTxt, descTxt, longQteTxt, poidsTxt;
+        if (b.categorie === 'profil') {
+          const poidsEff = _poidsEffectifProfil(b);
+          typeTxt    = `<strong>${_e(b.section_type)}</strong>`;
+          descTxt    = _e(b.designation);
+          longQteTxt = typeof b.longueur_m === 'number' ? `${b.longueur_m.toFixed(2)} m` : '—';
+          poidsTxt   = poidsEff > 0 ? poidsEff.toFixed(1) : '—';
+        } else {
+          const poidsU = b.poids_unitaire_kg || 0;
+          typeTxt    = `<span style="color:#888">Tôle</span>`;
+          descTxt    = `${b.epaisseur_mm} mm · ${b.largeur_mm}×${b.longueur_mm} mm`;
+          longQteTxt = `${b.quantite ?? 0} pièce${(b.quantite ?? 0) > 1 ? 's' : ''}`;
+          poidsTxt   = poidsU > 0 ? `${poidsU.toFixed(1)} /u` : '—';
+        }
 
         h += `<tr>`;
         h += `<td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>`;
-        h += `<td>${codeAff}</td>`;
-        h += `<td><strong>${_e(b.section_type)}</strong></td>`;
-        h += `<td>${_e(b.designation)}</td>`;
-        h += `<td>${typeof b.longueur_m === 'number' ? b.longueur_m.toFixed(2) : '—'}</td>`;
-        h += `<td>${poids}</td>`;
+        h += `<td>${typeTxt}</td>`;
+        h += `<td>${descTxt}</td>`;
+        h += `<td>${longQteTxt}</td>`;
+        h += `<td>${poidsTxt}</td>`;
         h += `<td>${_e(b.lieu_stockage || '—')}</td>`;
         h += `<td>${dateAjout}</td>`;
         h += `<td>${_e(_labelChantier(b.chantier_origine) || '—')}</td>`;
         h += `<td class="td-actions">
-          <button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button>
-          ${Auth.hasRight('can_validate') ? `<button class="btn-ligne btn-supprimer-def" onclick="Stock.ouvrirSuppressionDefinitive('${_e(b.id)}')" title="Supprimer définitivement">🗑</button>` : ''}
+          ${b.categorie === 'profil' ? `<button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button>` : ''}
+          ${admin ? `<button class="btn-ligne btn-supprimer-def" onclick="Stock.ouvrirSuppressionDefinitive('${_e(b.id)}')" title="Supprimer définitivement">🗑</button>` : ''}
         </td>`;
         h += `</tr>`;
       });
@@ -886,15 +894,18 @@ const Stock = (() => {
           ? new Date(t.date_ajout).toLocaleDateString('fr-FR')
           : '—';
 
-        h += `<tr${attente ? ' class="ligne-attente"' : ''} data-id="${_e(t.id)}">`;
+        const stockBas = t.seuil_min > 0 && t.quantite <= t.seuil_min;
+        const classesTr = [attente ? 'ligne-attente' : '', stockBas ? 'ligne-stock-bas' : ''].filter(Boolean).join(' ');
+        h += `<tr${classesTr ? ` class="${classesTr}"` : ''} data-id="${_e(t.id)}">`;
         h += `<td class="td-id"><span class="chip-id">${_e(t.id)}</span></td>`;
         h += modif
           ? `<td class="cell-editable" data-field="epaisseur"><strong>${t.epaisseur_mm} mm</strong></td>`
           : `<td><strong>${t.epaisseur_mm} mm</strong></td>`;
         h += `<td>${dims}</td>`;
+        const qtyTxt = `${t.quantite} pièce${t.quantite > 1 ? 's' : ''}${stockBas ? ' <span class="chip-stock-bas" title="Stock bas">⚠</span>' : ''}`;
         h += modif
-          ? `<td class="cell-editable" data-field="quantite">${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`
-          : `<td>${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`;
+          ? `<td class="cell-editable" data-field="quantite">${qtyTxt}</td>`
+          : `<td>${qtyTxt}</td>`;
         h += `<td>${t.poids_unitaire_kg.toFixed(1)} <span style="color:#999;font-size:11px">(tot.&nbsp;${t.poids_total_kg.toFixed(1)})</span></td>`;
         h += modif
           ? `<td class="cell-editable" data-field="lieu">${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`
@@ -1031,7 +1042,7 @@ const Stock = (() => {
     // Exclure les archivées des onglets actifs
     const profils   = _data.barres.filter(b => b.categorie === 'profil' && b.statut !== 'archivee');
     const toles     = _data.barres.filter(b => b.categorie === 'tole'   && b.statut !== 'archivee');
-    const archivees = _data.barres.filter(b => b.categorie === 'profil' && b.statut === 'archivee');
+    const archivees = _data.barres.filter(b => b.statut === 'archivee');
 
     _remplirSelect('p-type',
       [...new Set(profils.map(b => b.section_type))].sort()
@@ -1479,6 +1490,20 @@ const Stock = (() => {
     z.textContent = nb === total
       ? `${nb} ${nb > 1 ? s[1] : s[0]}`
       : `${nb} ${nb > 1 ? s[1] : s[0]} affichées sur ${total}`;
+  }
+
+  function _majAlerteSeuil() {
+    const badge = document.getElementById('badge-stock-bas');
+    if (!badge || !_data) return;
+    const nb = _data.barres.filter(b =>
+      b.categorie === 'tole' &&
+      b.statut !== 'archivee' &&
+      b.seuil_min > 0 &&
+      b.quantite <= b.seuil_min
+    ).length;
+    badge.style.display = nb > 0 ? 'inline-flex' : 'none';
+    const span = badge.querySelector('.stock-bas-nb');
+    if (span) span.textContent = nb;
   }
 
   function _majAlerteAttente() {
@@ -2584,6 +2609,8 @@ const Stock = (() => {
     const lrg = parseFloat(m.querySelector('#at-largeur')?.value);
     const lng = parseFloat(m.querySelector('#at-longueur')?.value);
     const qty = parseInt(m.querySelector('#at-quantite')?.value) || 1;
+    const seuilRaw = m.querySelector('#at-seuil')?.value;
+    const seuilMin = seuilRaw !== '' && seuilRaw != null ? (parseInt(seuilRaw) || 0) : null;
     const chantier    = m.querySelector('#at-chantier')?.value?.trim();
     const lieu        = _lireLieu(m.querySelector('#at-lieu'));
     const dispo       = m.querySelector('#at-dispo')?.value || 'disponible';
@@ -2609,6 +2636,7 @@ const Stock = (() => {
       largeur_mm: lrg,
       longueur_mm: lng,
       quantite: qty,
+      seuil_min: seuilMin,
       poids_unitaire_kg: poidsU,
       poids_total_kg: poidsT,
       chantier_origine: chantier || 'Non renseigné',
@@ -2782,8 +2810,12 @@ const Stock = (() => {
         const poidsU = Math.round(((ep/1000)*(original.largeur_mm/1000)*(original.longueur_mm/1000)*7850)*10)/10;
         patch = { epaisseur_mm: ep, poids_unitaire_kg: poidsU, poids_total_kg: Math.round(poidsU*(original.quantite||1)*10)/10 };
       } else if (field === 'quantite') {
-        const qty = parseInt(rawVal) || 1;
-        patch = { quantite: qty, poids_total_kg: Math.round(original.poids_unitaire_kg*qty*10)/10 };
+        const qty = parseInt(rawVal) ?? 0;
+        if (qty <= 0) {
+          patch = { quantite: 0, statut: 'archivee' };
+        } else {
+          patch = { quantite: qty, poids_total_kg: Math.round(original.poids_unitaire_kg*qty*10)/10 };
+        }
       } else if (field === 'lieu') {
         patch = { lieu_stockage: rawVal };
       } else if (field === 'dispo') {
@@ -4890,7 +4922,7 @@ const Stock = (() => {
 
     let source;
     if (_onglet === 'archivees') {
-      source = _data.barres.filter(b => b.categorie === 'profil' && b.statut === 'archivee');
+      source = _data.barres.filter(b => b.statut === 'archivee');
     } else {
       source = _data.barres.filter(b => {
         if (b.statut === 'archivee') return false;
