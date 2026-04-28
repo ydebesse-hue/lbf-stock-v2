@@ -964,20 +964,28 @@
     }
     #panel-cols-profils.open { display: block; }
     #panel-cols-profils .panel-cols-titre {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      color: #999;
-      margin-bottom: 8px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: #999; margin-bottom: 8px;
     }
     #panel-cols-profils label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 3px 0;
-      font-size: 13px;
-      cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      padding: 3px 0; font-size: 13px; cursor: pointer;
+    }
+    #panel-cols-toles {
+      display: none; position: absolute; z-index: 300;
+      top: calc(100% + 4px); right: 0; background: white;
+      border: 1px solid #ddd; border-radius: 4px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.15);
+      padding: 10px 14px; min-width: 190px;
+    }
+    #panel-cols-toles.open { display: block; }
+    #panel-cols-toles .panel-cols-titre {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: #999; margin-bottom: 8px;
+    }
+    #panel-cols-toles label {
+      display: flex; align-items: center; gap: 8px;
+      padding: 3px 0; font-size: 13px; cursor: pointer;
     }
 
     /* ── MODE TABS AJOUT PROFILÉ ─────────────────────────────── */
@@ -1512,7 +1520,15 @@
     <div id="badge-stock-bas" class="badge-stock-bas" style="display:none">
       ⚠ <span class="stock-bas-nb">0</span> épaisseur(s) sous le seuil surface
     </div>
-    <button id="btn-imprimer-toles" class="btn-action btn-gris" title="Imprimer / PDF" style="margin-left:auto">🖨</button>
+    <div class="vue-selector" style="margin-left:auto">
+      <button id="btn-t-vue-essentiel"   class="btn-vue" title="Colonnes essentielles">Essentiel</button>
+      <button id="btn-t-vue-complet"     class="btn-vue" title="Toutes les colonnes">Complet</button>
+      <div style="position:relative">
+        <button id="btn-t-vue-personnalise" class="btn-vue" title="Colonnes personnalisées">Personnalisé ⚙</button>
+        <div id="panel-cols-toles"></div>
+      </div>
+    </div>
+    <button id="btn-imprimer-toles" class="btn-action btn-gris" title="Imprimer / PDF">🖨</button>
   </div>
 
   <!-- ── TOOLBAR ARCHIVÉES ────────────────────────────────────── -->

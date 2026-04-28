@@ -108,6 +108,28 @@ const Stock = (() => {
   /** Clé localStorage pour le mode de vue du tableau profilés */
   const CLE_VUE_PROFILS = 'lbf-stock-vue-profils';
 
+  /** Définition des colonnes du tableau tôles */
+  const COLS_TOLES = [
+    { key: 'id',         label: 'ID',             tri: 'id',         defaut: true  },
+    { key: 'type',       label: 'Type',           tri: 'type',       defaut: true  },
+    { key: 'epaisseur',  label: 'Épaisseur (mm)', tri: 'epaisseur',  defaut: true  },
+    { key: 'dimensions', label: 'Dimensions',     tri: 'dimensions', defaut: true  },
+    { key: 'surf_unit',  label: 'Surface unit.',  tri: 'surf_unit',  defaut: true  },
+    { key: 'quantite',   label: 'Quantité',       tri: 'quantite',   defaut: true  },
+    { key: 'surf_tot',   label: 'Surface tot.',   tri: 'surf_tot',   defaut: true  },
+    { key: 'poids',      label: 'Poids (kg)',     tri: 'poids',      defaut: false },
+    { key: 'lieu',       label: 'Stockage',       tri: 'lieu',       defaut: true  },
+    { key: 'date',       label: 'Date ajout',     tri: 'date',       defaut: false },
+    { key: 'chantier',   label: 'Chantier',       tri: 'chantier',   defaut: true  },
+    { key: 'dispo',      label: 'Statut',         tri: 'dispo',      defaut: true  },
+    { key: 'ref_cmd',    label: 'Réf. commande',  tri: null,         defaut: false },
+  ];
+
+  const COLS_ESSENTIELLES_TOLES = new Set(['id','type','epaisseur','dimensions','surf_unit','quantite','surf_tot','lieu','chantier','dispo']);
+
+  const CLE_VUE_TOLES  = 'lbf-stock-vue-toles';
+  const CLE_COLS_TOLES = 'lbf-stock-cols-toles';
+
   /** Clé localStorage pour l'image du plan de stockage (base64) */
   const CLE_PLAN_IMG = 'lbf_plan_image';
 
@@ -525,6 +547,34 @@ const Stock = (() => {
     try { localStorage.setItem(CLE_VUE_PROFILS, mode); } catch(e) {}
   }
 
+  function _getModeVueToles() {
+    try { return localStorage.getItem(CLE_VUE_TOLES) || 'essentiel'; } catch(e) { return 'essentiel'; }
+  }
+  function _setModeVueToles(mode) {
+    try { localStorage.setItem(CLE_VUE_TOLES, mode); } catch(e) {}
+  }
+  function _chargerColsVisToles() {
+    const mode = _getModeVueToles();
+    const vis = {};
+    if (mode === 'essentiel') {
+      COLS_TOLES.forEach(c => { vis[c.key] = COLS_ESSENTIELLES_TOLES.has(c.key); });
+    } else if (mode === 'complet') {
+      COLS_TOLES.forEach(c => { vis[c.key] = true; });
+    } else {
+      try {
+        const raw = localStorage.getItem(CLE_COLS_TOLES);
+        const saved = raw ? JSON.parse(raw) : {};
+        COLS_TOLES.forEach(c => { vis[c.key] = c.key in saved ? saved[c.key] : c.defaut; });
+      } catch(e) {
+        COLS_TOLES.forEach(c => { vis[c.key] = c.defaut; });
+      }
+    }
+    return vis;
+  }
+  function _sauverColsVisToles(vis) {
+    try { localStorage.setItem(CLE_COLS_TOLES, JSON.stringify(vis)); } catch(e) {}
+  }
+
   function _chargerColsVis() {
     const mode = _getModeVue();
     const vis = {};
@@ -926,70 +976,79 @@ const Stock = (() => {
     return map;
   }
 
+  const COLS_EDITABLES_TOLE = new Set(['epaisseur', 'quantite', 'lieu', 'dispo']);
+
+  function _cellTole(key, t, modif) {
+    const surf = _surfaceTole(t);
+    switch (key) {
+      case 'id':
+        return `<span class="chip-id">${_e(t.id)}</span>`;
+      case 'type':
+        return `${_badgeTypeTole(t.type_tole)}${t.is_chute ? ' <span class="chip-chute">chute</span>' : ''}`;
+      case 'epaisseur':
+        return `<strong>${t.epaisseur_mm} mm</strong>`;
+      case 'dimensions':
+        return `${t.largeur_mm} × ${t.longueur_mm} mm`;
+      case 'surf_unit':
+        return surf > 0 ? `<span style="color:#555">${surf.toFixed(2)} m²</span>` : '—';
+      case 'quantite':
+        return `${t.quantite} pièce${t.quantite > 1 ? 's' : ''}`;
+      case 'surf_tot':
+        return surf > 0 ? `<span style="color:#555">${(surf * (t.quantite || 1)).toFixed(2)} m²</span>` : '—';
+      case 'poids': {
+        const u = t.poids_unitaire_kg != null ? Math.ceil(t.poids_unitaire_kg) : null;
+        const tot = t.poids_total_kg  != null ? Math.ceil(t.poids_total_kg)    : null;
+        return `${u ?? '—'} <span style="color:#999;font-size:11px">(tot.&nbsp;${tot ?? '—'})</span>`;
+      }
+      case 'lieu':
+        return t.lieu_stockage
+          ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>`
+          : '—';
+      case 'date':
+        return t.date_ajout ? new Date(t.date_ajout).toLocaleDateString('fr-FR') : '—';
+      case 'chantier':
+        return `${_e(_labelChantier(t.chantier_origine))}${t.chantier_affectation
+          ? ` <span class="chip-chantier" title="Affecté à : ${_e(_labelChantier(t.chantier_affectation))}">→ ${_e(_labelChantier(t.chantier_affectation))}</span>`
+          : ''}`;
+      case 'dispo':
+        return _badgeDispo(t);
+      case 'ref_cmd':
+        return t.ref_commande ? `<span style="font-size:11px;color:#666">${_e(t.ref_commande)}</span>` : '—';
+      default:
+        return '';
+    }
+  }
+
   function _htmlToles(data) {
     const admin = Auth.hasRight('can_validate');
     const modif = Auth.hasRight('can_edit');
+    const vis   = _chargerColsVisToles();
+    const colsVis = COLS_TOLES.filter(c => vis[c.key]);
+    const nbCols  = colsVis.length + 1; // +actions
 
-    const cols = [
-      { col: 'id',          label: 'ID'               },
-      { col: 'type',        label: 'Type'             },
-      { col: 'epaisseur',   label: 'Ép. (mm)'         },
-      { col: 'dimensions',  label: 'Dimensions'        },
-      { col: 'surf_unit',   label: 'Surface unit.'    },
-      { col: 'quantite',    label: 'Qté'              },
-      { col: 'surf_tot',    label: 'Surface tot.'     },
-      { col: 'poids',       label: 'Poids (kg)'       },
-      { col: 'lieu',        label: 'Stockage'         },
-      { col: 'date',        label: 'Date ajout'       },
-      { col: 'chantier',    label: 'Chantier origine' },
-      { col: 'dispo',       label: 'Statut'           },
-    ];
-
-    let h = '<table><thead><tr>';
-    cols.forEach(c => {
-      const actif = _tri.col === c.col;
-      const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
-      h += `<th data-col="${c.col}" class="${actif ? 'tri-actif' : ''}">${c.label} <span class="tri-ind">${ind}</span></th>`;
+    let h = '<table class="table-toles"><thead><tr>';
+    colsVis.forEach(c => {
+      const actif = _tri.col === c.tri;
+      const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : (c.tri ? '⇅' : '');
+      const clsTri = actif ? ' tri-actif' : '';
+      h += c.tri
+        ? `<th class="col-t-${c.key}${clsTri}" data-col="${c.tri}">${c.label} <span class="tri-ind">${ind}</span></th>`
+        : `<th class="col-t-${c.key}">${c.label}</th>`;
     });
     h += '<th>Action</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="13" class="vide">Aucune tôle ne correspond aux filtres.</td></tr>`;
+      h += `<tr><td colspan="${nbCols + 1}" class="vide">Aucune tôle ne correspond aux filtres.</td></tr>`;
     } else {
       data.forEach(t => {
-        const attente   = t.statut === 'en_attente';
-        const dims      = `${t.largeur_mm} × ${t.longueur_mm} mm`;
-        const dateAjout = t.date_ajout ? new Date(t.date_ajout).toLocaleDateString('fr-FR') : '—';
-        const surf      = _surfaceTole(t);
-        const surfUnit  = surf > 0 ? `${surf.toFixed(2)} m²` : '—';
-        const surfTot   = surf > 0 ? `${(surf * (t.quantite || 1)).toFixed(2)} m²` : '—';
-        const poidsU    = t.poids_unitaire_kg != null ? Math.ceil(t.poids_unitaire_kg) : null;
-        const poidsT    = t.poids_total_kg    != null ? Math.ceil(t.poids_total_kg)    : null;
-
+        const attente = t.statut === 'en_attente';
         h += `<tr${attente ? ' class="ligne-attente"' : ''} data-id="${_e(t.id)}">`;
-        h += `<td class="td-id"><span class="chip-id">${_e(t.id)}</span>${t.ref_commande ? `<br><span style="font-size:10px;color:#888">${_e(t.ref_commande)}</span>` : ''}</td>`;
-        h += `<td>${_badgeTypeTole(t.type_tole)}${t.is_chute ? ' <span class="chip-chute">chute</span>' : ''}</td>`;
-        h += modif
-          ? `<td class="cell-editable" data-field="epaisseur"><strong>${t.epaisseur_mm} mm</strong></td>`
-          : `<td><strong>${t.epaisseur_mm} mm</strong></td>`;
-        h += `<td>${dims}</td>`;
-        h += `<td style="color:#555">${surfUnit}</td>`;
-        const qtyTxt = `${t.quantite} pièce${t.quantite > 1 ? 's' : ''}`;
-        h += modif
-          ? `<td class="cell-editable" data-field="quantite">${qtyTxt}</td>`
-          : `<td>${qtyTxt}</td>`;
-        h += `<td style="color:#555">${surfTot}</td>`;
-        h += `<td>${poidsU != null ? poidsU : '—'} <span style="color:#999;font-size:11px">(tot.&nbsp;${poidsT != null ? poidsT : '—'})</span></td>`;
-        h += modif
-          ? `<td class="cell-editable" data-field="lieu">${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`
-          : `<td>${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`;
-        h += `<td>${dateAjout}</td>`;
-        h += `<td>${_e(_labelChantier(t.chantier_origine))}${t.chantier_affectation
-          ? ` <span class="chip-chantier" title="Affecté à : ${_e(_labelChantier(t.chantier_affectation))}">→ ${_e(_labelChantier(t.chantier_affectation))}</span>`
-          : ''}</td>`;
-        h += modif
-          ? `<td class="cell-editable" data-field="dispo">${_badgeDispo(t)}</td>`
-          : `<td>${_badgeDispo(t)}</td>`;
+        colsVis.forEach(c => {
+          const editable = modif && COLS_EDITABLES_TOLE.has(c.key);
+          const cls = `col-t-${c.key}${editable ? ' cell-editable' : ''}`;
+          const dataField = editable ? ` data-field="${c.key}"` : '';
+          h += `<td class="${cls}"${dataField}>${_cellTole(c.key, t, modif)}</td>`;
+        });
         h += `<td class="td-actions">${_actionsLigneTole(t, modif, admin)}</td>`;
         h += `</tr>`;
       });
@@ -1846,6 +1905,70 @@ const Stock = (() => {
     }
 
     _syncBoutonsVue();
+
+    // ── Sélecteur de vue tôles (Essentiel / Complet / Personnalisé) ──
+    const panelColsToles = document.getElementById('panel-cols-toles');
+
+    function _ouvrirPanelColsToles() {
+      if (!panelColsToles) return;
+      const vis = _chargerColsVisToles();
+      panelColsToles.innerHTML = '<div class="panel-cols-titre">Colonnes visibles</div>'
+        + COLS_TOLES.map(c =>
+          `<label><input type="checkbox" data-col-t="${c.key}"${vis[c.key] ? ' checked' : ''}> ${c.label}</label>`
+        ).join('');
+      panelColsToles.classList.add('open');
+    }
+
+    function _syncBoutonsVueToles() {
+      const mode = _getModeVueToles();
+      ['essentiel','complet','personnalise'].forEach(m => {
+        const el = document.getElementById(`btn-t-vue-${m}`);
+        if (el) el.classList.toggle('active', m === mode);
+      });
+      if (panelColsToles) panelColsToles.classList.remove('open');
+    }
+
+    ['essentiel','complet','personnalise'].forEach(mode => {
+      const btn = document.getElementById(`btn-t-vue-${mode}`);
+      if (!btn) return;
+      btn.addEventListener('click', e => {
+        if (mode === 'personnalise') {
+          e.stopPropagation();
+          if (_getModeVueToles() === 'personnalise') {
+            panelColsToles?.classList.contains('open')
+              ? panelColsToles.classList.remove('open')
+              : _ouvrirPanelColsToles();
+            return;
+          }
+          _sauverColsVisToles(_chargerColsVisToles());
+          _setModeVueToles('personnalise');
+          _syncBoutonsVueToles();
+          _filtrer();
+          _ouvrirPanelColsToles();
+          return;
+        }
+        _setModeVueToles(mode);
+        _syncBoutonsVueToles();
+        _filtrer();
+      });
+    });
+
+    if (panelColsToles) {
+      panelColsToles.addEventListener('change', e => {
+        if (e.target.type !== 'checkbox') return;
+        const vis = _chargerColsVisToles();
+        vis[e.target.dataset.colT] = e.target.checked;
+        _sauverColsVisToles(vis);
+        _filtrer();
+      });
+      document.addEventListener('click', e => {
+        if (!panelColsToles.contains(e.target) && !e.target.closest('#btn-t-vue-personnalise')) {
+          panelColsToles.classList.remove('open');
+        }
+      });
+    }
+
+    _syncBoutonsVueToles();
 
     const btnProfil = document.getElementById('btn-ajout-profil');
     if (btnProfil) btnProfil.addEventListener('click', () => _ouvrirModaleAjoutProfil());
