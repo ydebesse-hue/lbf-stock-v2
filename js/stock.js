@@ -5793,16 +5793,48 @@ const Stock = (() => {
             const nb = plat ? 0 : r.nb_allees * r.nb_etages;
             const alleeLabel = plat ? '—' : `A – ${_e(_labelAllee(r.nb_allees - 1))} (${r.nb_allees})`;
             const etageLabel = plat ? '—' : `1 – ${r.nb_etages}`;
-            return `<tr>
+            return `<tr data-rack-row="${_e(r.id)}">
               <td><strong>${_e(r.nom)}</strong></td>
               <td>${alleeLabel}</td>
               <td>${etageLabel}</td>
               <td style="color:#888;font-size:12px">${plat ? 'Zone plate' : `${nb} emplacement${nb > 1 ? 's' : ''}`}</td>
-              <td><button class="admin-ref-del" data-rack-id="${_e(r.id)}" data-nom="${_e(r.nom)}" title="Supprimer">✕</button></td>
+              <td class="admin-ch-actions">
+                <button class="admin-ref-edit" data-rack-id="${_e(r.id)}" title="Modifier">✎</button>
+                <button class="admin-ref-del" data-rack-id="${_e(r.id)}" data-nom="${_e(r.nom)}" title="Supprimer">✕</button>
+              </td>
+            </tr>
+            <tr class="admin-ch-edit-row" data-rack-edit="${_e(r.id)}" style="display:none">
+              <td colspan="5">
+                <div class="admin-ch-edit-form">
+                  <input class="admin-input-sm" data-rack-field="nom" placeholder="Nom de la zone" value="${_e(r.nom)}" style="flex:2">
+                  <input class="admin-input-sm" data-rack-field="nb_allees" type="number" min="0" placeholder="Allées" value="${r.nb_allees ?? ''}" style="width:70px;flex:none">
+                  <input class="admin-input-sm" data-rack-field="nb_etages" type="number" min="0" placeholder="Étages" value="${r.nb_etages ?? ''}" style="width:70px;flex:none">
+                  <button class="btn-sm btn-valider" data-rack-save="${_e(r.id)}">Enregistrer</button>
+                  <button class="btn-sm btn-annuler" data-rack-cancel="${_e(r.id)}">Annuler</button>
+                </div>
+              </td>
             </tr>`;
           }).join('')}
         </tbody>
       </table>`;
+  }
+
+  async function _adminModifierRack(id) {
+    const editRow = document.querySelector(`[data-rack-edit="${id}"]`);
+    if (!editRow) return;
+    const nom = editRow.querySelector('[data-rack-field="nom"]')?.value?.trim();
+    const na  = parseInt(editRow.querySelector('[data-rack-field="nb_allees"]')?.value) || 0;
+    const ne  = parseInt(editRow.querySelector('[data-rack-field="nb_etages"]')?.value) || 0;
+    if (!nom) { _notif('Le nom est requis', 'alerte'); return; }
+    if (na > 0 && ne < 1) { _notif('Étages : minimum 1', 'alerte'); return; }
+    try {
+      await window.SB.mettreAJour('racks', id, { nom, nb_allees: na, nb_etages: na === 0 ? 0 : ne });
+      const rows = await window.SB.lire('racks', { order: 'created_at' });
+      _racks = rows.filter(r => r.actif);
+      _lieux = _majLieux();
+      _rendreRacks();
+      _notif('Zone modifiée', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 
   function _aperçuRack(nom, nbAllees, nbEtages) {
@@ -5864,7 +5896,33 @@ const Stock = (() => {
     if (!m) return;
     m.addEventListener('click', e => {
       const del = e.target.closest('.admin-ref-del[data-rack-id]');
-      if (del) _adminSupprimerRack(del.dataset.rackId, del.dataset.nom);
+      if (del) { _adminSupprimerRack(del.dataset.rackId, del.dataset.nom); return; }
+
+      const edit = e.target.closest('.admin-ref-edit[data-rack-id]');
+      if (edit) {
+        const id = edit.dataset.rackId;
+        const editRow = m.querySelector(`[data-rack-edit="${id}"]`);
+        const mainRow = m.querySelector(`[data-rack-row="${id}"]`);
+        if (editRow && mainRow) {
+          const open = editRow.style.display !== 'none';
+          editRow.style.display = open ? 'none' : '';
+          mainRow.style.opacity = open ? '' : '0.4';
+        }
+        return;
+      }
+
+      const save = e.target.closest('[data-rack-save]');
+      if (save) { _adminModifierRack(save.dataset.rackSave); return; }
+
+      const cancel = e.target.closest('[data-rack-cancel]');
+      if (cancel) {
+        const id = cancel.dataset.rackCancel;
+        const editRow = m.querySelector(`[data-rack-edit="${id}"]`);
+        const mainRow = m.querySelector(`[data-rack-row="${id}"]`);
+        if (editRow) editRow.style.display = 'none';
+        if (mainRow) mainRow.style.opacity = '';
+        return;
+      }
     });
     m.querySelector('#admin-rack-nom')?.addEventListener('input', _majAperçuRack);
     m.querySelector('#admin-rack-allees')?.addEventListener('input', _majAperçuRack);
@@ -6009,16 +6067,43 @@ const Stock = (() => {
     const zone = document.getElementById('admin-fournisseurs-liste');
     if (!zone) return;
     if (!_fournisseurs.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun fournisseur</div>'; return; }
+    const tries = [..._fournisseurs].sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr', { sensitivity: 'base' }));
     zone.innerHTML = `
       <table class="admin-rack-table">
         <thead><tr><th>Nom du fournisseur</th><th></th></tr></thead>
         <tbody>
-          ${_fournisseurs.map(f => `<tr>
+          ${tries.map(f => `<tr data-fv-row="${_e(f.id)}">
             <td><strong>${_e(f.nom)}</strong></td>
-            <td><button class="admin-ref-del" data-fv-id="${_e(f.id)}" data-nom="${_e(f.nom)}" title="Supprimer">✕</button></td>
+            <td class="admin-ch-actions">
+              <button class="admin-ref-edit" data-fv-id="${_e(f.id)}" title="Modifier">✎</button>
+              <button class="admin-ref-del" data-fv-id="${_e(f.id)}" data-nom="${_e(f.nom)}" title="Supprimer">✕</button>
+            </td>
+          </tr>
+          <tr class="admin-ch-edit-row" data-fv-edit="${_e(f.id)}" style="display:none">
+            <td colspan="2">
+              <div class="admin-ch-edit-form">
+                <input class="admin-input-sm" data-fv-field="nom" placeholder="Nom du fournisseur" value="${_e(f.nom)}">
+                <button class="btn-sm btn-valider" data-fv-save="${_e(f.id)}">Enregistrer</button>
+                <button class="btn-sm btn-annuler" data-fv-cancel="${_e(f.id)}">Annuler</button>
+              </div>
+            </td>
           </tr>`).join('')}
         </tbody>
       </table>`;
+  }
+
+  async function _adminModifierFournisseur(id) {
+    const editRow = document.querySelector(`[data-fv-edit="${id}"]`);
+    if (!editRow) return;
+    const nom = editRow.querySelector('[data-fv-field="nom"]')?.value?.trim();
+    if (!nom) { _notif('Le nom est requis', 'alerte'); return; }
+    try {
+      await window.SB.mettreAJour('fournisseurs', id, { nom });
+      const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
+      _fournisseurs = rows.filter(f => f.actif);
+      _rendreFournisseurs();
+      _notif('Fournisseur modifié', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 
   async function _adminAjouterFournisseur() {
@@ -6050,7 +6135,33 @@ const Stock = (() => {
     if (!m) return;
     m.addEventListener('click', e => {
       const del = e.target.closest('.admin-ref-del[data-fv-id]');
-      if (del) _adminSupprimerFournisseur(del.dataset.fvId, del.dataset.nom);
+      if (del) { _adminSupprimerFournisseur(del.dataset.fvId, del.dataset.nom); return; }
+
+      const edit = e.target.closest('.admin-ref-edit[data-fv-id]');
+      if (edit) {
+        const id = edit.dataset.fvId;
+        const editRow = m.querySelector(`[data-fv-edit="${id}"]`);
+        const mainRow = m.querySelector(`[data-fv-row="${id}"]`);
+        if (editRow && mainRow) {
+          const open = editRow.style.display !== 'none';
+          editRow.style.display = open ? 'none' : '';
+          mainRow.style.opacity = open ? '' : '0.4';
+        }
+        return;
+      }
+
+      const save = e.target.closest('[data-fv-save]');
+      if (save) { _adminModifierFournisseur(save.dataset.fvSave); return; }
+
+      const cancel = e.target.closest('[data-fv-cancel]');
+      if (cancel) {
+        const id = cancel.dataset.fvCancel;
+        const editRow = m.querySelector(`[data-fv-edit="${id}"]`);
+        const mainRow = m.querySelector(`[data-fv-row="${id}"]`);
+        if (editRow) editRow.style.display = 'none';
+        if (mainRow) mainRow.style.opacity = '';
+        return;
+      }
     });
     m.querySelector('#admin-btn-fournisseur')?.addEventListener('click', _adminAjouterFournisseur);
     m.querySelector('#admin-fv-nom')?.addEventListener('keydown', e => {
