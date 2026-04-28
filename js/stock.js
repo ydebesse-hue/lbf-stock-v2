@@ -220,6 +220,26 @@ const Stock = (() => {
   let _planImg   = null;        // image plan (base64), chargée au démarrage depuis Supabase
   let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
   let _filtreEnAttente = false; // true quand l'admin clique l'alerte pour voir les en_attente
+  let _seuils = {};             // { [epaisseur_mm]: seuil_m2 } — définis depuis la synthèse, stockés en localStorage
+
+  const _SEUILS_STORAGE_KEY = 'lbf_seuils_toles';
+
+  function _chargerSeuils() {
+    try {
+      const raw = localStorage.getItem(_SEUILS_STORAGE_KEY);
+      _seuils = raw ? JSON.parse(raw) : {};
+    } catch { _seuils = {}; }
+  }
+
+  function _sauvegarderSeuil(ep, valeur) {
+    const v = parseFloat(valeur);
+    if (isNaN(v) || v <= 0) {
+      delete _seuils[ep];
+    } else {
+      _seuils[ep] = v;
+    }
+    try { localStorage.setItem(_SEUILS_STORAGE_KEY, JSON.stringify(_seuils)); } catch { /* rien */ }
+  }
 
 
   /* ──────────────────────────────────────────────────────────────
@@ -233,6 +253,7 @@ const Stock = (() => {
     Auth.requireAuth();
     Auth.afficherInfosSession('#header-user', '#header-badge');
     Auth.appliquerDroitsDOM();
+    _chargerSeuils();
 
     try {
       // Chargement stock depuis Supabase
@@ -880,6 +901,7 @@ const Stock = (() => {
 
   /**
    * Calcule la surface totale (m²) restante par épaisseur pour l'alerte.
+   * Le seuil est lu depuis _seuils (localStorage), pas depuis les tôles.
    * Retourne un Map<epaisseur_mm, { surface, seuil }>
    */
   function _surfacesParEpaisseur() {
@@ -887,12 +909,8 @@ const Stock = (() => {
     (_data?.barres || []).forEach(b => {
       if (b.categorie !== 'tole' || b.statut === 'archivee') return;
       const ep = b.epaisseur_mm;
-      if (!map.has(ep)) map.set(ep, { surface: 0, seuil: 0 });
-      const entry = map.get(ep);
-      entry.surface += _surfaceTole(b) * (b.quantite || 1);
-      if (b.seuil_surface_m2 > 0 && b.seuil_surface_m2 > entry.seuil) {
-        entry.seuil = b.seuil_surface_m2;
-      }
+      if (!map.has(ep)) map.set(ep, { surface: 0, seuil: _seuils[ep] || 0 });
+      map.get(ep).surface += _surfaceTole(b) * (b.quantite || 1);
     });
     return map;
   }
@@ -1357,39 +1375,69 @@ const Stock = (() => {
 
     // ── Contenu sous-onglet Tôles ─────────────────────────────────
     const _contenuToles = () => {
-      const surfaceDispo  = tolesDispo.reduce((s, b) => s + ((b.largeur_mm||0)/1000)*((b.longueur_mm||0)/1000)*(b.quantite||1), 0);
-      const surfaceAfft   = tolesAffectees.reduce((s, b) => s + ((b.largeur_mm||0)/1000)*((b.longueur_mm||0)/1000)*(b.quantite||1), 0);
+      // Surface totale = disponible + affecté + attente (hors archivées)
+      const tolesActives = barres.filter(b => b.categorie === 'tole' && b.statut !== 'archivee');
+      const surfaceDispo  = tolesDispo.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0);
+      const surfaceAfft   = tolesAffectees.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0);
       const poidsTolesTot = tolesDispo.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
       const pAfft         = tolesAffectees.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
       const nbTolTotal    = tolesDispo.length + tolesAffectees.length + tolesAttente.length;
 
+      // Grouper par épaisseur (toutes disponibilités actives)
       const parEp = {};
-      tolesDispo.forEach(b => {
+      tolesActives.forEach(b => {
         const ep = b.epaisseur_mm;
-        if (!parEp[ep]) parEp[ep] = { nb: 0, poids: 0, dims: [] };
-        parEp[ep].nb++;
-        parEp[ep].poids += b.poids_total_kg || 0;
-        parEp[ep].dims.push(`${b.largeur_mm}×${b.longueur_mm}`);
+        if (!parEp[ep]) parEp[ep] = { surface: 0, poids: 0, types: new Set(), nb: 0 };
+        parEp[ep].surface += _surfaceTole(b) * (b.quantite || 1);
+        parEp[ep].poids   += b.poids_total_kg || 0;
+        parEp[ep].nb      += b.quantite || 1;
+        if (b.type_tole) parEp[ep].types.add(b.type_tole);
       });
       const lignesEp = Object.entries(parEp).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
-      const poidsMax = lignesEp.length ? Math.max(...lignesEp.map(([, d]) => d.poids)) : 1;
+      const surfMax  = lignesEp.length ? Math.max(...lignesEp.map(([, d]) => d.surface)) : 1;
+
+      const canEdit = Auth.hasRight('can_edit');
 
       const rowsEp = lignesEp.map(([ep, d]) => {
-        const pct      = Math.round((d.poids / poidsMax) * 100);
-        const uniqDims = [...new Set(d.dims)].slice(0, 3).join(', ');
-        return `<tr class="syn-type-row" data-syn-action="voir-dispo" data-syn-onglet="toles">
-          <td><span class="syn-type-chip" style="background:#2980b9">${_e(String(ep))} mm</span></td>
-          <td class="r">${d.nb}</td>
-          <td style="color:#888;font-size:12px">${_e(uniqDims)}${d.dims.length > 3 ? '…' : ''}</td>
-          <td class="r">${fmtT(d.poids)}</td>
-          <td><div class="syn-bar"><div class="syn-bar-fill" style="width:${pct}%;background:#2980b9"></div></div></td>
+        const seuil    = _seuils[ep] || 0;
+        const alerte   = seuil > 0 && d.surface < seuil;
+        const pct      = Math.round((d.surface / surfMax) * 100);
+        const typesBadges = [...d.types].map(t =>
+          `<span class="chip-tole ${_CLASSE_TYPE_TOLE[t] || ''}" style="font-size:10px;padding:1px 5px">${_LABEL_TYPE_TOLE[t] || t}</span>`
+        ).join(' ');
+        const alerteIcon = alerte
+          ? `<span title="Surface totale (${fmt(d.surface)} m²) sous le seuil (${fmt(seuil)} m²)" style="color:#c0392b;font-weight:700">⚠</span>`
+          : `<span style="color:var(--vert)">✓</span>`;
+        const seuilInput = canEdit
+          ? `<input type="number" class="syn-seuil-input" data-ep="${_e(String(ep))}"
+               value="${seuil > 0 ? seuil : ''}" min="0" step="0.1" placeholder="—"
+               title="Seuil d'alerte pour ${ep} mm (en m²)"
+               style="width:72px;padding:2px 5px;border:1px solid #ccc;border-radius:3px;font-size:12px;text-align:right"> m²`
+          : `${seuil > 0 ? fmt(seuil) + ' m²' : '<span style="color:#aaa">—</span>'}`;
+
+        return `<tr class="${alerte ? 'ligne-stock-bas' : ''}">
+          <td>
+            <span class="syn-type-chip" style="background:#2980b9">${_e(String(ep))} mm</span>
+            ${typesBadges}
+          </td>
+          <td class="r"><strong>${fmt(d.surface)} m²</strong></td>
+          <td><div class="syn-bar"><div class="syn-bar-fill" style="width:${pct}%;background:${alerte ? '#e74c3c' : '#2980b9'}"></div></div></td>
+          <td style="text-align:right;white-space:nowrap">${seuilInput}</td>
+          <td style="text-align:center">${alerteIcon}</td>
         </tr>`;
       }).join('');
 
       const totalRow = lignesEp.length > 1 ? `<tr class="syn-total">
-        <td>Total</td><td class="r">${tolesDispo.length}</td><td></td>
-        <td class="r">${fmtT(poidsTolesTot)}</td><td></td>
+        <td>Total (${lignesEp.length} épaisseur${lignesEp.length > 1 ? 's' : ''})</td>
+        <td class="r">${fmt(tolesActives.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0))} m²</td>
+        <td></td><td></td><td></td>
       </tr>` : '';
+
+      const noteEdit = canEdit
+        ? `<div style="font-size:11px;color:#888;margin-top:6px;padding:0 6px">
+            Saisissez un seuil en m² — l'alerte se déclenche quand la surface restante de cette épaisseur descend en dessous.
+           </div>`
+        : '';
 
       return `
         <div class="syn-kpi k-vert syn-kpi-table" style="margin-bottom:16px">
@@ -1420,19 +1468,22 @@ const Stock = (() => {
             </tbody>
           </table>
         </div>
-        <div class="syn-section-titre">Par épaisseur</div>
+        <div class="syn-section-titre">Seuils d'alerte par épaisseur</div>
         <div class="syn-card" style="padding:0;overflow:hidden">
           <table class="syn-table">
             <thead><tr>
-              <th>Épaisseur</th><th class="r">Réf.</th>
-              <th>Dimensions (mm)</th><th class="r">Poids</th>
-              <th style="width:70px"></th>
+              <th>Épaisseur / Type</th>
+              <th class="r">Surface en stock</th>
+              <th></th>
+              <th class="r" style="white-space:nowrap">Seuil alerte</th>
+              <th style="text-align:center;width:34px">État</th>
             </tr></thead>
             <tbody>
-              ${rowsEp || '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">Aucune tôle disponible</td></tr>'}
+              ${rowsEp || '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">Aucune tôle active</td></tr>'}
               ${totalRow}
             </tbody>
           </table>
+          ${noteEdit}
         </div>`;
     };
 
@@ -1634,6 +1685,18 @@ const Stock = (() => {
           }
           _filtrer();
         }
+      });
+
+      // Seuils d'alerte tôles — sauvegarde au changement de la valeur
+      zsyn.addEventListener('change', e => {
+        const inp = e.target.closest('.syn-seuil-input');
+        if (!inp) return;
+        const ep = parseFloat(inp.dataset.ep);
+        if (isNaN(ep)) return;
+        _sauvegarderSeuil(ep, inp.value);
+        _majAlerteSeuil();
+        // Rafraîchir la ligne pour mettre à jour la couleur barre + icône état
+        _rendreSynthese();
       });
     }
 
@@ -2678,11 +2741,9 @@ const Stock = (() => {
     const lrg  = parseFloat(m.querySelector('#at-largeur')?.value);
     const lng  = parseFloat(m.querySelector('#at-longueur')?.value);
     const qty  = parseInt(m.querySelector('#at-quantite')?.value) || 1;
-    const type = m.querySelector('#at-type-tole')?.value?.trim() || '';
-    const refCmd = m.querySelector('#at-ref-cmd')?.value?.trim() || '';
-    const seuilSurfRaw = m.querySelector('#at-seuil-surface')?.value;
-    const seuilSurf = seuilSurfRaw !== '' && seuilSurfRaw != null ? (parseFloat(seuilSurfRaw) || null) : null;
-    const isChute     = m.querySelector('#at-chute')?.checked || false;
+    const type    = m.querySelector('#at-type-tole')?.value?.trim() || '';
+    const refCmd  = m.querySelector('#at-ref-cmd')?.value?.trim() || '';
+    const isChute = m.querySelector('#at-chute')?.checked || false;
     const chantier    = m.querySelector('#at-chantier')?.value?.trim();
     const lieu        = _lireLieu(m.querySelector('#at-lieu'));
     const dispo       = m.querySelector('#at-dispo')?.value || 'disponible';
@@ -2711,7 +2772,6 @@ const Stock = (() => {
       quantite: qty,
       is_chute: isChute,
       ref_commande: refCmd || null,
-      seuil_surface_m2: seuilSurf,
       poids_unitaire_kg: poidsU,
       poids_total_kg: poidsT,
       chantier_origine: chantier || 'Non renseigné',
@@ -3175,8 +3235,7 @@ const Stock = (() => {
     _setVal(m, '#mod-t-longueur',      tole.longueur_mm);
     _setVal(m, '#mod-t-type',          tole.type_tole || '');
     _setVal(m, '#mod-t-quantite',      tole.quantite);
-    _setVal(m, '#mod-t-ref-cmd',       tole.ref_commande || '');
-    _setVal(m, '#mod-t-seuil-surface', tole.seuil_surface_m2 ?? '');
+    _setVal(m, '#mod-t-ref-cmd',  tole.ref_commande || '');
     _monterPickerChantier('mod-t-chantier-picker', 'mod-t-chantier', tole.chantier_origine || '');
     _setVal(m, '#mod-t-dispo',         tole.disponibilite);
     _setVal(m, '#mod-t-commentaire',   tole.commentaire || '');
@@ -3260,11 +3319,9 @@ const Stock = (() => {
       const lrg  = parseFloat(m.querySelector('#mod-t-largeur')?.value);
       const lng  = parseFloat(m.querySelector('#mod-t-longueur')?.value);
       const qty  = parseInt(m.querySelector('#mod-t-quantite')?.value) || 1;
-      const type = m.querySelector('#mod-t-type')?.value?.trim() || '';
-      const refCmd = m.querySelector('#mod-t-ref-cmd')?.value?.trim() || '';
-      const seuilSurfRaw = m.querySelector('#mod-t-seuil-surface')?.value;
-      const seuilSurf = seuilSurfRaw !== '' && seuilSurfRaw != null ? (parseFloat(seuilSurfRaw) || null) : null;
-      const chantier    = m.querySelector('#mod-t-chantier')?.value?.trim();
+      const type    = m.querySelector('#mod-t-type')?.value?.trim() || '';
+      const refCmd  = m.querySelector('#mod-t-ref-cmd')?.value?.trim() || '';
+      const chantier = m.querySelector('#mod-t-chantier')?.value?.trim();
       const lieu        = _lireLieu(m.querySelector('#mod-t-lieu'));
       const dispo       = m.querySelector('#mod-t-dispo')?.value || 'disponible';
       const commentaire = m.querySelector('#mod-t-commentaire')?.value?.trim() || '';
@@ -3285,7 +3342,6 @@ const Stock = (() => {
         longueur_mm: lng,
         quantite: qty,
         ref_commande: refCmd || null,
-        seuil_surface_m2: seuilSurf,
         poids_unitaire_kg: poidsU,
         poids_total_kg: poidsT,
         chantier_origine: chantier || original.chantier_origine,
