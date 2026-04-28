@@ -655,6 +655,28 @@
     }
     .admin-ch-form label { font-size: 11px; color: #555; font-weight: bold; display: block; margin-bottom: 3px; }
 
+    /* ── Chantier inline edit ────────────────────────────────────── */
+    .admin-ref-edit {
+      background: none; border: none; color: #aaa; cursor: pointer;
+      font-size: 13px; padding: 2px 5px; border-radius: 3px;
+      transition: color .12s, background .12s;
+    }
+    .admin-ref-edit:hover { color: var(--vert); background: #eaf5eb; }
+    .admin-ch-actions { display: flex; gap: 4px; justify-content: flex-end; }
+    .admin-ch-edit-row td { padding: 6px 10px; background: #f8f9fa; }
+    .admin-ch-edit-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .admin-input-sm {
+      border: 1px solid var(--gris-bord); border-radius: 3px;
+      padding: 4px 8px; font-size: 12px; font-family: Tahoma;
+      flex: 1; min-width: 80px;
+    }
+    .admin-input-sm:focus { outline: none; border-color: var(--vert); }
+    .btn-sm { padding: 4px 10px; border: none; border-radius: 3px; font-size: 12px; cursor: pointer; font-family: Tahoma; }
+    .btn-valider { background: var(--vert); color: white; }
+    .btn-valider:hover { background: #1a7a2a; }
+    .btn-annuler { background: #e0e0e0; color: #333; }
+    .btn-annuler:hover { background: #ccc; }
+
     /* ── Table comptes inline ────────────────────────────────────── */
     .cpt-table-wrap { background: #fff; border: 1px solid var(--gris-clair); border-radius: 3px; overflow: hidden; }
     .cpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }

@@ -5884,20 +5884,54 @@ const Stock = (() => {
     const zone = document.getElementById('admin-chantiers-liste');
     if (!zone) return;
     if (!_chantiers.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun chantier</div>'; return; }
+    const tries = [..._chantiers].sort((a, b) =>
+      (a.numero_affaire || '').localeCompare(b.numero_affaire || '', 'fr', { numeric: true })
+    );
     zone.innerHTML = `
       <table class="admin-rack-table">
         <thead><tr>
           <th>N° Affaire</th><th>Ville</th><th>Nom du chantier</th><th></th>
         </tr></thead>
         <tbody>
-          ${_chantiers.map(c => `<tr>
+          ${tries.map(c => `<tr data-ch-row="${_e(c.id)}">
             <td>${_e(c.numero_affaire || '—')}</td>
             <td>${_e(c.ville || '—')}</td>
             <td><strong>${_e(c.nom)}</strong></td>
-            <td><button class="admin-ref-del" data-ch-id="${_e(c.id)}" data-nom="${_e(c.nom)}" title="Supprimer">✕</button></td>
+            <td class="admin-ch-actions">
+              <button class="admin-ref-edit" data-ch-id="${_e(c.id)}" title="Modifier">✎</button>
+              <button class="admin-ref-del" data-ch-id="${_e(c.id)}" data-nom="${_e(c.nom)}" title="Supprimer">✕</button>
+            </td>
+          </tr>
+          <tr class="admin-ch-edit-row" data-ch-edit="${_e(c.id)}" style="display:none">
+            <td colspan="4">
+              <div class="admin-ch-edit-form">
+                <input class="admin-input-sm" data-ch-field="numero_affaire" placeholder="N° affaire" value="${_e(c.numero_affaire || '')}">
+                <input class="admin-input-sm" data-ch-field="ville" placeholder="Ville" value="${_e(c.ville || '')}">
+                <input class="admin-input-sm" data-ch-field="nom" placeholder="Nom du chantier" value="${_e(c.nom || '')}">
+                <button class="btn-sm btn-valider" data-ch-save="${_e(c.id)}">Enregistrer</button>
+                <button class="btn-sm btn-annuler" data-ch-cancel="${_e(c.id)}">Annuler</button>
+              </div>
+            </td>
           </tr>`).join('')}
         </tbody>
       </table>`;
+  }
+
+  async function _adminModifierChantier(id) {
+    const editRow = document.querySelector(`[data-ch-edit="${id}"]`);
+    if (!editRow) return;
+    const nom     = editRow.querySelector('[data-ch-field="nom"]')?.value?.trim();
+    const affaire = editRow.querySelector('[data-ch-field="numero_affaire"]')?.value?.trim();
+    const ville   = editRow.querySelector('[data-ch-field="ville"]')?.value?.trim();
+    if (!nom) { _notif('Le nom est requis', 'alerte'); return; }
+    try {
+      await window.SB.mettreAJour('chantiers', id, { nom, numero_affaire: affaire || null, ville: ville || null });
+      const rows = await window.SB.lire('chantiers', { order: 'nom' });
+      _chantiers = rows.filter(c => c.actif);
+      _rendreChantiers();
+      _majDatalistChantiers();
+      _notif('Chantier modifié', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 
   async function _adminAjouterChantier() {
@@ -5937,7 +5971,33 @@ const Stock = (() => {
     if (!m) return;
     m.addEventListener('click', e => {
       const del = e.target.closest('.admin-ref-del[data-ch-id]');
-      if (del) _adminSupprimerChantier(del.dataset.chId, del.dataset.nom);
+      if (del) { _adminSupprimerChantier(del.dataset.chId, del.dataset.nom); return; }
+
+      const edit = e.target.closest('.admin-ref-edit[data-ch-id]');
+      if (edit) {
+        const id = edit.dataset.chId;
+        const editRow = m.querySelector(`[data-ch-edit="${id}"]`);
+        const mainRow = m.querySelector(`[data-ch-row="${id}"]`);
+        if (editRow && mainRow) {
+          const open = editRow.style.display !== 'none';
+          editRow.style.display = open ? 'none' : '';
+          mainRow.style.opacity = open ? '' : '0.4';
+        }
+        return;
+      }
+
+      const save = e.target.closest('[data-ch-save]');
+      if (save) { _adminModifierChantier(save.dataset.chSave); return; }
+
+      const cancel = e.target.closest('[data-ch-cancel]');
+      if (cancel) {
+        const id = cancel.dataset.chCancel;
+        const editRow = m.querySelector(`[data-ch-edit="${id}"]`);
+        const mainRow = m.querySelector(`[data-ch-row="${id}"]`);
+        if (editRow) editRow.style.display = 'none';
+        if (mainRow) mainRow.style.opacity = '';
+        return;
+      }
     });
     m.querySelector('#admin-btn-chantier')?.addEventListener('click', _adminAjouterChantier);
     ['#admin-ch-affaire','#admin-ch-ville','#admin-ch-nom'].forEach(sel => {
