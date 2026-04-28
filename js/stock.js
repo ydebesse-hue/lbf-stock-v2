@@ -6169,22 +6169,61 @@ const Stock = (() => {
     });
   }
 
+  function _pseudoDemandeur(d) {
+    const init = d.prenom ? d.prenom.trim()[0].toUpperCase() + '.' : '';
+    return init ? `${init} ${d.nom}` : d.nom;
+  }
+
   function _rendreDemandeurs() {
     const zone = document.getElementById('admin-demandeurs-liste');
     if (!zone) return;
     if (!_demandeurs.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun demandeur enregistré</div>'; return; }
+    const tries = [..._demandeurs].sort((a, b) =>
+      (a.prenom || '').localeCompare(b.prenom || '', 'fr', { sensitivity: 'base' })
+    );
     zone.innerHTML = `
       <table class="admin-rack-table">
-        <thead><tr><th>Prénom</th><th>Nom</th><th>Email</th><th></th></tr></thead>
+        <thead><tr><th>Prénom</th><th>Nom</th><th>Pseudo</th><th>Email</th><th></th></tr></thead>
         <tbody>
-          ${_demandeurs.map(d => `<tr>
+          ${tries.map(d => `<tr data-dem-row="${_e(d.id)}">
             <td>${_e(d.prenom || '—')}</td>
             <td><strong>${_e(d.nom)}</strong></td>
+            <td><span class="dem-pseudo">${_e(_pseudoDemandeur(d))}</span></td>
             <td>${d.email ? `<a href="mailto:${_e(d.email)}">${_e(d.email)}</a>` : '—'}</td>
-            <td><button class="admin-ref-del" data-dem-id="${_e(d.id)}" data-nom="${_e(d.nom)}" title="Supprimer">✕</button></td>
+            <td class="admin-ch-actions">
+              <button class="admin-ref-edit" data-dem-id="${_e(d.id)}" title="Modifier">✎</button>
+              <button class="admin-ref-del" data-dem-id="${_e(d.id)}" data-nom="${_e(d.nom)}" title="Supprimer">✕</button>
+            </td>
+          </tr>
+          <tr class="admin-ch-edit-row" data-dem-edit="${_e(d.id)}" style="display:none">
+            <td colspan="5">
+              <div class="admin-ch-edit-form">
+                <input class="admin-input-sm" data-dem-field="prenom" placeholder="Prénom" value="${_e(d.prenom || '')}">
+                <input class="admin-input-sm" data-dem-field="nom" placeholder="Nom" value="${_e(d.nom || '')}">
+                <input class="admin-input-sm" data-dem-field="email" type="email" placeholder="Email" value="${_e(d.email || '')}" style="flex:2">
+                <button class="btn-sm btn-valider" data-dem-save="${_e(d.id)}">Enregistrer</button>
+                <button class="btn-sm btn-annuler" data-dem-cancel="${_e(d.id)}">Annuler</button>
+              </div>
+            </td>
           </tr>`).join('')}
         </tbody>
       </table>`;
+  }
+
+  async function _adminModifierDemandeur(id) {
+    const editRow = document.querySelector(`[data-dem-edit="${id}"]`);
+    if (!editRow) return;
+    const prenom = editRow.querySelector('[data-dem-field="prenom"]')?.value?.trim();
+    const nom    = editRow.querySelector('[data-dem-field="nom"]')?.value?.trim();
+    const email  = editRow.querySelector('[data-dem-field="email"]')?.value?.trim();
+    if (!nom) { _notif('Le nom est requis', 'alerte'); return; }
+    try {
+      await window.SB.mettreAJour('demandeurs', id, { nom, prenom: prenom || null, email: email || null });
+      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
+      _demandeurs = rows.filter(d => d.actif);
+      _rendreDemandeurs();
+      _notif('Demandeur modifié', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 
   async function _adminAjouterDemandeur() {
@@ -6218,7 +6257,33 @@ const Stock = (() => {
     if (!m) return;
     m.addEventListener('click', e => {
       const del = e.target.closest('.admin-ref-del[data-dem-id]');
-      if (del) _adminSupprimerDemandeur(del.dataset.demId, del.dataset.nom);
+      if (del) { _adminSupprimerDemandeur(del.dataset.demId, del.dataset.nom); return; }
+
+      const edit = e.target.closest('.admin-ref-edit[data-dem-id]');
+      if (edit) {
+        const id = edit.dataset.demId;
+        const editRow = m.querySelector(`[data-dem-edit="${id}"]`);
+        const mainRow = m.querySelector(`[data-dem-row="${id}"]`);
+        if (editRow && mainRow) {
+          const open = editRow.style.display !== 'none';
+          editRow.style.display = open ? 'none' : '';
+          mainRow.style.opacity = open ? '' : '0.4';
+        }
+        return;
+      }
+
+      const save = e.target.closest('[data-dem-save]');
+      if (save) { _adminModifierDemandeur(save.dataset.demSave); return; }
+
+      const cancel = e.target.closest('[data-dem-cancel]');
+      if (cancel) {
+        const id = cancel.dataset.demCancel;
+        const editRow = m.querySelector(`[data-dem-edit="${id}"]`);
+        const mainRow = m.querySelector(`[data-dem-row="${id}"]`);
+        if (editRow) editRow.style.display = 'none';
+        if (mainRow) mainRow.style.opacity = '';
+        return;
+      }
     });
     m.querySelector('#admin-btn-demandeur')?.addEventListener('click', _adminAjouterDemandeur);
     m.querySelector('#admin-dem-nom')?.addEventListener('keydown', e => {
