@@ -613,6 +613,12 @@
     tr.ligne-stock-bas td { background: #fff8e1; }
     tr.ligne-stock-bas:hover td { background: #fff0b3; }
     .chip-stock-bas      { display:inline-block; background:#ffc107; color:#333; border-radius:4px; padding:0 5px; font-size:11px; font-weight:700; margin-left:4px; }
+    /* Badges type tôle */
+    .chip-tole           { display:inline-block; border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; }
+    .chip-tole-noir      { background:#2c3e50; color:#fff; }
+    .chip-tole-inox      { background:#7f8c8d; color:#fff; }
+    .chip-tole-larmee    { background:#1a5276; color:#fff; }
+    .chip-chute          { display:inline-block; background:#e8f4f8; color:#1a5276; border:1px solid #aed6f1; border-radius:4px; padding:0 5px; font-size:10px; font-weight:600; margin-left:4px; }
 
     /* ── Modale référentiels admin ───────────────────────────── */
     .admin-ref-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -1479,6 +1485,12 @@
 
     <span class="toolbar-label" style="margin-left:4px">Filtrer :</span>
 
+    <select id="t-type"      class="sel-filtre" title="Type de tôle">
+      <option value="">Tous types</option>
+      <option value="noir">Noir</option>
+      <option value="inox">Inox</option>
+      <option value="larmee">Larmée</option>
+    </select>
     <select id="t-epaisseur" class="sel-filtre" title="Épaisseur">
       <option value="">Toutes épaisseurs</option>
     </select>
@@ -1498,7 +1510,7 @@
     <button id="btn-reset-toles" class="btn-action btn-gris" title="Réinitialiser">✕ Réinitialiser</button>
     <input id="t-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
     <div id="badge-stock-bas" class="badge-stock-bas" style="display:none">
-      ⚠ <span class="stock-bas-nb">0</span> en stock bas
+      ⚠ <span class="stock-bas-nb">0</span> épaisseur(s) sous le seuil surface
     </div>
     <button id="btn-imprimer-toles" class="btn-action btn-gris" title="Imprimer / PDF" style="margin-left:auto">🖨</button>
   </div>
@@ -1891,7 +1903,7 @@
     <div class="modale modale-lg">
       <div class="modale-titre">Ajouter une tôle au stock</div>
 
-      <!-- Schéma tôle en perspective (repris du mockup) -->
+      <!-- Schéma tôle en perspective -->
       <div class="schema-zone">
         <div class="schema-svg-zone">
           <div class="schema-titre">Tôle plate</div>
@@ -1899,17 +1911,14 @@
             <polygon points="28,42 118,42 118,60 28,60" fill="#d0d8e0" stroke="#555" stroke-width="1.5"/>
             <polygon points="118,42 138,27 138,45 118,60" fill="#b0bbc8" stroke="#555" stroke-width="1.5"/>
             <polygon points="28,42 48,27 138,27 118,42" fill="#c8d4de" stroke="#555" stroke-width="1.5"/>
-            <!-- Cote épaisseur -->
             <line x1="122" y1="42" x2="144" y2="42" stroke="#d22323" stroke-width="1" stroke-dasharray="3,2"/>
             <line x1="122" y1="60" x2="144" y2="60" stroke="#d22323" stroke-width="1" stroke-dasharray="3,2"/>
             <line x1="142" y1="42" x2="142" y2="60" stroke="#d22323" stroke-width="1.5"/>
             <text x="149" y="53" font-size="9" fill="#d22323" font-family="Tahoma">e</text>
-            <!-- Cote largeur -->
             <line x1="28" y1="67" x2="118" y2="67" stroke="#d22323" stroke-width="1.5"/>
             <line x1="28" y1="63" x2="28"  y2="71" stroke="#d22323" stroke-width="1"/>
             <line x1="118" y1="63" x2="118" y2="71" stroke="#d22323" stroke-width="1"/>
             <text x="73" y="79" font-size="9" fill="#d22323" font-family="Tahoma" text-anchor="middle">Largeur</text>
-            <!-- Cote longueur -->
             <text x="88" y="38" font-size="9" fill="#d22323" font-family="Tahoma" text-anchor="middle">Longueur →</text>
           </svg>
         </div>
@@ -1920,11 +1929,13 @@
           <div class="dim-row"><span class="dim-label">Largeur</span><span class="dim-val" id="at-aff-lrg">—</span></div>
           <div class="dim-row"><span class="dim-label">Longueur</span><span class="dim-val" id="at-aff-lng">—</span></div>
           <div class="dim-row"><span class="dim-label">Quantité</span><span class="dim-val" id="at-aff-qty">—</span></div>
+          <div class="dim-row"><span class="dim-label">Surface unitaire</span><span class="dim-val" id="at-aff-surf" style="color:#aaa">—</span></div>
           <div class="dim-row"><span class="dim-label">Poids unitaire</span><span class="dim-val" id="at-aff-poids" style="color:#aaa">—</span></div>
           <div class="dim-row"><span class="dim-label">Poids total</span><span class="dim-val" id="at-aff-total" style="color:#aaa">—</span></div>
         </div>
       </div>
 
+      <!-- Ligne 1 : dimensions -->
       <div class="form-cols3">
         <div class="fr">
           <label>Épaisseur (mm) <span style="color:var(--rouge)">*</span></label>
@@ -1940,15 +1951,29 @@
         </div>
       </div>
 
+      <!-- Ligne 2 : type, quantité, ref commande -->
       <div class="form-cols3">
+        <div class="fr">
+          <label>Type de tôle <span style="color:var(--rouge)">*</span></label>
+          <select id="at-type-tole">
+            <option value="">— Choisir —</option>
+            <option value="noir">Noir</option>
+            <option value="inox">Inox</option>
+            <option value="larmee">Larmée</option>
+          </select>
+        </div>
         <div class="fr">
           <label>Quantité</label>
           <input type="number" id="at-quantite" placeholder="1" min="1" value="1">
         </div>
         <div class="fr">
-          <label>Seuil d'alerte <span style="color:#888;font-size:11px">(qté min)</span></label>
-          <input type="number" id="at-seuil" placeholder="—" min="0" step="1">
+          <label>Réf. commande</label>
+          <input type="text" id="at-ref-cmd" placeholder="CMD-2024-XXX">
         </div>
+      </div>
+
+      <!-- Ligne 3 : chantier, lieu, seuil surface, chute -->
+      <div class="form-cols3">
         <div class="fr">
           <label>Chantier d'origine</label>
           <div id="at-chantier-picker"></div>
@@ -1957,8 +1982,13 @@
           <label>Lieu de stockage</label>
           <div id="at-lieu" class="lieu-cascade"></div>
         </div>
+        <div class="fr">
+          <label>Seuil alerte surface <span style="color:#888;font-size:11px">(m² par ép.)</span></label>
+          <input type="number" id="at-seuil-surface" placeholder="—" min="0" step="0.1">
+        </div>
       </div>
 
+      <!-- Ligne 4 : dispo, commentaire, chute -->
       <div class="form-cols2">
         <div class="fr">
           <label>Disponibilité</label>
@@ -1972,12 +2002,74 @@
           <textarea id="at-commentaire" placeholder="Précisions…" style="min-height:40px"></textarea>
         </div>
       </div>
+      <div class="fr" style="margin-top:6px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
+          <input type="checkbox" id="at-chute" style="width:auto;margin:0">
+          C'est une chute (reste de découpe d'une tôle existante)
+        </label>
+      </div>
 
       <div class="at-note-statut note-statut note-statut-attente"></div>
 
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-ajout-tole').classList.remove('open')">Annuler</button>
         <button class="btn-modale btn-modale-rouge btn-soumettre">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE — SORTIE CHANTIER (tôle)
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-sortie-tole" class="modale-bg" role="dialog" aria-modal="true" aria-label="Sortie chantier tôle">
+    <div class="modale">
+      <div class="modale-titre">Sortie chantier — Tôle</div>
+
+      <!-- Description de la tôle sélectionnée -->
+      <div id="st-info-tole" style="background:var(--gris-clair);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#444"></div>
+
+      <div class="form-cols2">
+        <div class="fr">
+          <label>Chantier destination <span style="color:var(--rouge)">*</span></label>
+          <div id="st-chantier-picker"></div>
+        </div>
+        <div class="fr">
+          <label>Quantité sortie <span style="color:var(--rouge)">*</span></label>
+          <input type="number" id="st-qty-sortie" min="1" value="1" style="width:100px">
+          <span id="st-qty-max" style="font-size:12px;color:#888;margin-left:6px"></span>
+        </div>
+      </div>
+
+      <!-- Option chute -->
+      <div class="fr" style="margin:10px 0 4px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
+          <input type="checkbox" id="st-avec-chute" style="width:auto;margin:0">
+          Il reste une chute utilisable
+        </label>
+        <div style="font-size:12px;color:#666;margin-top:2px;margin-left:26px">Créera automatiquement une nouvelle entrée dans le stock avec les dimensions de la chute.</div>
+      </div>
+
+      <div id="st-zone-chute" style="display:none;background:#f0f7ff;border:1px solid #b8d4f0;border-radius:6px;padding:10px 14px;margin-top:8px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#1a5276">Dimensions de la chute</div>
+        <div class="form-cols2">
+          <div class="fr">
+            <label>Largeur chute (mm) <span style="color:var(--rouge)">*</span></label>
+            <input type="number" id="st-chute-lrg" min="1" placeholder="ex: 500">
+          </div>
+          <div class="fr">
+            <label>Longueur chute (mm) <span style="color:var(--rouge)">*</span></label>
+            <input type="number" id="st-chute-lng" min="1" placeholder="ex: 800">
+          </div>
+        </div>
+        <div style="font-size:12px;color:#555;margin-top:4px">
+          Épaisseur et type hérités de la tôle d'origine.
+        </div>
+      </div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-sortie-tole').classList.remove('open')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge btn-confirmer-sortie">Confirmer la sortie</button>
       </div>
     </div>
   </div>
@@ -2080,9 +2172,24 @@
         </div>
         <div class="form-cols3">
           <div class="fr">
+            <label>Type de tôle <span style="color:var(--rouge)">*</span></label>
+            <select id="mod-t-type">
+              <option value="">— Choisir —</option>
+              <option value="noir">Noir</option>
+              <option value="inox">Inox</option>
+              <option value="larmee">Larmée</option>
+            </select>
+          </div>
+          <div class="fr">
             <label>Quantité</label>
             <input type="number" id="mod-t-quantite" placeholder="1" min="1">
           </div>
+          <div class="fr">
+            <label>Réf. commande</label>
+            <input type="text" id="mod-t-ref-cmd" placeholder="CMD-2024-XXX">
+          </div>
+        </div>
+        <div class="form-cols3">
           <div class="fr">
             <label>Chantier d'origine</label>
             <div id="mod-t-chantier-picker"></div>
@@ -2090,6 +2197,10 @@
           <div class="fr">
             <label>Lieu de stockage</label>
             <div id="mod-t-lieu" class="lieu-cascade"></div>
+          </div>
+          <div class="fr">
+            <label>Seuil alerte surface <span style="color:#888;font-size:11px">(m²)</span></label>
+            <input type="number" id="mod-t-seuil-surface" placeholder="—" min="0" step="0.1">
           </div>
         </div>
         <div class="form-cols2">

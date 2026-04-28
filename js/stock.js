@@ -601,6 +601,7 @@ const Stock = (() => {
   }
 
   function _filtrerToles(source) {
+    const type     = _val('t-type');
     const epais    = _val('t-epaisseur');
     const chantier = _val('t-chantier');
     const lieu     = _val('t-lieu');
@@ -612,12 +613,14 @@ const Stock = (() => {
         const aDemande = _demandes.some(d => d.id_barre === b.id);
         if (b.statut !== 'en_attente' && !aDemande) return false;
       }
+      if (type     && b.type_tole            !== type)     return false;
       if (epais    && String(b.epaisseur_mm) !== epais)    return false;
       if (chantier && b.chantier_origine     !== chantier) return false;
       if (lieu     && b.lieu_stockage        !== lieu)     return false;
       if (dispo    && b.disponibilite        !== dispo)    return false;
       if (texte) {
         const h = [b.epaisseur_mm, b.largeur_mm, b.longueur_mm,
+          b.type_tole, b.ref_commande,
           b.chantier_origine, b.lieu_stockage, b.commentaire, b.id].join(' ').toLowerCase();
         if (!h.includes(texte)) return false;
       }
@@ -860,15 +863,53 @@ const Stock = (() => {
     return h + '</tbody></table>';
   }
 
+  const _LABEL_TYPE_TOLE = { noir: 'Noir', inox: 'Inox', larmee: 'Larmée' };
+  const _CLASSE_TYPE_TOLE = { noir: 'chip-tole-noir', inox: 'chip-tole-inox', larmee: 'chip-tole-larmee' };
+
+  function _badgeTypeTole(type) {
+    if (!type) return '<span style="color:#aaa">—</span>';
+    const cls = _CLASSE_TYPE_TOLE[type] || '';
+    return `<span class="chip-tole ${cls}">${_LABEL_TYPE_TOLE[type] || _e(type)}</span>`;
+  }
+
+  /** Surface en m² d'une tôle (largeur × longueur en mm² → m²) */
+  function _surfaceTole(t) {
+    if (!t.largeur_mm || !t.longueur_mm) return 0;
+    return (t.largeur_mm / 1000) * (t.longueur_mm / 1000);
+  }
+
+  /**
+   * Calcule la surface totale (m²) restante par épaisseur pour l'alerte.
+   * Retourne un Map<epaisseur_mm, { surface, seuil }>
+   */
+  function _surfacesParEpaisseur() {
+    const map = new Map();
+    (_data?.barres || []).forEach(b => {
+      if (b.categorie !== 'tole' || b.statut === 'archivee') return;
+      const ep = b.epaisseur_mm;
+      if (!map.has(ep)) map.set(ep, { surface: 0, seuil: 0 });
+      const entry = map.get(ep);
+      entry.surface += _surfaceTole(b) * (b.quantite || 1);
+      if (b.seuil_surface_m2 > 0 && b.seuil_surface_m2 > entry.seuil) {
+        entry.seuil = b.seuil_surface_m2;
+      }
+    });
+    return map;
+  }
+
   function _htmlToles(data) {
     const admin = Auth.hasRight('can_validate');
     const modif = Auth.hasRight('can_edit');
 
+    // Précalcul surfaces par épaisseur pour les alertes
+    const surfaces = _surfacesParEpaisseur();
+
     const cols = [
       { col: 'id',         label: 'ID'               },
+      { col: 'type',       label: 'Type'             },
       { col: 'epaisseur',  label: 'Ép. (mm)'         },
       { col: 'dimensions', label: 'Dimensions'        },
-      { col: 'quantite',   label: 'Qté'              },
+      { col: 'quantite',   label: 'Qté / Surface'    },
       { col: 'poids',      label: 'Poids unit. (kg)' },
       { col: 'lieu',       label: 'Stockage'         },
       { col: 'date',       label: 'Date ajout'       },
@@ -885,7 +926,7 @@ const Stock = (() => {
     h += '<th>Action</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="10" class="vide">Aucune tôle ne correspond aux filtres.</td></tr>`;
+      h += `<tr><td colspan="11" class="vide">Aucune tôle ne correspond aux filtres.</td></tr>`;
     } else {
       data.forEach(t => {
         const attente  = t.statut === 'en_attente';
@@ -893,20 +934,26 @@ const Stock = (() => {
         const dateAjout = t.date_ajout
           ? new Date(t.date_ajout).toLocaleDateString('fr-FR')
           : '—';
+        const surf = _surfaceTole(t);
+        const surfTxt = surf > 0 ? `${(surf * (t.quantite || 1)).toFixed(2)} m²` : '—';
 
-        const stockBas = t.seuil_min > 0 && t.quantite <= t.seuil_min;
+        // Alerte surface par épaisseur
+        const epEntry   = surfaces.get(t.epaisseur_mm);
+        const stockBas  = epEntry && epEntry.seuil > 0 && epEntry.surface < epEntry.seuil;
+
         const classesTr = [attente ? 'ligne-attente' : '', stockBas ? 'ligne-stock-bas' : ''].filter(Boolean).join(' ');
         h += `<tr${classesTr ? ` class="${classesTr}"` : ''} data-id="${_e(t.id)}">`;
-        h += `<td class="td-id"><span class="chip-id">${_e(t.id)}</span></td>`;
+        h += `<td class="td-id"><span class="chip-id">${_e(t.id)}</span>${t.ref_commande ? `<br><span style="font-size:10px;color:#888">${_e(t.ref_commande)}</span>` : ''}</td>`;
+        h += `<td>${_badgeTypeTole(t.type_tole)}${t.is_chute ? ' <span class="chip-chute">chute</span>' : ''}</td>`;
         h += modif
           ? `<td class="cell-editable" data-field="epaisseur"><strong>${t.epaisseur_mm} mm</strong></td>`
           : `<td><strong>${t.epaisseur_mm} mm</strong></td>`;
         h += `<td>${dims}</td>`;
-        const qtyTxt = `${t.quantite} pièce${t.quantite > 1 ? 's' : ''}${stockBas ? ' <span class="chip-stock-bas" title="Stock bas">⚠</span>' : ''}`;
+        const qtyTxt = `${t.quantite} pièce${t.quantite > 1 ? 's' : ''} <span style="color:#888;font-size:11px">(${surfTxt})</span>${stockBas ? ' <span class="chip-stock-bas" title="Surface totale de cet épaisseur sous le seuil d\'alerte">⚠</span>' : ''}`;
         h += modif
           ? `<td class="cell-editable" data-field="quantite">${qtyTxt}</td>`
           : `<td>${qtyTxt}</td>`;
-        h += `<td>${t.poids_unitaire_kg.toFixed(1)} <span style="color:#999;font-size:11px">(tot.&nbsp;${t.poids_total_kg.toFixed(1)})</span></td>`;
+        h += `<td>${t.poids_unitaire_kg?.toFixed(1) ?? '—'} <span style="color:#999;font-size:11px">(tot.&nbsp;${t.poids_total_kg?.toFixed(1) ?? '—'})</span></td>`;
         h += modif
           ? `<td class="cell-editable" data-field="lieu">${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`
           : `<td>${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`;
@@ -1021,13 +1068,9 @@ const Stock = (() => {
         h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(demandeEnCours.id)}')" title="Refuser la demande">✘</button>`;
       } else if (modif) {
         h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${t.id}')" title="Modifier">Modifier</button>`;
+        const dis = t.quantite <= 0 ? ' disabled' : '';
+        h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirSortieTole('${_e(t.id)}')" title="Sortie chantier">Sortie</button>`;
       }
-    }
-
-    const demandeActifT = _demandes.find(d => d.id_barre === t.id);
-    if (t.statut !== 'en_attente' && !demandeActifT) {
-      const dis = t.disponibilite !== 'disponible' ? ' disabled' : '';
-      h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirDemande('${t.id}')" title="Demander l'attribution">Demander</button>`;
     }
 
     return h;
@@ -1053,6 +1096,7 @@ const Stock = (() => {
     _remplirSelect('p-lieu',
       [...new Set(profils.map(b => b.lieu_stockage))].sort()
     );
+    // t-type : ne remplacer que les valeurs dynamiques (les options fixes sont dans le HTML)
     _remplirSelect('t-epaisseur',
       [...new Set(toles.map(b => String(b.epaisseur_mm)))].sort((a,b) => +a - +b),
       'mm'
@@ -1454,7 +1498,7 @@ const Stock = (() => {
   function _resetFiltres(onglet) {
     const map = {
       profils:   ['p-type','p-desig','p-chantier','p-lieu','p-dispo','p-recherche'],
-      toles:     ['t-epaisseur','t-chantier','t-lieu','t-dispo','t-recherche'],
+      toles:     ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo','t-recherche'],
       archivees: ['a-type','a-desig','a-recherche'],
     };
     (map[onglet] || []).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -1495,12 +1539,11 @@ const Stock = (() => {
   function _majAlerteSeuil() {
     const badge = document.getElementById('badge-stock-bas');
     if (!badge || !_data) return;
-    const nb = _data.barres.filter(b =>
-      b.categorie === 'tole' &&
-      b.statut !== 'archivee' &&
-      b.seuil_min > 0 &&
-      b.quantite <= b.seuil_min
-    ).length;
+    const surfaces = _surfacesParEpaisseur();
+    let nb = 0;
+    surfaces.forEach(entry => {
+      if (entry.seuil > 0 && entry.surface < entry.seuil) nb++;
+    });
     badge.style.display = nb > 0 ? 'inline-flex' : 'none';
     const span = badge.querySelector('.stock-bas-nb');
     if (span) span.textContent = nb;
@@ -1603,7 +1646,7 @@ const Stock = (() => {
     if (prech) prech.addEventListener('input', _filtrer);
 
     // Filtres tôles
-    ['t-epaisseur','t-chantier','t-lieu','t-dispo'].forEach(id => {
+    ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('change', _filtrer);
     });
@@ -1826,6 +1869,21 @@ const Stock = (() => {
       });
       const btnSoumettre = mAT.querySelector('.btn-soumettre');
       if (btnSoumettre) btnSoumettre.addEventListener('click', () => _soumettreAjoutTole(mAT));
+    }
+
+    // ── Modale sortie tôle ────────────────────────────────────
+    const mST = document.getElementById('m-sortie-tole');
+    if (mST) {
+      const chkChute = mST.querySelector('#st-avec-chute');
+      const zoneCh   = mST.querySelector('#st-zone-chute');
+      if (chkChute && zoneCh) {
+        chkChute.addEventListener('change', () => {
+          zoneCh.style.display = chkChute.checked ? '' : 'none';
+        });
+      }
+      const btnConfirmer = mST.querySelector('.btn-confirmer-sortie');
+      if (btnConfirmer) btnConfirmer.addEventListener('click', _confirmerSortieTole);
+      mST.addEventListener('click', e => { if (e.target === mST) _fermerModale('m-sortie-tole'); });
     }
 
     // ── Modale modification ───────────────────────────────────
@@ -2553,15 +2611,18 @@ const Stock = (() => {
     if (!m) return;
 
     // Réinitialiser
-    m.querySelectorAll('input, select, textarea').forEach(el => {
-      if (el.tagName === 'SELECT') el.selectedIndex = 0;
-      else el.value = '';
-    });
+    m.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(el => { el.value = ''; });
+    m.querySelectorAll('select').forEach(el => { el.selectedIndex = 0; });
+    const chute = m.querySelector('#at-chute');
+    if (chute) chute.checked = false;
+    // Remettre quantite à 1
+    const qty = m.querySelector('#at-quantite');
+    if (qty) qty.value = '1';
 
     _monterSelecteurLieu(m.querySelector('#at-lieu'));
     _monterPickerChantier('at-chantier-picker', 'at-chantier');
     _majNoteStatut(m, '.at-note-statut');
-    _atMajApercu(m); // reset aperçu
+    _atMajApercu(m);
 
     _ouvrirModale('m-ajout-tole');
   }
@@ -2576,19 +2637,27 @@ const Stock = (() => {
     const lng = parseFloat(m.querySelector('#at-longueur')?.value);
     const qty = parseInt(m.querySelector('#at-quantite')?.value) || 1;
 
-    const spanEp  = m.querySelector('#at-aff-ep');
-    const spanLrg = m.querySelector('#at-aff-lrg');
-    const spanLng = m.querySelector('#at-aff-lng');
-    const spanQty = m.querySelector('#at-aff-qty');
-    const spanPds = m.querySelector('#at-aff-poids');
-    const spanTot = m.querySelector('#at-aff-total');
+    const spanEp   = m.querySelector('#at-aff-ep');
+    const spanLrg  = m.querySelector('#at-aff-lrg');
+    const spanLng  = m.querySelector('#at-aff-lng');
+    const spanQty  = m.querySelector('#at-aff-qty');
+    const spanSurf = m.querySelector('#at-aff-surf');
+    const spanPds  = m.querySelector('#at-aff-poids');
+    const spanTot  = m.querySelector('#at-aff-total');
 
     if (spanEp)  spanEp.textContent  = !isNaN(ep)  ? `${ep} mm`  : '—';
     if (spanLrg) spanLrg.textContent = !isNaN(lrg) ? `${lrg} mm` : '—';
     if (spanLng) spanLng.textContent = !isNaN(lng) ? `${lng} mm` : '—';
     if (spanQty) spanQty.textContent = `${qty} pièce${qty > 1 ? 's' : ''}`;
 
-    // Poids = épaisseur(m) × largeur(m) × longueur(m) × densité acier (kg/dm³ → kg/m³ = 7850)
+    if (!isNaN(lrg) && !isNaN(lng)) {
+      const sU = (lrg / 1000) * (lng / 1000);
+      if (spanSurf) { spanSurf.textContent = `${(sU * qty).toFixed(2)} m² (${sU.toFixed(2)}/pièce)`; spanSurf.style.color = 'var(--vert)'; }
+    } else {
+      if (spanSurf) { spanSurf.textContent = '—'; spanSurf.style.color = '#aaa'; }
+    }
+
+    // Poids = épaisseur(m) × largeur(m) × longueur(m) × densité acier (kg/m³ = 7850)
     if (!isNaN(ep) && !isNaN(lrg) && !isNaN(lng)) {
       const pU = (ep / 1000) * (lrg / 1000) * (lng / 1000) * 7850;
       const pT = pU * qty;
@@ -2605,21 +2674,25 @@ const Stock = (() => {
    * @param {HTMLElement} m
    */
   async function _soumettreAjoutTole(m) {
-    const ep  = parseFloat(m.querySelector('#at-epaisseur')?.value);
-    const lrg = parseFloat(m.querySelector('#at-largeur')?.value);
-    const lng = parseFloat(m.querySelector('#at-longueur')?.value);
-    const qty = parseInt(m.querySelector('#at-quantite')?.value) || 1;
-    const seuilRaw = m.querySelector('#at-seuil')?.value;
-    const seuilMin = seuilRaw !== '' && seuilRaw != null ? (parseInt(seuilRaw) || 0) : null;
+    const ep   = parseFloat(m.querySelector('#at-epaisseur')?.value);
+    const lrg  = parseFloat(m.querySelector('#at-largeur')?.value);
+    const lng  = parseFloat(m.querySelector('#at-longueur')?.value);
+    const qty  = parseInt(m.querySelector('#at-quantite')?.value) || 1;
+    const type = m.querySelector('#at-type-tole')?.value?.trim() || '';
+    const refCmd = m.querySelector('#at-ref-cmd')?.value?.trim() || '';
+    const seuilSurfRaw = m.querySelector('#at-seuil-surface')?.value;
+    const seuilSurf = seuilSurfRaw !== '' && seuilSurfRaw != null ? (parseFloat(seuilSurfRaw) || null) : null;
+    const isChute     = m.querySelector('#at-chute')?.checked || false;
     const chantier    = m.querySelector('#at-chantier')?.value?.trim();
     const lieu        = _lireLieu(m.querySelector('#at-lieu'));
     const dispo       = m.querySelector('#at-dispo')?.value || 'disponible';
     const commentaire = m.querySelector('#at-commentaire')?.value?.trim() || '';
 
     // Validation
-    if (isNaN(ep)  || ep  <= 0) return _signalerErreur(m, '#at-epaisseur', 'L\'épaisseur est obligatoire');
-    if (isNaN(lrg) || lrg <= 0) return _signalerErreur(m, '#at-largeur',   'La largeur est obligatoire');
-    if (isNaN(lng) || lng <= 0) return _signalerErreur(m, '#at-longueur',  'La longueur est obligatoire');
+    if (isNaN(ep)  || ep  <= 0) return _signalerErreur(m, '#at-epaisseur',   'L\'épaisseur est obligatoire');
+    if (isNaN(lrg) || lrg <= 0) return _signalerErreur(m, '#at-largeur',     'La largeur est obligatoire');
+    if (isNaN(lng) || lng <= 0) return _signalerErreur(m, '#at-longueur',    'La longueur est obligatoire');
+    if (!type)                   return _signalerErreur(m, '#at-type-tole',   'Le type de tôle est obligatoire');
 
     const session = Auth.getSession();
     const isAdmin = Auth.hasRight('can_validate');
@@ -2628,15 +2701,17 @@ const Stock = (() => {
     const poidsT = Math.round(poidsU * qty * 10) / 10;
     const nouvelleId = _genererIdTole();
 
-    /** @type {Object} Structure identique à stock.json (tôle) */
     const tole = {
       id: nouvelleId,
       categorie: 'tole',
+      type_tole: type,
       epaisseur_mm: ep,
       largeur_mm: lrg,
       longueur_mm: lng,
       quantite: qty,
-      seuil_min: seuilMin,
+      is_chute: isChute,
+      ref_commande: refCmd || null,
+      seuil_surface_m2: seuilSurf,
       poids_unitaire_kg: poidsU,
       poids_total_kg: poidsT,
       chantier_origine: chantier || 'Non renseigné',
@@ -2656,11 +2731,148 @@ const Stock = (() => {
     _peuplerFiltres();
     _filtrer();
     _majAlerteAttente();
+    _majAlerteSeuil();
 
     const msg = isAdmin
-      ? `Tôle ${ep}mm ajoutée (${nouvelleId})`
+      ? `Tôle ${ep}mm (${_LABEL_TYPE_TOLE[type] || type}) ajoutée (${nouvelleId})`
       : `Tôle ${ep}mm soumise pour validation`;
     _notif(msg + (enLigne ? '' : ' — ⚠ mode hors ligne'), isAdmin ? (enLigne ? 'succes' : 'alerte') : 'info');
+  }
+
+
+  /* ──────────────────────────────────────────────────────────────
+     MODALE SORTIE CHANTIER (tôle)
+     ────────────────────────────────────────────────────────────── */
+
+  let _sortieToleId = null;
+
+  function _ouvrirSortieTole(id) {
+    const tole = _data?.barres.find(b => b.id === id && b.categorie === 'tole');
+    if (!tole) return;
+    _sortieToleId = id;
+
+    const m = document.getElementById('m-sortie-tole');
+    if (!m) return;
+
+    // Info tôle
+    const info = m.querySelector('#st-info-tole');
+    if (info) {
+      const surf = _surfaceTole(tole);
+      info.innerHTML = `
+        <strong>${_e(tole.id)}</strong> —
+        ${_badgeTypeTole(tole.type_tole)}
+        <strong>${tole.epaisseur_mm} mm</strong>,
+        ${tole.largeur_mm} × ${tole.longueur_mm} mm${tole.ref_commande ? ` — Réf. <em>${_e(tole.ref_commande)}</em>` : ''}<br>
+        Quantité disponible : <strong>${tole.quantite} pièce${tole.quantite > 1 ? 's' : ''}</strong>
+        (surface : ${(surf * tole.quantite).toFixed(2)} m²)
+      `;
+    }
+
+    // Quantité max
+    const inputQty = m.querySelector('#st-qty-sortie');
+    const spanMax  = m.querySelector('#st-qty-max');
+    if (inputQty) { inputQty.value = '1'; inputQty.max = tole.quantite; }
+    if (spanMax)  spanMax.textContent = `max ${tole.quantite}`;
+
+    // Chute
+    const chkChute = m.querySelector('#st-avec-chute');
+    const zoneCh   = m.querySelector('#st-zone-chute');
+    if (chkChute) chkChute.checked = false;
+    if (zoneCh)   zoneCh.style.display = 'none';
+    const cLrg = m.querySelector('#st-chute-lrg');
+    const cLng = m.querySelector('#st-chute-lng');
+    if (cLrg) cLrg.value = '';
+    if (cLng) cLng.value = '';
+
+    // Chantier
+    _monterPickerChantier('st-chantier-picker', 'st-chantier');
+
+    _ouvrirModale('m-sortie-tole');
+  }
+
+  async function _confirmerSortieTole() {
+    const m = document.getElementById('m-sortie-tole');
+    if (!m || !_sortieToleId) return;
+
+    const tole = _data?.barres.find(b => b.id === _sortieToleId);
+    if (!tole) return;
+
+    const chantierDest = m.querySelector('#st-chantier')?.value?.trim();
+    const qtySortie    = parseInt(m.querySelector('#st-qty-sortie')?.value) || 0;
+    const avecChute    = m.querySelector('#st-avec-chute')?.checked || false;
+    const chuteLrg     = parseFloat(m.querySelector('#st-chute-lrg')?.value);
+    const chuteLng     = parseFloat(m.querySelector('#st-chute-lng')?.value);
+
+    if (!chantierDest) return _signalerErreur(m, '#st-chantier', 'Chantier destination requis');
+    if (qtySortie <= 0 || qtySortie > tole.quantite)
+      return _signalerErreur(m, '#st-qty-sortie', `Quantité invalide (max ${tole.quantite})`);
+    if (avecChute) {
+      if (isNaN(chuteLrg) || chuteLrg <= 0) return _signalerErreur(m, '#st-chute-lrg', 'Largeur chute requise');
+      if (isNaN(chuteLng) || chuteLng <= 0) return _signalerErreur(m, '#st-chute-lng', 'Longueur chute requise');
+    }
+
+    const session = Auth.getSession();
+    const operateur = session?.identifiant || null;
+    const nouvelleQty = tole.quantite - qtySortie;
+
+    // 1 — Mettre à jour la tôle d'origine
+    if (nouvelleQty <= 0) {
+      // Archiver si plus rien en stock
+      try {
+        await window.SB.mettreAJour('stock', _sortieToleId, { quantite: 0, statut: 'archivee' });
+      } catch(e) { /* hors ligne */ }
+      const b = _data.barres.find(x => x.id === _sortieToleId);
+      if (b) { b.quantite = 0; b.statut = 'archivee'; }
+    } else {
+      const poidsT = Math.round(tole.poids_unitaire_kg * nouvelleQty * 10) / 10;
+      try {
+        await window.SB.mettreAJour('stock', _sortieToleId, { quantite: nouvelleQty, poids_total_kg: poidsT });
+      } catch(e) { /* hors ligne */ }
+      const b = _data.barres.find(x => x.id === _sortieToleId);
+      if (b) { b.quantite = nouvelleQty; b.poids_total_kg = poidsT; }
+    }
+
+    // 2 — Créer la chute si demandée
+    if (avecChute) {
+      const poidsU = Math.round(((tole.epaisseur_mm/1000)*(chuteLrg/1000)*(chuteLng/1000)*7850)*10)/10;
+      const chuteId = _genererIdTole();
+      const chuteObj = {
+        id: chuteId,
+        categorie: 'tole',
+        type_tole: tole.type_tole,
+        epaisseur_mm: tole.epaisseur_mm,
+        largeur_mm: chuteLrg,
+        longueur_mm: chuteLng,
+        quantite: 1,
+        is_chute: true,
+        ref_commande: tole.ref_commande || null,
+        seuil_surface_m2: null,
+        poids_unitaire_kg: poidsU,
+        poids_total_kg: poidsU,
+        chantier_origine: _labelChantier(chantierDest) || chantierDest,
+        lieu_stockage: tole.lieu_stockage,
+        disponibilite: 'disponible',
+        chantier_affectation: null,
+        statut: 'valide',
+        date_ajout: _dateAujourdhui(),
+        ajoute_par: operateur || 'inconnu',
+        valide_par: operateur,
+        date_validation: _dateAujourdhui(),
+        commentaire: `Chute issue de ${_sortieToleId} — sortie chantier ${_labelChantier(chantierDest) || chantierDest}`
+      };
+      await _persisterElement(chuteObj);
+    }
+
+    _fermerModale('m-sortie-tole');
+    _sortieToleId = null;
+    _peuplerFiltres();
+    _filtrer();
+    _majAlerteSeuil();
+
+    const msg = nouvelleQty <= 0
+      ? `Tôle sortie et archivée (stock épuisé)`
+      : `Sortie de ${qtySortie} pièce${qtySortie > 1 ? 's' : ''} — reste ${nouvelleQty}`;
+    _notif(msg + (avecChute ? ' + chute créée' : ''), 'succes');
   }
 
 
@@ -2958,13 +3170,16 @@ const Stock = (() => {
 
     _monterSelecteurLieu(m.querySelector('#mod-t-lieu'), tole.lieu_stockage || '');
 
-    _setVal(m, '#mod-t-epaisseur',  tole.epaisseur_mm);
-    _setVal(m, '#mod-t-largeur',    tole.largeur_mm);
-    _setVal(m, '#mod-t-longueur',   tole.longueur_mm);
-    _setVal(m, '#mod-t-quantite',   tole.quantite);
+    _setVal(m, '#mod-t-epaisseur',     tole.epaisseur_mm);
+    _setVal(m, '#mod-t-largeur',       tole.largeur_mm);
+    _setVal(m, '#mod-t-longueur',      tole.longueur_mm);
+    _setVal(m, '#mod-t-type',          tole.type_tole || '');
+    _setVal(m, '#mod-t-quantite',      tole.quantite);
+    _setVal(m, '#mod-t-ref-cmd',       tole.ref_commande || '');
+    _setVal(m, '#mod-t-seuil-surface', tole.seuil_surface_m2 ?? '');
     _monterPickerChantier('mod-t-chantier-picker', 'mod-t-chantier', tole.chantier_origine || '');
-    _setVal(m, '#mod-t-dispo',      tole.disponibilite);
-    _setVal(m, '#mod-t-commentaire', tole.commentaire || '');
+    _setVal(m, '#mod-t-dispo',         tole.disponibilite);
+    _setVal(m, '#mod-t-commentaire',   tole.commentaire || '');
 
     m.dataset.idEnCours = tole.id;
     m.dataset.categorieEnCours = 'tole';
@@ -3041,10 +3256,14 @@ const Stock = (() => {
 
     } else {
       // Modification tôle
-      const ep  = parseFloat(m.querySelector('#mod-t-epaisseur')?.value);
-      const lrg = parseFloat(m.querySelector('#mod-t-largeur')?.value);
-      const lng = parseFloat(m.querySelector('#mod-t-longueur')?.value);
-      const qty = parseInt(m.querySelector('#mod-t-quantite')?.value) || 1;
+      const ep   = parseFloat(m.querySelector('#mod-t-epaisseur')?.value);
+      const lrg  = parseFloat(m.querySelector('#mod-t-largeur')?.value);
+      const lng  = parseFloat(m.querySelector('#mod-t-longueur')?.value);
+      const qty  = parseInt(m.querySelector('#mod-t-quantite')?.value) || 1;
+      const type = m.querySelector('#mod-t-type')?.value?.trim() || '';
+      const refCmd = m.querySelector('#mod-t-ref-cmd')?.value?.trim() || '';
+      const seuilSurfRaw = m.querySelector('#mod-t-seuil-surface')?.value;
+      const seuilSurf = seuilSurfRaw !== '' && seuilSurfRaw != null ? (parseFloat(seuilSurfRaw) || null) : null;
       const chantier    = m.querySelector('#mod-t-chantier')?.value?.trim();
       const lieu        = _lireLieu(m.querySelector('#mod-t-lieu'));
       const dispo       = m.querySelector('#mod-t-dispo')?.value || 'disponible';
@@ -3053,16 +3272,20 @@ const Stock = (() => {
       if (isNaN(ep)  || ep  <= 0) return _signalerErreur(m, '#mod-t-epaisseur', 'L\'épaisseur est obligatoire');
       if (isNaN(lrg) || lrg <= 0) return _signalerErreur(m, '#mod-t-largeur',   'La largeur est obligatoire');
       if (isNaN(lng) || lng <= 0) return _signalerErreur(m, '#mod-t-longueur',  'La longueur est obligatoire');
+      if (!type)                   return _signalerErreur(m, '#mod-t-type',      'Le type de tôle est obligatoire');
 
       const poidsU = Math.round(((ep/1000)*(lrg/1000)*(lng/1000)*7850)*10)/10;
       const poidsT = Math.round(poidsU * qty * 10) / 10;
 
       const modif = {
         ...original,
+        type_tole: type,
         epaisseur_mm: ep,
         largeur_mm: lrg,
         longueur_mm: lng,
         quantite: qty,
+        ref_commande: refCmd || null,
+        seuil_surface_m2: seuilSurf,
         poids_unitaire_kg: poidsU,
         poids_total_kg: poidsT,
         chantier_origine: chantier || original.chantier_origine,
@@ -3077,6 +3300,7 @@ const Stock = (() => {
       };
 
       _enLigneModif = await _persisterElement(modif);
+      _majAlerteSeuil();
     }
 
     // Réafficher la zone correcte
@@ -4945,6 +5169,7 @@ const Stock = (() => {
       if (_val('p-dispo'))    filtresActifs.push(`Dispo : ${_val('p-dispo')}`);
       if (_val('p-recherche')) filtresActifs.push(`Recherche : "${_val('p-recherche')}"`);
     } else if (_onglet === 'toles') {
+      if (_val('t-type'))      filtresActifs.push(`Type : ${_LABEL_TYPE_TOLE[_val('t-type')] || _val('t-type')}`);
       if (_val('t-epaisseur')) filtresActifs.push(`Épaisseur : ${_val('t-epaisseur')} mm`);
       if (_val('t-chantier'))  filtresActifs.push(`Chantier : ${_val('t-chantier')}`);
       if (_val('t-lieu'))      filtresActifs.push(`Lieu : ${_val('t-lieu')}`);
@@ -4993,26 +5218,31 @@ const Stock = (() => {
       }).join('');
     } else if (_onglet === 'toles') {
       enTetes = `<tr>
-        <th>ID</th><th>Ép. (mm)</th><th>Dimensions (mm)</th><th>Qté</th>
-        <th>Poids unit. (kg)</th><th>Classe</th><th>Statut</th>
-        <th>Lieu stockage</th><th>Chantier</th>
+        <th>ID</th><th>Type</th><th>Ép. (mm)</th><th>Dimensions (mm)</th>
+        <th>Qté</th><th>Surface (m²)</th><th>Poids unit. (kg)</th>
+        <th>Réf. cmd</th><th>Statut</th><th>Lieu stockage</th><th>Chantier</th>
       </tr>`;
       lignes = resultats.map(b => {
         const poids = b.largeur_mm && b.longueur_mm && b.epaisseur_mm
           ? (b.largeur_mm / 1000) * (b.longueur_mm / 1000) * (b.epaisseur_mm / 1000) * 7850
           : 0;
+        const surf = b.largeur_mm && b.longueur_mm
+          ? ((b.largeur_mm / 1000) * (b.longueur_mm / 1000) * (b.quantite || 1)).toFixed(2)
+          : '—';
         const statut = b.statut === 'en_attente' ? 'En attente'
                      : b.disponibilite === 'disponible' ? 'Disponible' : 'Affecté';
         return `<tr>
-          <td>${_e(b.id)}</td>
+          <td>${_e(b.id)}${b.is_chute ? ' (chute)' : ''}</td>
+          <td>${_LABEL_TYPE_TOLE[b.type_tole] || (b.type_tole ? _e(b.type_tole) : '—')}</td>
           <td>${b.epaisseur_mm}</td>
           <td>${b.largeur_mm} × ${b.longueur_mm}</td>
           <td>${b.quantite}</td>
+          <td>${surf}</td>
           <td>${poids > 0 ? poids.toFixed(1) : '—'}</td>
-          <td>${_e(b.classe_acier || '—')}</td>
+          <td>${_e(b.ref_commande || '—')}</td>
           <td>${statut}</td>
           <td>${_e(b.lieu_stockage || '—')}</td>
-          <td>${_e(_labelChantier(b.chantier_affectation) || b.chantier_affectation || '—')}</td>
+          <td>${_e(_labelChantier(b.chantier_origine) || b.chantier_origine || '—')}</td>
         </tr>`;
       }).join('');
     } else {
@@ -5647,6 +5877,7 @@ const Stock = (() => {
     ouvrirModification,
     ouvrirDemande,
     ouvrirDetailTole,
+    ouvrirSortieTole:  _ouvrirSortieTole,
     validerElement,
     refuserElement,
     getSelection,
