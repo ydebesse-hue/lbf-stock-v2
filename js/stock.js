@@ -1484,7 +1484,9 @@ const Stock = (() => {
 
         return `<tr class="${alerte ? 'ligne-stock-bas' : ''}">
           <td>
-            <span class="syn-type-chip" style="background:#2980b9">${_e(String(ep))} mm</span>
+            <span class="syn-type-chip" style="background:#2980b9;cursor:pointer"
+                  data-syn-action="voir-epaisseur" data-syn-ep="${_e(String(ep))}"
+                  title="Voir les tôles ${_e(String(ep))} mm dans le stock">${_e(String(ep))} mm</span>
             ${typesBadges}
           </td>
           <td class="r"><strong>${fmt(d.surface)} m²</strong></td>
@@ -1750,6 +1752,12 @@ const Stock = (() => {
             const selDispo = document.getElementById(onglet === 'profils' ? 'p-dispo' : 't-dispo');
             if (selDispo) selDispo.value = dispo;
           }
+          _filtrer();
+        } else if (action === 'voir-epaisseur') {
+          _basculerOnglet('toles');
+          const ep = el.dataset.synEp;
+          const selEp = document.getElementById('t-epaisseur');
+          if (selEp && ep) selEp.value = ep;
           _filtrer();
         }
       });
