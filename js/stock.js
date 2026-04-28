@@ -1270,7 +1270,12 @@ const Stock = (() => {
     const premiere = sel.options[0];
     sel.innerHTML = '';
     sel.appendChild(premiere);
-    noms.forEach(nom => {
+    const tries = [...noms].sort((a, b) => {
+      const ca = _chantiers.find(c => c.nom === a);
+      const cb = _chantiers.find(c => c.nom === b);
+      return (ca?.numero_affaire || a).localeCompare(cb?.numero_affaire || b, 'fr', { numeric: true });
+    });
+    tries.forEach(nom => {
       const o = document.createElement('option');
       o.value = nom;
       o.textContent = _labelChantier(nom) || nom;
@@ -4449,15 +4454,19 @@ const Stock = (() => {
   function _majDatalistChantiers() {
     const dl = document.getElementById('dl-chantiers');
     if (!dl) return;
-    dl.innerHTML = _chantiers.map(c => `<option value="${_e(c.nom)}">`).join('');
+    const tries = [..._chantiers].sort((a, b) =>
+      (a.numero_affaire || '').localeCompare(b.numero_affaire || '', 'fr', { numeric: true })
+    );
+    dl.innerHTML = tries.map(c => `<option value="${_e(c.nom)}">`).join('');
   }
 
   function _monterPickerFournisseur(wrapId, selectId, valeurCourante = '') {
     const wrap = typeof wrapId === 'string' ? document.getElementById(wrapId) : wrapId;
     if (!wrap) return;
 
+    const fvTries = [..._fournisseurs].sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr', { sensitivity: 'base' }));
     const opts = `<option value="">— Choisir un fournisseur —</option>` +
-      _fournisseurs.map(f => {
+      fvTries.map(f => {
         const sel = f.nom === valeurCourante ? ' selected' : '';
         return `<option value="${_e(f.nom)}"${sel}>${_e(f.nom)}</option>`;
       }).join('');
@@ -4500,7 +4509,10 @@ const Stock = (() => {
 
   function _peuplerSelectAffectation(sel, valeurCourante) {
     if (!sel) return;
-    const opts = _chantiers.map(c => {
+    const chTries = [..._chantiers].sort((a, b) =>
+      (a.numero_affaire || '').localeCompare(b.numero_affaire || '', 'fr', { numeric: true })
+    );
+    const opts = chTries.map(c => {
       const label = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
       return `<option value="${_e(c.nom)}"${c.nom === valeurCourante ? ' selected' : ''}>${_e(label)}</option>`;
     });
@@ -4516,8 +4528,11 @@ const Stock = (() => {
     const wrap = typeof wrapId === 'string' ? document.getElementById(wrapId) : wrapId;
     if (!wrap) return;
 
+    const chTries = [..._chantiers].sort((a, b) =>
+      (a.numero_affaire || '').localeCompare(b.numero_affaire || '', 'fr', { numeric: true })
+    );
     const opts = `<option value="">— Choisir un chantier —</option>` +
-      _chantiers.map(c => {
+      chTries.map(c => {
         const lbl = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
         const sel = c.nom === valeurCourante ? ' selected' : '';
         return `<option value="${_e(c.nom)}"${sel}>${_e(lbl)}</option>`;
