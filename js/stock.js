@@ -584,7 +584,16 @@ const Stock = (() => {
       resultats = _filtrerArchivees(source);
     }
 
-    if (_tri.col) resultats = _trier(resultats);
+    if (_tri.col) {
+      resultats = _trier(resultats);
+    } else if (_onglet === 'toles') {
+      // Tri par défaut : épaisseur croissante puis type
+      resultats = [...resultats].sort((a, b) => {
+        const ep = (a.epaisseur_mm || 0) - (b.epaisseur_mm || 0);
+        if (ep !== 0) return ep;
+        return (a.type_tole || '').localeCompare(b.type_tole || '', 'fr');
+      });
+    }
 
     _rendrTableau(resultats);
     _majCompteur(resultats.length, source.length);
@@ -704,7 +713,9 @@ const Stock = (() => {
       case 'date':        return item.date_modif || item.date_validation || item.date_ajout || '';
       case 'epaisseur':   return item.epaisseur_mm     || 0;
       case 'dimensions':  return (item.largeur_mm || 0) * 100000 + (item.longueur_mm || 0);
+      case 'surf_unit':   return _surfaceTole(item);
       case 'quantite':    return item.quantite         || 0;
+      case 'surf_tot':    return _surfaceTole(item) * (item.quantite || 1);
       default:            return '';
     }
   }
@@ -919,20 +930,19 @@ const Stock = (() => {
     const admin = Auth.hasRight('can_validate');
     const modif = Auth.hasRight('can_edit');
 
-    // Précalcul surfaces par épaisseur pour les alertes
-    const surfaces = _surfacesParEpaisseur();
-
     const cols = [
-      { col: 'id',         label: 'ID'               },
-      { col: 'type',       label: 'Type'             },
-      { col: 'epaisseur',  label: 'Ép. (mm)'         },
-      { col: 'dimensions', label: 'Dimensions'        },
-      { col: 'quantite',   label: 'Qté / Surface'    },
-      { col: 'poids',      label: 'Poids unit. (kg)' },
-      { col: 'lieu',       label: 'Stockage'         },
-      { col: 'date',       label: 'Date ajout'       },
-      { col: 'chantier',   label: 'Chantier origine' },
-      { col: 'dispo',      label: 'Statut'           },
+      { col: 'id',          label: 'ID'               },
+      { col: 'type',        label: 'Type'             },
+      { col: 'epaisseur',   label: 'Ép. (mm)'         },
+      { col: 'dimensions',  label: 'Dimensions'        },
+      { col: 'surf_unit',   label: 'Surface unit.'    },
+      { col: 'quantite',    label: 'Qté'              },
+      { col: 'surf_tot',    label: 'Surface tot.'     },
+      { col: 'poids',       label: 'Poids (kg)'       },
+      { col: 'lieu',        label: 'Stockage'         },
+      { col: 'date',        label: 'Date ajout'       },
+      { col: 'chantier',    label: 'Chantier origine' },
+      { col: 'dispo',       label: 'Statut'           },
     ];
 
     let h = '<table><thead><tr>';
@@ -944,34 +954,32 @@ const Stock = (() => {
     h += '<th>Action</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="11" class="vide">Aucune tôle ne correspond aux filtres.</td></tr>`;
+      h += `<tr><td colspan="13" class="vide">Aucune tôle ne correspond aux filtres.</td></tr>`;
     } else {
       data.forEach(t => {
-        const attente  = t.statut === 'en_attente';
-        const dims     = `${t.largeur_mm} × ${t.longueur_mm} mm`;
-        const dateAjout = t.date_ajout
-          ? new Date(t.date_ajout).toLocaleDateString('fr-FR')
-          : '—';
-        const surf = _surfaceTole(t);
-        const surfTxt = surf > 0 ? `${(surf * (t.quantite || 1)).toFixed(2)} m²` : '—';
+        const attente   = t.statut === 'en_attente';
+        const dims      = `${t.largeur_mm} × ${t.longueur_mm} mm`;
+        const dateAjout = t.date_ajout ? new Date(t.date_ajout).toLocaleDateString('fr-FR') : '—';
+        const surf      = _surfaceTole(t);
+        const surfUnit  = surf > 0 ? `${surf.toFixed(2)} m²` : '—';
+        const surfTot   = surf > 0 ? `${(surf * (t.quantite || 1)).toFixed(2)} m²` : '—';
+        const poidsU    = t.poids_unitaire_kg != null ? Math.ceil(t.poids_unitaire_kg) : null;
+        const poidsT    = t.poids_total_kg    != null ? Math.ceil(t.poids_total_kg)    : null;
 
-        // Alerte surface par épaisseur
-        const epEntry   = surfaces.get(t.epaisseur_mm);
-        const stockBas  = epEntry && epEntry.seuil > 0 && epEntry.surface < epEntry.seuil;
-
-        const classesTr = [attente ? 'ligne-attente' : '', stockBas ? 'ligne-stock-bas' : ''].filter(Boolean).join(' ');
-        h += `<tr${classesTr ? ` class="${classesTr}"` : ''} data-id="${_e(t.id)}">`;
+        h += `<tr${attente ? ' class="ligne-attente"' : ''} data-id="${_e(t.id)}">`;
         h += `<td class="td-id"><span class="chip-id">${_e(t.id)}</span>${t.ref_commande ? `<br><span style="font-size:10px;color:#888">${_e(t.ref_commande)}</span>` : ''}</td>`;
         h += `<td>${_badgeTypeTole(t.type_tole)}${t.is_chute ? ' <span class="chip-chute">chute</span>' : ''}</td>`;
         h += modif
           ? `<td class="cell-editable" data-field="epaisseur"><strong>${t.epaisseur_mm} mm</strong></td>`
           : `<td><strong>${t.epaisseur_mm} mm</strong></td>`;
         h += `<td>${dims}</td>`;
-        const qtyTxt = `${t.quantite} pièce${t.quantite > 1 ? 's' : ''} <span style="color:#888;font-size:11px">(${surfTxt})</span>${stockBas ? ' <span class="chip-stock-bas" title="Surface totale de cet épaisseur sous le seuil d\'alerte">⚠</span>' : ''}`;
+        h += `<td style="color:#555">${surfUnit}</td>`;
+        const qtyTxt = `${t.quantite} pièce${t.quantite > 1 ? 's' : ''}`;
         h += modif
           ? `<td class="cell-editable" data-field="quantite">${qtyTxt}</td>`
           : `<td>${qtyTxt}</td>`;
-        h += `<td>${t.poids_unitaire_kg?.toFixed(1) ?? '—'} <span style="color:#999;font-size:11px">(tot.&nbsp;${t.poids_total_kg?.toFixed(1) ?? '—'})</span></td>`;
+        h += `<td style="color:#555">${surfTot}</td>`;
+        h += `<td>${poidsU != null ? poidsU : '—'} <span style="color:#999;font-size:11px">(tot.&nbsp;${poidsT != null ? poidsT : '—'})</span></td>`;
         h += modif
           ? `<td class="cell-editable" data-field="lieu">${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`
           : `<td>${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`;
@@ -5275,26 +5283,26 @@ const Stock = (() => {
     } else if (_onglet === 'toles') {
       enTetes = `<tr>
         <th>ID</th><th>Type</th><th>Ép. (mm)</th><th>Dimensions (mm)</th>
-        <th>Qté</th><th>Surface (m²)</th><th>Poids unit. (kg)</th>
-        <th>Réf. cmd</th><th>Statut</th><th>Lieu stockage</th><th>Chantier</th>
+        <th>Surface unit.</th><th>Qté</th><th>Surface tot.</th>
+        <th>Poids unit. (kg)</th><th>Réf. cmd</th>
+        <th>Statut</th><th>Lieu stockage</th><th>Chantier</th>
       </tr>`;
       lignes = resultats.map(b => {
-        const poids = b.largeur_mm && b.longueur_mm && b.epaisseur_mm
-          ? (b.largeur_mm / 1000) * (b.longueur_mm / 1000) * (b.epaisseur_mm / 1000) * 7850
-          : 0;
-        const surf = b.largeur_mm && b.longueur_mm
-          ? ((b.largeur_mm / 1000) * (b.longueur_mm / 1000) * (b.quantite || 1)).toFixed(2)
-          : '—';
-        const statut = b.statut === 'en_attente' ? 'En attente'
-                     : b.disponibilite === 'disponible' ? 'Disponible' : 'Affecté';
+        const surf    = _surfaceTole(b);
+        const surfU   = surf > 0 ? surf.toFixed(2) + ' m²' : '—';
+        const surfT   = surf > 0 ? (surf * (b.quantite || 1)).toFixed(2) + ' m²' : '—';
+        const poidsU  = b.poids_unitaire_kg != null ? Math.ceil(b.poids_unitaire_kg) : '—';
+        const statut  = b.statut === 'en_attente' ? 'En attente'
+                      : b.disponibilite === 'disponible' ? 'Disponible' : 'Affecté';
         return `<tr>
           <td>${_e(b.id)}${b.is_chute ? ' (chute)' : ''}</td>
           <td>${_LABEL_TYPE_TOLE[b.type_tole] || (b.type_tole ? _e(b.type_tole) : '—')}</td>
           <td>${b.epaisseur_mm}</td>
           <td>${b.largeur_mm} × ${b.longueur_mm}</td>
+          <td>${surfU}</td>
           <td>${b.quantite}</td>
-          <td>${surf}</td>
-          <td>${poids > 0 ? poids.toFixed(1) : '—'}</td>
+          <td>${surfT}</td>
+          <td>${poidsU}</td>
           <td>${_e(b.ref_commande || '—')}</td>
           <td>${statut}</td>
           <td>${_e(b.lieu_stockage || '—')}</td>
