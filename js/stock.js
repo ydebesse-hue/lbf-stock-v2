@@ -4382,8 +4382,9 @@ const Stock = (() => {
 
     const selRack = document.createElement('select');
     selRack.className = 'lieu-sel lieu-sel-rack';
+    const racksTries = [..._racks].sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }));
     selRack.innerHTML = '<option value="">— Rack —</option>'
-      + _racks.map(r => `<option value="${_e(r.nom)}"${r.nom === nomRack ? ' selected' : ''}>${_e(r.nom)}</option>`).join('');
+      + racksTries.map(r => `<option value="${_e(r.nom)}"${r.nom === nomRack ? ' selected' : ''}>${_e(r.nom)}</option>`).join('');
 
     const selAllee = document.createElement('select');
     selAllee.className = 'lieu-sel lieu-sel-allee';
