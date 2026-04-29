@@ -230,6 +230,7 @@ const Stock = (() => {
   let _onglet        = 'synthese';
   let _synTab        = 'profils';
   let _synProfilsTous = false;
+  let _bilanChantier  = '';
   let _racks     = [];  // { id, nom, nb_allees, nb_etages } depuis Supabase
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
   let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
@@ -1561,15 +1562,165 @@ const Stock = (() => {
         </div>`;
     };
 
+    // ── Contenu onglet Bilan chantiers ────────────────────────────
+    const _contenuBilan = () => {
+      const profils  = barres.filter(b => b.categorie === 'profil');
+      const affectes = profils.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation);
+      const archives = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation);
+
+      if (_bilanChantier) {
+        // ── Vue détail d'un chantier ──────────────────────────────
+        const chAff = affectes.filter(b => b.chantier_affectation === _bilanChantier);
+        const chArc = archives.filter(b => b.chantier_affectation === _bilanChantier);
+        const mlAff   = chAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const mlArc   = chArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const poidsAff = chAff.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const poidsArc = chArc.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+
+        // Grouper par type → désignation
+        const parType = {};
+        const acc = (list, sfx) => list.forEach(b => {
+          const t = b.section_type || '?', d = b.designation || '?';
+          if (!parType[t]) parType[t] = {};
+          if (!parType[t][d]) parType[t][d] = { nbAff:0, mlAff:0, poidsAff:0, nbArc:0, mlArc:0, poidsArc:0 };
+          parType[t][d][`nb${sfx}`]++;
+          parType[t][d][`ml${sfx}`]    += b.longueur_m || 0;
+          parType[t][d][`poids${sfx}`] += _poidsEffectifProfil(b);
+        });
+        acc(chAff, 'Aff'); acc(chArc, 'Arc');
+
+        const chObj = _chantiers.find(c => c.nom === _bilanChantier);
+        const titre = chObj ? [chObj.numero_affaire, chObj.ville, chObj.nom].filter(Boolean).join(' — ') : _bilanChantier;
+
+        const rows = Object.entries(parType).sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([type, desigs]) => {
+          const desigEntries = Object.entries(desigs).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
+          const tot = desigEntries.reduce((a, [, d]) => {
+            a.nb += d.nbAff + d.nbArc; a.ml += d.mlAff + d.mlArc; a.poids += d.poidsAff + d.poidsArc; return a;
+          }, { nb: 0, ml: 0, poids: 0 });
+          const typeRow = `<tr class="bilan-type-row">
+            <td colspan="7">
+              <span class="syn-type-chip">${_e(type)}</span>
+              <span class="bilan-type-meta">${tot.nb} barre${tot.nb > 1 ? 's' : ''} &nbsp;·&nbsp; ${fmt(tot.ml)} m &nbsp;·&nbsp; ${fmtT(tot.poids)}</span>
+            </td>
+          </tr>`;
+          const dRows = desigEntries.map(([desig, d]) => `<tr>
+            <td class="bilan-desig-cell"><span class="bilan-indent">└</span>${_e(desig)}</td>
+            <td class="r">${d.nbAff  || '<span class=bilan-nil>—</span>'}</td>
+            <td class="r">${d.mlAff  > 0 ? fmt(d.mlAff)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
+            <td class="r">${d.nbArc  || '<span class=bilan-nil>—</span>'}</td>
+            <td class="r">${d.mlArc  > 0 ? fmt(d.mlArc)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
+            <td class="r"><strong>${fmt(d.mlAff + d.mlArc)} m</strong></td>
+            <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
+          </tr>`).join('');
+          return typeRow + dRows;
+        }).join('');
+
+        return `
+          <div class="bilan-retour"><span class="syn-lien" data-syn-action="retour-bilan">← Tous les chantiers</span></div>
+          <div class="syn-kpi k-vert syn-kpi-table" style="margin-bottom:16px">
+            <div class="bilan-titre-ch">${_e(titre)}</div>
+            <table class="syn-kpi-inner">
+              <thead><tr><th></th><th>Barres</th><th>Métrage</th><th>Poids</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><span class="syn-dot s-rouge"></span> Affecté (en cours)</td>
+                  <td><strong>${chAff.length}</strong></td><td>${fmt(mlAff)} m</td><td>${fmtT(poidsAff)}</td>
+                </tr>
+                <tr>
+                  <td><span class="syn-dot" style="background:#888"></span> Archivé / consommé</td>
+                  <td><strong>${chArc.length}</strong></td><td>${fmt(mlArc)} m</td><td>${fmtT(poidsArc)}</td>
+                </tr>
+                <tr class="syn-kpi-inner-total">
+                  <td>Total engagé</td>
+                  <td><strong>${chAff.length + chArc.length}</strong></td>
+                  <td>${fmt(mlAff + mlArc)} m</td><td>${fmtT(poidsAff + poidsArc)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="syn-card" style="padding:0;overflow:hidden">
+            <table class="syn-table">
+              <thead>
+                <tr><th>Désignation</th><th class="r">Aff.</th><th class="r">ML aff.</th><th class="r">Arch.</th><th class="r">ML arch.</th><th class="r">Total ML</th><th class="r">Poids</th></tr>
+              </thead>
+              <tbody>
+                ${rows || '<tr><td colspan="7" class="bilan-vide">Aucun profilé pour ce chantier</td></tr>'}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      // ── Vue d'ensemble tous chantiers ─────────────────────────────
+      const tousChantiers = [...new Set([
+        ...affectes.map(b => b.chantier_affectation),
+        ...archives.map(b => b.chantier_affectation),
+      ])].sort((a, b) => {
+        const ca = _chantiers.find(c => c.nom === a);
+        const cb = _chantiers.find(c => c.nom === b);
+        return (ca?.numero_affaire || a).localeCompare(cb?.numero_affaire || b, 'fr', { numeric: true });
+      });
+
+      const rows = tousChantiers.map(ch => {
+        const chAff  = affectes.filter(b => b.chantier_affectation === ch);
+        const chArc  = archives.filter(b => b.chantier_affectation === ch);
+        const mlAff  = chAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const mlArc  = chArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const poids  = [...chAff, ...chArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const chObj  = _chantiers.find(c => c.nom === ch);
+        const meta   = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
+        return `<tr class="bilan-ch-row" data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail">
+          <td>${meta ? `<span class="bilan-meta">${_e(meta)}</span><br>` : ''}<strong>${_e(ch)}</strong></td>
+          <td class="r">${chAff.length ? `<span class="chip-dispo chip-affecte">${chAff.length}</span>` : '<span class=bilan-nil>—</span>'}</td>
+          <td class="r">${mlAff > 0 ? fmt(mlAff) + ' m' : '<span class=bilan-nil>—</span>'}</td>
+          <td class="r">${chArc.length ? `<span class="bilan-arc">${chArc.length}</span>` : '<span class=bilan-nil>—</span>'}</td>
+          <td class="r">${mlArc > 0 ? fmt(mlArc) + ' m' : '<span class=bilan-nil>—</span>'}</td>
+          <td class="r"><strong>${fmt(mlAff + mlArc)} m</strong></td>
+          <td class="r bilan-poids">${fmtT(poids)}</td>
+        </tr>`;
+      }).join('');
+
+      const totMlAff = affectes.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const totMlArc = archives.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const totPoids = [...affectes, ...archives].reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const totalRow = tousChantiers.length > 1 ? `<tr class="syn-total">
+        <td>Total (${tousChantiers.length} chantier${tousChantiers.length > 1 ? 's' : ''})</td>
+        <td class="r">${affectes.length}</td><td class="r">${fmt(totMlAff)} m</td>
+        <td class="r">${archives.length}</td><td class="r">${fmt(totMlArc)} m</td>
+        <td class="r"><strong>${fmt(totMlAff + totMlArc)} m</strong></td>
+        <td class="r bilan-poids">${fmtT(totPoids)}</td>
+      </tr>` : '';
+
+      return `
+        <div class="syn-card" style="padding:0;overflow:hidden">
+          <table class="syn-table">
+            <thead>
+              <tr class="syn-table-title-row"><th colspan="7">Consommation profilés par chantier</th></tr>
+              <tr>
+                <th>Chantier</th>
+                <th class="r">Barres aff.</th><th class="r">ML affecté</th>
+                <th class="r">Barres arch.</th><th class="r">ML archivé</th>
+                <th class="r">Total engagé</th><th class="r">Poids</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows || '<tr><td colspan="7" class="bilan-vide">Aucun profilé affecté ou archivé</td></tr>'}
+              ${totalRow}
+            </tbody>
+          </table>
+        </div>`;
+    };
+
     // ── Rendu final ───────────────────────────────────────────────
-    const estProfils = _synTab !== 'toles';
+    const estBilan   = _synTab === 'bilan';
+    const estProfils = _synTab === 'profils';
     zone.innerHTML = `
     <div class="syn-page">
       <div class="syn-sous-nav">
         <button class="syn-tab${estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="profils">Profilés</button>
-        <button class="syn-tab${!estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="toles">Tôles</button>
+        <button class="syn-tab${_synTab === 'toles' ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="toles">Tôles</button>
+        <button class="syn-tab${estBilan ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="bilan">Bilan chantiers</button>
       </div>
-      ${estProfils ? _contenuProfils() : _contenuToles()}
+      ${estBilan ? _contenuBilan() : estProfils ? _contenuProfils() : _contenuToles()}
     </div>`;
   }
 
@@ -1724,6 +1875,7 @@ const Stock = (() => {
         const dispo   = el.dataset.synDispo  || '';
         if (action === 'changer-syn-tab') {
           _synTab = el.dataset.synTab;
+          _bilanChantier = '';
           _rendreSynthese();
         } else if (action === 'toggle-profils-scope') {
           _synProfilsTous = !_synProfilsTous;
@@ -1764,6 +1916,12 @@ const Stock = (() => {
           const selEp = document.getElementById('t-epaisseur');
           if (selEp && ep) selEp.value = ep;
           _filtrer();
+        } else if (action === 'voir-bilan-chantier') {
+          _bilanChantier = el.dataset.synChantier;
+          _rendreSynthese();
+        } else if (action === 'retour-bilan') {
+          _bilanChantier = '';
+          _rendreSynthese();
         }
       });
 
