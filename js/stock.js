@@ -3454,10 +3454,23 @@ const Stock = (() => {
         patch = { lieu_stockage: rawVal || original.lieu_stockage };
       } else if (field === 'dispo') {
         if (rawVal === 'affecte') {
-          // Chantier requis — ouvrir la modale complète
+          // Chantier requis — ouvrir la modale, pré-sélectionner affecté, surbrillance chantier
           _filtrer();
           Stock.ouvrirModification(id);
-          _notif('Sélectionnez le chantier d\'affectation', 'info');
+          const mAff = document.getElementById('m-modification');
+          if (mAff) {
+            const selDispo = mAff.querySelector('#mod-dispo');
+            const affWrap  = mAff.querySelector('#mod-affectation-wrap');
+            const inpAff   = mAff.querySelector('#mod-affectation');
+            if (selDispo) selDispo.value = 'affecte';
+            if (affWrap)  affWrap.style.display = '';
+            if (inpAff) {
+              inpAff.style.background   = '#fffde7';
+              inpAff.style.borderColor  = '#f9a825';
+              inpAff.style.outline      = '2px solid #f9a825';
+              inpAff.focus();
+            }
+          }
           return;
         }
         // Passage à disponible : effacer le chantier d'affectation
@@ -3590,7 +3603,10 @@ const Stock = (() => {
     _monterSelecteurLieu(m.querySelector('#mod-lieu'), barre.lieu_stockage || '');
     _setVal(m, '#mod-longueur',    barre.longueur_m);
     _setVal(m, '#mod-dispo',       barre.disponibilite);
-    _peuplerSelectAffectation(m.querySelector('#mod-affectation'), barre.chantier_affectation || '');
+    const selAff = m.querySelector('#mod-affectation');
+    _peuplerSelectAffectation(selAff, barre.chantier_affectation || '');
+    // Réinitialiser le highlight éventuel laissé par l'inline edit
+    if (selAff) { selAff.style.background = ''; selAff.style.borderColor = ''; selAff.style.outline = ''; }
     _setVal(m, '#mod-commentaire', barre.commentaire || '');
     _apMajPoids(m, '#mod-longueur');
     const affWrapMod = m.querySelector('#mod-affectation-wrap');
