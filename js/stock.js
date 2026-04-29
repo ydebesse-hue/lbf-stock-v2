@@ -1570,8 +1570,8 @@ const Stock = (() => {
       const pArc      = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation);
 
       const toles     = barres.filter(b => b.categorie === 'tole');
-      const tAff      = toles.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_origine);
-      const tArc      = toles.filter(b => b.statut === 'archivee' && b.chantier_origine);
+      const tAff      = toles.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation);
+      const tArc      = toles.filter(b => b.statut === 'archivee' && b.chantier_affectation);
 
       const _surfTole = b => _surfaceTole(b) * (b.quantite || 1);
       const _poidsTole = b => b.poids_total_kg || 0;
@@ -1580,8 +1580,8 @@ const Stock = (() => {
       const tousChantiers = [...new Set([
         ...pAff.map(b => b.chantier_affectation),
         ...pArc.map(b => b.chantier_affectation),
-        ...tAff.map(b => b.chantier_origine),
-        ...tArc.map(b => b.chantier_origine),
+        ...tAff.map(b => b.chantier_affectation),
+        ...tArc.map(b => b.chantier_affectation),
       ])].sort((a, b) => {
         const ca = _chantiers.find(c => c.nom === a);
         const cb = _chantiers.find(c => c.nom === b);
@@ -1592,8 +1592,8 @@ const Stock = (() => {
         // ── Vue détail d'un chantier ──────────────────────────────
         const chPAff = pAff.filter(b => b.chantier_affectation === _bilanChantier);
         const chPArc = pArc.filter(b => b.chantier_affectation === _bilanChantier);
-        const chTAff = tAff.filter(b => b.chantier_origine === _bilanChantier);
-        const chTArc = tArc.filter(b => b.chantier_origine === _bilanChantier);
+        const chTAff = tAff.filter(b => b.chantier_affectation === _bilanChantier);
+        const chTArc = tArc.filter(b => b.chantier_affectation === _bilanChantier);
 
         const mlAff    = chPAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
         const mlArc    = chPArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
@@ -1717,8 +1717,8 @@ const Stock = (() => {
       const rows = tousChantiers.map(ch => {
         const chPa = pAff.filter(b => b.chantier_affectation === ch);
         const chPr = pArc.filter(b => b.chantier_affectation === ch);
-        const chTa = tAff.filter(b => b.chantier_origine === ch);
-        const chTr = tArc.filter(b => b.chantier_origine === ch);
+        const chTa = tAff.filter(b => b.chantier_affectation === ch);
+        const chTr = tArc.filter(b => b.chantier_affectation === ch);
         const mlTot   = [...chPa, ...chPr].reduce((s, b) => s + (b.longueur_m || 0), 0);
         const surfTot = [...chTa, ...chTr].reduce((s, b) => s + _surfTole(b), 0);
         const poids   = [...chPa, ...chPr].reduce((s, b) => s + _poidsEffectifProfil(b), 0)
@@ -3228,12 +3228,12 @@ const Stock = (() => {
 
     // 1 — Mettre à jour la tôle d'origine
     if (nouvelleQty <= 0) {
-      // Archiver si plus rien en stock
+      // Archiver si plus rien en stock — enregistrer le chantier consommateur
       try {
-        await window.SB.mettreAJour('stock', _sortieToleId, { quantite: 0, statut: 'archivee' });
+        await window.SB.mettreAJour('stock', _sortieToleId, { quantite: 0, statut: 'archivee', chantier_affectation: chantierDest });
       } catch(e) { /* hors ligne */ }
       const b = _data.barres.find(x => x.id === _sortieToleId);
-      if (b) { b.quantite = 0; b.statut = 'archivee'; }
+      if (b) { b.quantite = 0; b.statut = 'archivee'; b.chantier_affectation = chantierDest; }
     } else {
       const poidsT = Math.round(tole.poids_unitaire_kg * nouvelleQty * 10) / 10;
       try {
@@ -3241,6 +3241,35 @@ const Stock = (() => {
       } catch(e) { /* hors ligne */ }
       const b = _data.barres.find(x => x.id === _sortieToleId);
       if (b) { b.quantite = nouvelleQty; b.poids_total_kg = poidsT; }
+
+      // Créer un enregistrement archivé représentant la quantité consommée
+      const poidsS   = Math.round(tole.poids_unitaire_kg * qtySortie * 10) / 10;
+      const sortieId = _genererIdTole();
+      const sortieObj = {
+        id: sortieId,
+        categorie: 'tole',
+        type_tole: tole.type_tole,
+        epaisseur_mm: tole.epaisseur_mm,
+        largeur_mm: tole.largeur_mm,
+        longueur_mm: tole.longueur_mm,
+        quantite: qtySortie,
+        is_chute: false,
+        ref_commande: tole.ref_commande || null,
+        seuil_surface_m2: null,
+        poids_unitaire_kg: tole.poids_unitaire_kg,
+        poids_total_kg: poidsS,
+        chantier_origine: tole.chantier_origine || null,
+        chantier_affectation: chantierDest,
+        lieu_stockage: tole.lieu_stockage,
+        disponibilite: 'disponible',
+        statut: 'archivee',
+        date_ajout: tole.date_ajout,
+        ajoute_par: tole.ajoute_par || operateur || 'inconnu',
+        valide_par: operateur,
+        date_validation: _dateAujourdhui(),
+        commentaire: `Sortie ${qtySortie} pièce${qtySortie > 1 ? 's' : ''} → chantier ${chantierDest} (depuis ${_sortieToleId})`
+      };
+      await _persisterElement(sortieObj);
     }
 
     // 2 — Créer la chute si demandée
@@ -3260,7 +3289,7 @@ const Stock = (() => {
         seuil_surface_m2: null,
         poids_unitaire_kg: poidsU,
         poids_total_kg: poidsU,
-        chantier_origine: _labelChantier(chantierDest) || chantierDest,
+        chantier_origine: chantierDest,
         lieu_stockage: tole.lieu_stockage,
         disponibilite: 'disponible',
         chantier_affectation: null,
@@ -3269,7 +3298,7 @@ const Stock = (() => {
         ajoute_par: operateur || 'inconnu',
         valide_par: operateur,
         date_validation: _dateAujourdhui(),
-        commentaire: `Chute issue de ${_sortieToleId} — sortie chantier ${_labelChantier(chantierDest) || chantierDest}`
+        commentaire: `Chute issue de ${_sortieToleId} — sortie chantier ${chantierDest}`
       };
       await _persisterElement(chuteObj);
     }
