@@ -1564,22 +1564,50 @@ const Stock = (() => {
 
     // ── Contenu onglet Bilan chantiers ────────────────────────────
     const _contenuBilan = () => {
-      const profils  = barres.filter(b => b.categorie === 'profil');
-      const affectes = profils.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation);
-      const archives = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation);
+      // ── Sources de données ────────────────────────────────────────
+      const profils   = barres.filter(b => b.categorie === 'profil');
+      const pAff      = profils.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation);
+      const pArc      = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation);
+
+      const toles     = barres.filter(b => b.categorie === 'tole');
+      const tAff      = toles.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_origine);
+      const tArc      = toles.filter(b => b.statut === 'archivee' && b.chantier_origine);
+
+      const _surfTole = b => _surfaceTole(b) * (b.quantite || 1);
+      const _poidsTole = b => b.poids_total_kg || 0;
+
+      // Tous les chantiers présents (union profils + tôles)
+      const tousChantiers = [...new Set([
+        ...pAff.map(b => b.chantier_affectation),
+        ...pArc.map(b => b.chantier_affectation),
+        ...tAff.map(b => b.chantier_origine),
+        ...tArc.map(b => b.chantier_origine),
+      ])].sort((a, b) => {
+        const ca = _chantiers.find(c => c.nom === a);
+        const cb = _chantiers.find(c => c.nom === b);
+        return (ca?.numero_affaire || a).localeCompare(cb?.numero_affaire || b, 'fr', { numeric: true });
+      });
 
       if (_bilanChantier) {
         // ── Vue détail d'un chantier ──────────────────────────────
-        const chAff = affectes.filter(b => b.chantier_affectation === _bilanChantier);
-        const chArc = archives.filter(b => b.chantier_affectation === _bilanChantier);
-        const mlAff   = chAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
-        const mlArc   = chArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
-        const poidsAff = chAff.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
-        const poidsArc = chArc.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const chPAff = pAff.filter(b => b.chantier_affectation === _bilanChantier);
+        const chPArc = pArc.filter(b => b.chantier_affectation === _bilanChantier);
+        const chTAff = tAff.filter(b => b.chantier_origine === _bilanChantier);
+        const chTArc = tArc.filter(b => b.chantier_origine === _bilanChantier);
 
-        // Grouper par type → désignation
+        const mlAff    = chPAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const mlArc    = chPArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const surfAff  = chTAff.reduce((s, b) => s + _surfTole(b), 0);
+        const surfArc  = chTArc.reduce((s, b) => s + _surfTole(b), 0);
+        const poidsP   = [...chPAff, ...chPArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const poidsT   = [...chTAff, ...chTArc].reduce((s, b) => s + _poidsTole(b), 0);
+
+        const chObj = _chantiers.find(c => c.nom === _bilanChantier);
+        const titre = chObj ? [chObj.numero_affaire, chObj.ville, chObj.nom].filter(Boolean).join(' — ') : _bilanChantier;
+
+        // ── Tableau profilés (type → désignation) ─────────────────
         const parType = {};
-        const acc = (list, sfx) => list.forEach(b => {
+        const accP = (list, sfx) => list.forEach(b => {
           const t = b.section_type || '?', d = b.designation || '?';
           if (!parType[t]) parType[t] = {};
           if (!parType[t][d]) parType[t][d] = { nbAff:0, mlAff:0, poidsAff:0, nbArc:0, mlArc:0, poidsArc:0 };
@@ -1587,106 +1615,132 @@ const Stock = (() => {
           parType[t][d][`ml${sfx}`]    += b.longueur_m || 0;
           parType[t][d][`poids${sfx}`] += _poidsEffectifProfil(b);
         });
-        acc(chAff, 'Aff'); acc(chArc, 'Arc');
+        accP(chPAff, 'Aff'); accP(chPArc, 'Arc');
 
-        const chObj = _chantiers.find(c => c.nom === _bilanChantier);
-        const titre = chObj ? [chObj.numero_affaire, chObj.ville, chObj.nom].filter(Boolean).join(' — ') : _bilanChantier;
-
-        const rows = Object.entries(parType).sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([type, desigs]) => {
+        const profilRows = Object.entries(parType).sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([type, desigs]) => {
           const desigEntries = Object.entries(desigs).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
           const tot = desigEntries.reduce((a, [, d]) => {
             a.nb += d.nbAff + d.nbArc; a.ml += d.mlAff + d.mlArc; a.poids += d.poidsAff + d.poidsArc; return a;
           }, { nb: 0, ml: 0, poids: 0 });
-          const typeRow = `<tr class="bilan-type-row">
-            <td colspan="7">
-              <span class="syn-type-chip">${_e(type)}</span>
-              <span class="bilan-type-meta">${tot.nb} barre${tot.nb > 1 ? 's' : ''} &nbsp;·&nbsp; ${fmt(tot.ml)} m &nbsp;·&nbsp; ${fmtT(tot.poids)}</span>
-            </td>
-          </tr>`;
-          const dRows = desigEntries.map(([desig, d]) => `<tr>
-            <td class="bilan-desig-cell"><span class="bilan-indent">└</span>${_e(desig)}</td>
+          return `<tr class="bilan-type-row">
+              <td colspan="7"><span class="syn-type-chip">${_e(type)}</span>
+                <span class="bilan-type-meta">${tot.nb} barre${tot.nb > 1 ? 's' : ''} &nbsp;·&nbsp; ${fmt(tot.ml)} m &nbsp;·&nbsp; ${fmtT(tot.poids)}</span>
+              </td></tr>` +
+            desigEntries.map(([desig, d]) => `<tr>
+              <td class="bilan-desig-cell"><span class="bilan-indent">└</span>${_e(desig)}</td>
+              <td class="r">${d.nbAff  || '<span class=bilan-nil>—</span>'}</td>
+              <td class="r">${d.mlAff  > 0 ? fmt(d.mlAff)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
+              <td class="r">${d.nbArc  || '<span class=bilan-nil>—</span>'}</td>
+              <td class="r">${d.mlArc  > 0 ? fmt(d.mlArc)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
+              <td class="r"><strong>${fmt(d.mlAff + d.mlArc)} m</strong></td>
+              <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
+            </tr>`).join('');
+        }).join('');
+
+        // ── Tableau tôles (épaisseur → type_tole) ─────────────────
+        const parEp = {};
+        const accT = (list, sfx) => list.forEach(b => {
+          const ep = b.epaisseur_mm ?? '?', ty = b.type_tole || '?';
+          const k  = `${ep}__${ty}`;
+          if (!parEp[k]) parEp[k] = { ep, ty, nbAff:0, surfAff:0, poidsAff:0, nbArc:0, surfArc:0, poidsArc:0 };
+          parEp[k][`nb${sfx}`]++;
+          parEp[k][`surf${sfx}`]  += _surfTole(b);
+          parEp[k][`poids${sfx}`] += _poidsTole(b);
+        });
+        accT(chTAff, 'Aff'); accT(chTArc, 'Arc');
+
+        const toleRows = Object.values(parEp)
+          .sort((a, b) => (a.ep - b.ep) || (a.ty).localeCompare(b.ty, 'fr'))
+          .map(d => `<tr>
+            <td><strong>${_e(String(d.ep))} mm</strong> &nbsp;${_badgeTypeTole(d.ty)}</td>
             <td class="r">${d.nbAff  || '<span class=bilan-nil>—</span>'}</td>
-            <td class="r">${d.mlAff  > 0 ? fmt(d.mlAff)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
+            <td class="r">${d.surfAff  > 0 ? fmt(d.surfAff)  + ' m²' : '<span class=bilan-nil>—</span>'}</td>
             <td class="r">${d.nbArc  || '<span class=bilan-nil>—</span>'}</td>
-            <td class="r">${d.mlArc  > 0 ? fmt(d.mlArc)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
-            <td class="r"><strong>${fmt(d.mlAff + d.mlArc)} m</strong></td>
+            <td class="r">${d.surfArc  > 0 ? fmt(d.surfArc)  + ' m²' : '<span class=bilan-nil>—</span>'}</td>
+            <td class="r"><strong>${fmt(d.surfAff + d.surfArc)} m²</strong></td>
             <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
           </tr>`).join('');
-          return typeRow + dRows;
-        }).join('');
+
+        const hasP = chPAff.length + chPArc.length > 0;
+        const hasT = chTAff.length + chTArc.length > 0;
 
         return `
           <div class="bilan-retour"><span class="syn-lien" data-syn-action="retour-bilan">← Tous les chantiers</span></div>
           <div class="syn-kpi k-vert syn-kpi-table" style="margin-bottom:16px">
             <div class="bilan-titre-ch">${_e(titre)}</div>
             <table class="syn-kpi-inner">
-              <thead><tr><th></th><th>Barres</th><th>Métrage</th><th>Poids</th></tr></thead>
+              <thead><tr><th></th><th>Qté</th><th>Métrage / Surface</th><th>Poids</th></tr></thead>
               <tbody>
-                <tr>
-                  <td><span class="syn-dot s-rouge"></span> Affecté (en cours)</td>
-                  <td><strong>${chAff.length}</strong></td><td>${fmt(mlAff)} m</td><td>${fmtT(poidsAff)}</td>
+                ${hasP ? `<tr>
+                  <td>Profilés affectés</td>
+                  <td><strong>${chPAff.length}</strong></td><td>${fmt(mlAff)} m</td><td>${fmtT(poidsP * mlAff / (mlAff + mlArc || 1))}</td>
                 </tr>
                 <tr>
-                  <td><span class="syn-dot" style="background:#888"></span> Archivé / consommé</td>
-                  <td><strong>${chArc.length}</strong></td><td>${fmt(mlArc)} m</td><td>${fmtT(poidsArc)}</td>
+                  <td>Profilés archivés</td>
+                  <td><strong>${chPArc.length}</strong></td><td>${fmt(mlArc)} m</td><td></td>
+                </tr>` : ''}
+                ${hasT ? `<tr>
+                  <td>Tôles affectées</td>
+                  <td><strong>${chTAff.length}</strong></td><td>${fmt(surfAff)} m²</td><td></td>
                 </tr>
+                <tr>
+                  <td>Tôles archivées</td>
+                  <td><strong>${chTArc.length}</strong></td><td>${fmt(surfArc)} m²</td><td></td>
+                </tr>` : ''}
                 <tr class="syn-kpi-inner-total">
-                  <td>Total engagé</td>
-                  <td><strong>${chAff.length + chArc.length}</strong></td>
-                  <td>${fmt(mlAff + mlArc)} m</td><td>${fmtT(poidsAff + poidsArc)}</td>
+                  <td>Poids total engagé</td>
+                  <td><strong>${chPAff.length + chPArc.length + chTAff.length + chTArc.length}</strong></td>
+                  <td></td><td>${fmtT(poidsP + poidsT)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
+          ${hasP ? `
+          <div class="syn-section-titre">Profilés</div>
+          <div class="syn-card" style="padding:0;overflow:hidden;margin-bottom:12px">
+            <table class="syn-table">
+              <thead><tr><th>Désignation</th><th class="r">Aff.</th><th class="r">ML aff.</th><th class="r">Arch.</th><th class="r">ML arch.</th><th class="r">Total ML</th><th class="r">Poids</th></tr></thead>
+              <tbody>${profilRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
+            </table>
+          </div>` : ''}
+          ${hasT ? `
+          <div class="syn-section-titre">Tôles</div>
           <div class="syn-card" style="padding:0;overflow:hidden">
             <table class="syn-table">
-              <thead>
-                <tr><th>Désignation</th><th class="r">Aff.</th><th class="r">ML aff.</th><th class="r">Arch.</th><th class="r">ML arch.</th><th class="r">Total ML</th><th class="r">Poids</th></tr>
-              </thead>
-              <tbody>
-                ${rows || '<tr><td colspan="7" class="bilan-vide">Aucun profilé pour ce chantier</td></tr>'}
-              </tbody>
+              <thead><tr><th>Épaisseur / Type</th><th class="r">Aff.</th><th class="r">m² aff.</th><th class="r">Arch.</th><th class="r">m² arch.</th><th class="r">Total m²</th><th class="r">Poids</th></tr></thead>
+              <tbody>${toleRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
             </table>
-          </div>`;
+          </div>` : ''}`;
       }
 
       // ── Vue d'ensemble tous chantiers ─────────────────────────────
-      const tousChantiers = [...new Set([
-        ...affectes.map(b => b.chantier_affectation),
-        ...archives.map(b => b.chantier_affectation),
-      ])].sort((a, b) => {
-        const ca = _chantiers.find(c => c.nom === a);
-        const cb = _chantiers.find(c => c.nom === b);
-        return (ca?.numero_affaire || a).localeCompare(cb?.numero_affaire || b, 'fr', { numeric: true });
-      });
-
       const rows = tousChantiers.map(ch => {
-        const chAff  = affectes.filter(b => b.chantier_affectation === ch);
-        const chArc  = archives.filter(b => b.chantier_affectation === ch);
-        const mlAff  = chAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
-        const mlArc  = chArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
-        const poids  = [...chAff, ...chArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0);
-        const chObj  = _chantiers.find(c => c.nom === ch);
-        const meta   = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
+        const chPa = pAff.filter(b => b.chantier_affectation === ch);
+        const chPr = pArc.filter(b => b.chantier_affectation === ch);
+        const chTa = tAff.filter(b => b.chantier_origine === ch);
+        const chTr = tArc.filter(b => b.chantier_origine === ch);
+        const mlTot   = [...chPa, ...chPr].reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const surfTot = [...chTa, ...chTr].reduce((s, b) => s + _surfTole(b), 0);
+        const poids   = [...chPa, ...chPr].reduce((s, b) => s + _poidsEffectifProfil(b), 0)
+                      + [...chTa, ...chTr].reduce((s, b) => s + _poidsTole(b), 0);
+        const chObj = _chantiers.find(c => c.nom === ch);
+        const meta  = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
         return `<tr class="bilan-ch-row" data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail">
           <td>${meta ? `<span class="bilan-meta">${_e(meta)}</span><br>` : ''}<strong>${_e(ch)}</strong></td>
-          <td class="r">${chAff.length ? `<span class="chip-dispo chip-affecte">${chAff.length}</span>` : '<span class=bilan-nil>—</span>'}</td>
-          <td class="r">${mlAff > 0 ? fmt(mlAff) + ' m' : '<span class=bilan-nil>—</span>'}</td>
-          <td class="r">${chArc.length ? `<span class="bilan-arc">${chArc.length}</span>` : '<span class=bilan-nil>—</span>'}</td>
-          <td class="r">${mlArc > 0 ? fmt(mlArc) + ' m' : '<span class=bilan-nil>—</span>'}</td>
-          <td class="r"><strong>${fmt(mlAff + mlArc)} m</strong></td>
+          <td class="r">${mlTot   > 0 ? fmt(mlTot)   + ' m'  : '<span class=bilan-nil>—</span>'}</td>
+          <td class="r">${surfTot > 0 ? fmt(surfTot) + ' m²' : '<span class=bilan-nil>—</span>'}</td>
           <td class="r bilan-poids">${fmtT(poids)}</td>
         </tr>`;
       }).join('');
 
-      const totMlAff = affectes.reduce((s, b) => s + (b.longueur_m || 0), 0);
-      const totMlArc = archives.reduce((s, b) => s + (b.longueur_m || 0), 0);
-      const totPoids = [...affectes, ...archives].reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const totMl   = [...pAff, ...pArc].reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const totSurf = [...tAff, ...tArc].reduce((s, b) => s + _surfTole(b), 0);
+      const totPoids = [...pAff, ...pArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0)
+                     + [...tAff, ...tArc].reduce((s, b) => s + _poidsTole(b), 0);
       const totalRow = tousChantiers.length > 1 ? `<tr class="syn-total">
         <td>Total (${tousChantiers.length} chantier${tousChantiers.length > 1 ? 's' : ''})</td>
-        <td class="r">${affectes.length}</td><td class="r">${fmt(totMlAff)} m</td>
-        <td class="r">${archives.length}</td><td class="r">${fmt(totMlArc)} m</td>
-        <td class="r"><strong>${fmt(totMlAff + totMlArc)} m</strong></td>
+        <td class="r">${fmt(totMl)} m</td>
+        <td class="r">${fmt(totSurf)} m²</td>
         <td class="r bilan-poids">${fmtT(totPoids)}</td>
       </tr>` : '';
 
@@ -1694,16 +1748,11 @@ const Stock = (() => {
         <div class="syn-card" style="padding:0;overflow:hidden">
           <table class="syn-table">
             <thead>
-              <tr class="syn-table-title-row"><th colspan="7">Consommation profilés par chantier</th></tr>
-              <tr>
-                <th>Chantier</th>
-                <th class="r">Barres aff.</th><th class="r">ML affecté</th>
-                <th class="r">Barres arch.</th><th class="r">ML archivé</th>
-                <th class="r">Total engagé</th><th class="r">Poids</th>
-              </tr>
+              <tr class="syn-table-title-row"><th colspan="4">Consommation par chantier</th></tr>
+              <tr><th>Chantier</th><th class="r">Profilés (ML)</th><th class="r">Tôles (m²)</th><th class="r">Poids</th></tr>
             </thead>
             <tbody>
-              ${rows || '<tr><td colspan="7" class="bilan-vide">Aucun profilé affecté ou archivé</td></tr>'}
+              ${rows || '<tr><td colspan="4" class="bilan-vide">Aucun profilé ou tôle affecté ou archivé</td></tr>'}
               ${totalRow}
             </tbody>
           </table>
