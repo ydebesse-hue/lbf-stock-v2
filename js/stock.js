@@ -1159,6 +1159,7 @@ const Stock = (() => {
       }
     }
 
+    h += ` <button class="btn-historique" onclick="Stock.ouvrirHistoriqueTole('${_e(t.id)}')" title="Historique">📋</button>`;
     return h;
   }
 
@@ -3138,6 +3139,7 @@ const Stock = (() => {
     };
 
     const enLigne = await _persisterElement(tole);
+    await _enregistrerHistoriqueTole(nouvelleId, 'ENTREE', null, qty, chantier || null, session?.identifiant || null, commentaire || null, lieu || null);
     _fermerModale('m-ajout-tole');
     _peuplerFiltres();
     _filtrer();
@@ -3234,6 +3236,8 @@ const Stock = (() => {
       } catch(e) { /* hors ligne */ }
       const b = _data.barres.find(x => x.id === _sortieToleId);
       if (b) { b.quantite = 0; b.statut = 'archivee'; b.chantier_affectation = chantierDest; }
+      await _enregistrerHistoriqueTole(_sortieToleId, 'SORTIE',   tole.quantite, qtySortie,   chantierDest, operateur, null, tole.lieu_stockage || null);
+      await _enregistrerHistoriqueTole(_sortieToleId, 'ARCHIVAGE', qtySortie,    0,            chantierDest, operateur, null, tole.lieu_stockage || null);
     } else {
       const poidsT = Math.round(tole.poids_unitaire_kg * nouvelleQty * 10) / 10;
       try {
@@ -3270,6 +3274,7 @@ const Stock = (() => {
         commentaire: `Sortie ${qtySortie} pièce${qtySortie > 1 ? 's' : ''} → chantier ${chantierDest} (depuis ${_sortieToleId})`
       };
       await _persisterElement(sortieObj);
+      await _enregistrerHistoriqueTole(_sortieToleId, 'SORTIE', tole.quantite, nouvelleQty, chantierDest, operateur, null, tole.lieu_stockage || null);
     }
 
     // 2 — Créer la chute si demandée
@@ -3736,6 +3741,7 @@ const Stock = (() => {
       };
 
       _enLigneModif = await _persisterElement(modif);
+      await _enregistrerHistoriqueTole(id, 'MODIFICATION', original.quantite, qty, modif.chantier_origine || null, session?.identifiant || null, commentaire || null, lieu || null);
       _majAlerteSeuil();
     }
 
@@ -4208,7 +4214,7 @@ const Stock = (() => {
 
     const enLigne = await _persisterElement(valide);
 
-    // Enregistrer la validation dans l'historique (profilés uniquement)
+    // Enregistrer la validation dans l'historique
     if (el.categorie === 'profil') {
       await _enregistrerHistorique(
         el.id, 'VALIDATION',
@@ -4219,6 +4225,8 @@ const Stock = (() => {
         null,
         el.lieu_stockage || null
       );
+    } else if (el.categorie === 'tole') {
+      await _enregistrerHistoriqueTole(el.id, 'VALIDATION', null, el.quantite, el.chantier_origine || null, null, session?.identifiant || null, el.lieu_stockage || null);
     }
 
     _fermerModale('m-valider-stock');
@@ -4421,6 +4429,92 @@ const Stock = (() => {
   }
 
   /**
+   * Enregistre une entrée historique pour une tôle.
+   * Réutilise lbf_barres_historique : longueur_avant/après stocke la quantité.
+   */
+  async function _enregistrerHistoriqueTole(toleId, typeOperation, qtyAvant, qtyApres, chantier, operateur, commentaire, lieu = null) {
+    if (!toleId || !typeOperation) return;
+    try {
+      await window.SB.insererHistorique({
+        barre_id:         toleId,
+        type_operation:   typeOperation,
+        longueur_avant_m: qtyAvant  ?? null,
+        longueur_apres_m: qtyApres  ?? null,
+        chantier:         chantier  || null,
+        operateur:        operateur || null,
+        valide_par:       commentaire || null,
+        commentaire:      commentaire || null,
+        lieu:             lieu       || null,
+      });
+    } catch(e) {
+      console.warn('[Stock] Impossible d\'enregistrer l\'historique tôle :', e);
+    }
+  }
+
+  /**
+   * Ouvre la modale d'historique pour une tôle.
+   */
+  async function ouvrirHistoriqueTole(id) {
+    const tole = _parId(id);
+    const titreEl = document.getElementById('hist-titre');
+    if (titreEl) {
+      titreEl.textContent = tole
+        ? `Historique — ${id} · ${tole.epaisseur_mm} mm ${_LABEL_TYPE_TOLE[tole.type_tole] || tole.type_tole || ''} ${tole.largeur_mm}×${tole.longueur_mm} mm`
+        : `Historique — ${id}`;
+    }
+    const contenu = document.getElementById('hist-contenu');
+    if (contenu) contenu.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Chargement…</div>';
+    _ouvrirModale('m-historique-barre');
+    try {
+      const lignes = await window.SB.lireHistoriqueParBarre(id);
+      if (contenu) contenu.innerHTML = _htmlTableauHistoriqueTole(lignes);
+    } catch(e) {
+      console.error('[Stock] Erreur chargement historique tôle :', e);
+      if (contenu) contenu.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rouge)">Impossible de charger l\'historique.</div>';
+    }
+  }
+
+  /**
+   * Génère le HTML du tableau historique d'une tôle.
+   * longueur_avant/après = quantité avant/après dans ce contexte.
+   */
+  function _htmlTableauHistoriqueTole(lignes) {
+    if (!lignes || !lignes.length) {
+      return '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Aucune entrée dans l\'historique.</div>';
+    }
+    const BADGES = {
+      ENTREE:       'badge-op-entree',
+      SORTIE:       'badge-op-sortie',
+      ARCHIVAGE:    'badge-op-archivage',
+      MODIFICATION: 'badge-op-modification',
+      VALIDATION:   'badge-op-validation',
+    };
+    let h = `<table class="hist-table">
+      <thead><tr>
+        <th>Date</th><th>Opération</th><th>Qté avant</th><th>Qté après</th>
+        <th>Lieu</th><th>Chantier</th><th>Opérateur</th>
+      </tr></thead><tbody>`;
+    lignes.forEach(l => {
+      const date  = l.date_operation
+        ? new Date(l.date_operation).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+        : '—';
+      const cls   = BADGES[l.type_operation] || '';
+      const avant = l.longueur_avant_m != null ? parseFloat(l.longueur_avant_m) : null;
+      const apres = l.longueur_apres_m != null ? parseFloat(l.longueur_apres_m) : null;
+      h += `<tr>
+        <td style="white-space:nowrap">${_e(date)}</td>
+        <td><span class="badge-operation ${cls}">${_e(l.type_operation)}</span></td>
+        <td>${avant != null ? avant : '—'}</td>
+        <td>${apres != null ? apres : '—'}</td>
+        <td>${_e(l.lieu || '—')}</td>
+        <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
+        <td>${_e(l.operateur || '—')}</td>
+      </tr>`;
+    });
+    return h + '</tbody></table>';
+  }
+
+  /**
    * Ouvre la modale d'historique pour une barre donnée et charge les données.
    * Accessible depuis le tableau (bouton 📋) et l'onglet Archivées.
    * @param {string} id — ex. "BAR-0001"
@@ -4474,6 +4568,7 @@ const Stock = (() => {
       ENTREE:       'badge-op-entree',
       AFFECTATION:  'badge-op-affectation',
       RETOUR:       'badge-op-retour',
+      SORTIE:       'badge-op-sortie',
       ARCHIVAGE:    'badge-op-archivage',
       VALIDATION:   'badge-op-validation',
       MODIFICATION: 'badge-op-modification',
@@ -6565,6 +6660,7 @@ const Stock = (() => {
     refuserElement,
     getSelection,
     ouvrirHistoriqueBarre,
+    ouvrirHistoriqueTole,
     ouvrirSuppressionDefinitive: _ouvrirConfirmationSuppressionDefinitive,
     ouvrirAdminStockage,
     ouvrirAdminChantiers,
