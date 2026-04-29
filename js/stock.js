@@ -3453,7 +3453,15 @@ const Stock = (() => {
       } else if (field === 'lieu') {
         patch = { lieu_stockage: rawVal || original.lieu_stockage };
       } else if (field === 'dispo') {
-        patch = { disponibilite: rawVal };
+        if (rawVal === 'affecte') {
+          // Chantier requis — ouvrir la modale complète
+          _filtrer();
+          Stock.ouvrirModification(id);
+          _notif('Sélectionnez le chantier d\'affectation', 'info');
+          return;
+        }
+        // Passage à disponible : effacer le chantier d'affectation
+        patch = { disponibilite: rawVal, chantier_affectation: null };
       } else if (field === 'chantier') {
         patch = { chantier_affectation: rawVal || null };
       } else if (field === 'commentaire') {
@@ -3649,11 +3657,12 @@ const Stock = (() => {
       const longueur    = parseFloat(m.querySelector('#mod-longueur')?.value);
       const lieu        = _lireLieu(m.querySelector('#mod-lieu'));
       const dispo       = m.querySelector('#mod-dispo')?.value || 'disponible';
-      const affectation = m.querySelector('#mod-affectation')?.value?.trim() || null;
+      const affectation = dispo === 'affecte' ? (m.querySelector('#mod-affectation')?.value?.trim() || null) : null;
       const commentaire = m.querySelector('#mod-commentaire')?.value?.trim() || '';
 
       // La longueur 0 est autorisée (déclenchera un archivage)
       if (isNaN(longueur) || longueur < 0) return _signalerErreur(m, '#mod-longueur', 'La longueur est obligatoire');
+      if (dispo === 'affecte' && !affectation) return _signalerErreur(m, '#mod-affectation', 'Le chantier d\'affectation est obligatoire');
 
       const poidsml    = parseFloat(m.dataset.poidsml) || original.poids_ml || 0;
       const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : original.poids_barre_kg;
