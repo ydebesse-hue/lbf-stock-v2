@@ -4113,7 +4113,7 @@ ${hasT ? `
         barre.id, 'SORTIE',
         barre.longueur_m, restante,
         chantier, operateur, null,
-        `Utilisé ${utilisee.toFixed(2)} m — chute ${consId}`,
+        `Utilisé ${utilisee.toFixed(2)} m → portion archivée sous ${consId}`,
         barre.lieu_stockage || null
       );
       await _enregistrerHistorique(
