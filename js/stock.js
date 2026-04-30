@@ -4235,9 +4235,9 @@ ${hasT ? `
       const b = _data.barres.find(x => x.id === _sortieToleId);
       if (b) { b.quantite = nouvelleQty; b.poids_total_kg = poidsT; }
 
-      // Créer un enregistrement archivé représentant la quantité consommée
+      // Créer un enregistrement archivé représentant la quantité consommée (TOL-XXXX-1, -2, ...)
       const poidsS   = Math.round(tole.poids_unitaire_kg * qtySortie * 10) / 10;
-      const sortieId = _genererIdTole();
+      const sortieId = _genererIdPortion(tole.id);
       const sortieObj = {
         id: sortieId,
         categorie: 'tole',
@@ -4260,7 +4260,7 @@ ${hasT ? `
         ajoute_par: tole.ajoute_par || operateur || 'inconnu',
         valide_par: operateur,
         date_validation: _dateAujourdhui(),
-        commentaire: `Sortie ${qtySortie} pièce${qtySortie > 1 ? 's' : ''} → chantier ${chantierDest} (depuis ${_sortieToleId})`
+        commentaire: `${qtySortie} pièce${qtySortie > 1 ? 's' : ''} consommée${qtySortie > 1 ? 's' : ''} → chantier ${chantierDest} (issu de ${_sortieToleId})`
       };
       await _persisterElement(sortieObj);
       await _enregistrerHistoriqueTole(_sortieToleId, 'SORTIE', tole.quantite, nouvelleQty, chantierDest, operateur, null, tole.lieu_stockage || null);
