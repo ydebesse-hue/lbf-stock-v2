@@ -456,6 +456,17 @@ const Stock = (() => {
     return `BAR-${String(max + 1).padStart(4, '0')}`;
   }
 
+  // Génère BAR-XXXX-1, BAR-XXXX-2, ... pour les portions consommées issues de BAR-XXXX
+  function _genererIdPortion(barreId) {
+    const prefix = barreId + '-';
+    const suffixes = _data.barres
+      .filter(b => b.id && b.id.startsWith(prefix))
+      .map(b => parseInt(b.id.slice(prefix.length), 10))
+      .filter(n => !isNaN(n));
+    const next = suffixes.length ? Math.max(...suffixes) + 1 : 1;
+    return `${barreId}-${next}`;
+  }
+
   /**
    * Génère un nouvel ID pour une tôle (TOL-XXXX)
    * @returns {string}
@@ -4079,8 +4090,8 @@ ${hasT ? `
         barre.lieu_stockage || null
       );
     } else {
-      // Consommation partielle — générer l'ID AVANT de persister (évite collision)
-      const consId = _genererIdBarre();
+      // Consommation partielle — suffixe incrémental sur l'ID d'origine (BAR-0042-1, -2, ...)
+      const consId = _genererIdPortion(barre.id);
 
       // La barre originale devient la chute
       await _persisterElement({
