@@ -1742,6 +1742,9 @@ const Stock = (() => {
         const chObj = _chantiers.find(c => c.nom === ch);
         const meta  = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
         return `<tr class="bilan-ch-row" data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail">
+          <td onclick="event.stopPropagation()" style="width:30px;text-align:center;padding:4px 6px">
+            <input type="checkbox" class="bilan-ch-check" data-ch="${_e(ch)}">
+          </td>
           <td>${meta ? `<span class="bilan-meta">${_e(meta)}</span><br>` : ''}<strong>${_e(ch)}</strong></td>
           <td class="r">${mlTot   > 0 ? fmt(mlTot)   + ' m'  : '<span class=bilan-nil>—</span>'}</td>
           <td class="r">${surfTot > 0 ? fmt(surfTot) + ' m²' : '<span class=bilan-nil>—</span>'}</td>
@@ -1754,6 +1757,7 @@ const Stock = (() => {
       const totPoids = [...pAff, ...pArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0)
                      + [...tAff, ...tArc].reduce((s, b) => s + _poidsTole(b), 0);
       const totalRow = tousChantiers.length > 1 ? `<tr class="syn-total">
+        <td></td>
         <td>Total (${tousChantiers.length} chantier${tousChantiers.length > 1 ? 's' : ''})</td>
         <td class="r">${fmt(totMl)} m</td>
         <td class="r">${fmt(totSurf)} m²</td>
@@ -1764,11 +1768,25 @@ const Stock = (() => {
         <div class="syn-card" style="padding:0;overflow:hidden">
           <table class="syn-table">
             <thead>
-              <tr class="syn-table-title-row"><th colspan="4">Consommation par chantier</th></tr>
-              <tr><th>Chantier</th><th class="r">Profilés (ML)</th><th class="r">Tôles (m²)</th><th class="r">Poids</th></tr>
+              <tr class="syn-table-title-row">
+                <th colspan="5">
+                  Consommation par chantier
+                  <span class="syn-scope-btn" data-syn-action="print-bilan-selection"
+                        title="Imprimer tous les chantiers ou la sélection cochée">📄 PDF</span>
+                </th>
+              </tr>
+              <tr>
+                <th style="width:30px;text-align:center;padding:4px">
+                  <input type="checkbox" id="bilan-check-all" title="Tout sélectionner / désélectionner">
+                </th>
+                <th>Chantier</th>
+                <th class="r">Profilés (ML)</th>
+                <th class="r">Tôles (m²)</th>
+                <th class="r">Poids</th>
+              </tr>
             </thead>
             <tbody>
-              ${rows || '<tr><td colspan="4" class="bilan-vide">Aucun profilé ou tôle affecté ou archivé</td></tr>'}
+              ${rows || '<tr><td colspan="5" class="bilan-vide">Aucun profilé ou tôle affecté ou archivé</td></tr>'}
               ${totalRow}
             </tbody>
           </table>
@@ -1994,6 +2012,211 @@ const Stock = (() => {
   /* ──────────────────────────────────────────────────────────────
      EXPORT PDF BILAN CHANTIER
      ────────────────────────────────────────────────────────────── */
+
+  function _imprimerBilanChantiers(chantiersList) {
+    if (!chantiersList || !chantiersList.length) return;
+
+    const barres  = _data.barres || [];
+    const profils = barres.filter(b => b.categorie === 'profil');
+    const toles   = barres.filter(b => b.categorie === 'tole');
+    const surfTole = b => _surfaceTole(b) * (b.quantite || 1);
+    const poidsTole = b => b.poids_total_kg || 0;
+
+    const f2  = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+    const fP  = v => !v ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + ' t';
+    const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Construire une section de détail par chantier
+    const sections = chantiersList.map((ch, idx) => {
+      const chObj  = _chantiers.find(c => c.nom === ch);
+      const titre  = chObj ? [chObj.numero_affaire, chObj.ville, chObj.nom].filter(Boolean).join(' — ') : ch;
+
+      const pAff = profils.filter(b => b.statut === 'valide'   && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
+      const pArc = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation === ch);
+      const tAff = toles.filter(b   => b.statut === 'valide'   && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
+      const tArc = toles.filter(b   => b.statut === 'archivee' && b.chantier_affectation === ch);
+
+      const mlAff  = pAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const mlArc  = pArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const sAff   = tAff.reduce((s, b) => s + surfTole(b), 0);
+      const sArc   = tArc.reduce((s, b) => s + surfTole(b), 0);
+      const poidsP = [...pAff, ...pArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const poidsT = [...tAff, ...tArc].reduce((s, b) => s + poidsTole(b), 0);
+      const hasP   = pAff.length + pArc.length > 0;
+      const hasT   = tAff.length + tArc.length > 0;
+
+      // Profilés par type → désignation
+      const parType = {};
+      const accP = (list, sfx) => list.forEach(b => {
+        const t = b.section_type || '?', d = b.designation || '?';
+        if (!parType[t]) parType[t] = {};
+        if (!parType[t][d]) parType[t][d] = { nbAff:0, mlAff:0, poidsAff:0, nbArc:0, mlArc:0, poidsArc:0 };
+        parType[t][d][`nb${sfx}`]++;
+        parType[t][d][`ml${sfx}`]    += b.longueur_m || 0;
+        parType[t][d][`poids${sfx}`] += _poidsEffectifProfil(b);
+      });
+      accP(pAff, 'Aff'); accP(pArc, 'Arc');
+
+      const profilRows = Object.entries(parType).sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([type, desigs]) => {
+        const de = Object.entries(desigs).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
+        const tot = de.reduce((a, [, d]) => { a.nb += d.nbAff+d.nbArc; a.ml += d.mlAff+d.mlArc; a.p += d.poidsAff+d.poidsArc; return a; }, {nb:0,ml:0,p:0});
+        return `<tr style="background:#f5f5f5;font-weight:bold">
+            <td colspan="7" style="padding:5px 8px">${_e(type)}
+              <span style="font-weight:normal;color:#888;font-size:10px;margin-left:6px">${tot.nb} barre${tot.nb>1?'s':''} · ${f2(tot.ml)} m · ${fP(tot.p)}</span>
+            </td></tr>` +
+          de.map(([desig, d]) => `<tr>
+            <td style="padding:3px 8px 3px 20px;font-size:11px;color:#555">└ ${_e(desig)}</td>
+            <td style="text-align:right;padding:3px 6px">${d.nbAff||'—'}</td>
+            <td style="text-align:right;padding:3px 6px">${d.mlAff>0?f2(d.mlAff)+' m':'—'}</td>
+            <td style="text-align:right;padding:3px 6px">${d.nbArc||'—'}</td>
+            <td style="text-align:right;padding:3px 6px">${d.mlArc>0?f2(d.mlArc)+' m':'—'}</td>
+            <td style="text-align:right;padding:3px 6px;font-weight:bold">${f2(d.mlAff+d.mlArc)} m</td>
+            <td style="text-align:right;padding:3px 6px;color:#888">${fP(d.poidsAff+d.poidsArc)}</td>
+          </tr>`).join('');
+      }).join('');
+
+      // Tôles par épaisseur / type
+      const parEp = {};
+      const accT = (list, sfx) => list.forEach(b => {
+        const k = `${b.epaisseur_mm}__${b.type_tole||'?'}`;
+        if (!parEp[k]) parEp[k] = { ep: b.epaisseur_mm, ty: b.type_tole||'?', nbAff:0, sAff:0, pAff:0, nbArc:0, sArc:0, pArc:0 };
+        parEp[k][`nb${sfx}`]++;
+        parEp[k][`s${sfx}`] += surfTole(b);
+        parEp[k][`p${sfx}`] += poidsTole(b);
+      });
+      accT(tAff, 'Aff'); accT(tArc, 'Arc');
+
+      const toleRows = Object.values(parEp).sort((a, b) => a.ep - b.ep || a.ty.localeCompare(b.ty,'fr'))
+        .map(d => `<tr>
+          <td style="padding:3px 8px;font-size:11px"><strong>${_e(String(d.ep))} mm</strong> ${_e(d.ty)}</td>
+          <td style="text-align:right;padding:3px 6px">${d.nbAff||'—'}</td>
+          <td style="text-align:right;padding:3px 6px">${d.sAff>0?f2(d.sAff)+' m²':'—'}</td>
+          <td style="text-align:right;padding:3px 6px">${d.nbArc||'—'}</td>
+          <td style="text-align:right;padding:3px 6px">${d.sArc>0?f2(d.sArc)+' m²':'—'}</td>
+          <td style="text-align:right;padding:3px 6px;font-weight:bold">${f2(d.sAff+d.sArc)} m²</td>
+          <td style="text-align:right;padding:3px 6px;color:#888">${fP(d.pAff+d.pArc)}</td>
+        </tr>`).join('');
+
+      const pageBreak = idx > 0 ? 'page-break-before:always;' : '';
+      return `
+        <div style="${pageBreak}padding-top:${idx>0?'16px':'0'}">
+          <h2 style="font-size:14px;font-weight:bold;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px">${_e(titre)}</h2>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px">
+            <thead><tr style="background:#f0f0f0">
+              <th style="padding:4px 8px;text-align:left;border:1px solid #ddd">Catégorie</th>
+              <th style="padding:4px 8px;text-align:right;border:1px solid #ddd">Qté</th>
+              <th style="padding:4px 8px;text-align:right;border:1px solid #ddd">Métrage / Surface</th>
+              <th style="padding:4px 8px;text-align:right;border:1px solid #ddd">Poids</th>
+            </tr></thead>
+            <tbody>
+              ${hasP ? `
+              <tr><td style="padding:3px 8px;border:1px solid #eee">Profilés affectés</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${pAff.length}</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(mlAff)} m</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td></tr>
+              <tr><td style="padding:3px 8px;border:1px solid #eee">Profilés archivés</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${pArc.length}</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(mlArc)} m</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td></tr>
+              ` : ''}
+              ${hasT ? `
+              <tr><td style="padding:3px 8px;border:1px solid #eee">Tôles affectées</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${tAff.length}</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(sAff)} m²</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td></tr>
+              <tr><td style="padding:3px 8px;border:1px solid #eee">Tôles archivées</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${tArc.length}</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(sArc)} m²</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td></tr>
+              ` : ''}
+              <tr style="font-weight:bold;background:#f9f9f9">
+                <td style="padding:4px 8px;border:1px solid #ddd">Poids total engagé</td>
+                <td style="text-align:right;padding:4px 8px;border:1px solid #ddd">${pAff.length+pArc.length+tAff.length+tArc.length}</td>
+                <td style="padding:4px 8px;border:1px solid #ddd"></td>
+                <td style="text-align:right;padding:4px 8px;border:1px solid #ddd">${fP(poidsP+poidsT)}</td>
+              </tr>
+            </tbody>
+          </table>
+          ${hasP ? `
+          <div style="font-size:11px;font-weight:bold;margin:8px 0 4px;color:#444;text-transform:uppercase;letter-spacing:.5px">Profilés</div>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px">
+            <thead><tr style="background:#f0f0f0">
+              <th style="padding:4px 8px;text-align:left;border:1px solid #ddd">Désignation</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Aff.</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">ML aff.</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Arch.</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">ML arch.</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Total ML</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Poids</th>
+            </tr></thead>
+            <tbody>${profilRows||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:6px">—</td></tr>'}</tbody>
+          </table>` : ''}
+          ${hasT ? `
+          <div style="font-size:11px;font-weight:bold;margin:8px 0 4px;color:#444;text-transform:uppercase;letter-spacing:.5px">Tôles</div>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px">
+            <thead><tr style="background:#f0f0f0">
+              <th style="padding:4px 8px;text-align:left;border:1px solid #ddd">Épaisseur / Type</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Aff.</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">m² aff.</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Arch.</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">m² arch.</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Total m²</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Poids</th>
+            </tr></thead>
+            <tbody>${toleRows||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:6px">—</td></tr>'}</tbody>
+          </table>` : ''}
+          ${!hasP && !hasT ? '<p style="color:#aaa;font-style:italic;font-size:11px">Aucune matière enregistrée pour ce chantier.</p>' : ''}
+        </div>`;
+    }).join('<hr style="border:none;border-top:1px solid #ccc;margin:20px 0">');
+
+    // Table de synthèse en tête de document
+    const summaryRows = chantiersList.map(ch => {
+      const chObj = _chantiers.find(c => c.nom === ch);
+      const meta  = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
+      const pA = profils.filter(b => b.statut === 'valide'   && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
+      const pR = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation === ch);
+      const tA = toles.filter(b   => b.statut === 'valide'   && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
+      const tR = toles.filter(b   => b.statut === 'archivee' && b.chantier_affectation === ch);
+      const ml   = [...pA, ...pR].reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const surf = [...tA, ...tR].reduce((s, b) => s + surfTole(b), 0);
+      const p    = [...pA, ...pR].reduce((s, b) => s + _poidsEffectifProfil(b), 0) + [...tA, ...tR].reduce((s, b) => s + poidsTole(b), 0);
+      return `<tr>
+        <td style="padding:4px 8px;border:1px solid #eee">${meta?`<span style="font-size:10px;color:#999">${_e(meta)}</span> `:''}${_e(ch)}</td>
+        <td style="text-align:right;padding:4px 8px;border:1px solid #eee">${ml>0?f2(ml)+' m':'—'}</td>
+        <td style="text-align:right;padding:4px 8px;border:1px solid #eee">${surf>0?f2(surf)+' m²':'—'}</td>
+        <td style="text-align:right;padding:4px 8px;border:1px solid #eee">${fP(p)}</td>
+      </tr>`;
+    }).join('');
+
+    const titre = chantiersList.length === 1
+      ? (() => { const c = _chantiers.find(x => x.nom === chantiersList[0]); return c ? [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ') : chantiersList[0]; })()
+      : `${chantiersList.length} chantiers`;
+
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<title>Bilan chantiers — LBF</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#222;padding:20px 28px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px}
+  @media print{body{padding:10px 16px}@page{margin:1cm}}
+</style></head><body>
+<div class="hdr">
+  <div><div style="font-size:18px;font-weight:bold;letter-spacing:2px">LBF</div>
+       <div style="font-size:10px;color:#888">Bilan de consommation matière</div></div>
+  <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}</div>
+</div>
+
+${chantiersList.length > 1 ? `
+<h2 style="font-size:13px;font-weight:bold;margin:0 0 8px;border-bottom:1px solid #ddd;padding-bottom:3px">Synthèse — ${chantiersList.length} chantiers</h2>
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:11px">
+  <thead><tr style="background:#f0f0f0">
+    <th style="padding:5px 8px;text-align:left;border:1px solid #ddd">Chantier</th>
+    <th style="padding:5px 8px;text-align:right;border:1px solid #ddd">Profilés (ML)</th>
+    <th style="padding:5px 8px;text-align:right;border:1px solid #ddd">Tôles (m²)</th>
+    <th style="padding:5px 8px;text-align:right;border:1px solid #ddd">Poids</th>
+  </tr></thead>
+  <tbody>${summaryRows}</tbody>
+</table>
+<h2 style="font-size:13px;font-weight:bold;margin:0 0 12px;border-bottom:1px solid #ddd;padding-bottom:3px">Détail par chantier</h2>
+` : ''}
+
+${sections}
+<script>window.onload=function(){window.print()}<\/script>
+</body></html>`;
+
+    const win = window.open('', '_blank', 'width=960,height=720');
+    if (win) { win.document.write(html); win.document.close(); }
+    else _notif('Fenêtre bloquée — autorisez les pop-ups', 'alerte');
+  }
+
 
   function _exporterBilanPDF() {
     if (!_bilanChantier) return;
@@ -2346,6 +2569,10 @@ ${hasT ? `
           el.textContent = anyCollapsed ? '▲ Réduire' : '▼ Déployer';
         } else if (action === 'export-bilan-pdf') {
           _exporterBilanPDF();
+        } else if (action === 'print-bilan-selection') {
+          const checked = [...zsyn.querySelectorAll('.bilan-ch-check:checked')].map(cb => cb.dataset.ch);
+          const tous    = [...zsyn.querySelectorAll('.bilan-ch-check')].map(cb => cb.dataset.ch);
+          _imprimerBilanChantiers(checked.length > 0 ? checked : tous);
         } else if (action === 'print-syn-profils') {
           _imprimerSynProfils();
         } else if (action === 'print-syn-toles') {
@@ -2387,14 +2614,27 @@ ${hasT ? `
 
       // Seuils d'alerte tôles — sauvegarde au changement de la valeur
       zsyn.addEventListener('change', e => {
+        // Seuils tôles
         const inp = e.target.closest('.syn-seuil-input');
-        if (!inp) return;
-        const ep = parseFloat(inp.dataset.ep);
-        if (isNaN(ep)) return;
-        _sauvegarderSeuil(ep, inp.value);
-        _majAlerteSeuil();
-        // Rafraîchir la ligne pour mettre à jour la couleur barre + icône état
-        _rendreSynthese();
+        if (inp) {
+          const ep = parseFloat(inp.dataset.ep);
+          if (!isNaN(ep)) { _sauvegarderSeuil(ep, inp.value); _majAlerteSeuil(); _rendreSynthese(); }
+          return;
+        }
+        // Case "Tout sélectionner" du bilan
+        if (e.target.id === 'bilan-check-all') {
+          const checked = e.target.checked;
+          zsyn.querySelectorAll('.bilan-ch-check').forEach(cb => { cb.checked = checked; });
+          return;
+        }
+        // Cases individuelles du bilan → mettre à jour l'état de la case "Tout"
+        if (e.target.classList.contains('bilan-ch-check')) {
+          const all  = zsyn.querySelectorAll('.bilan-ch-check');
+          const n    = [...all].filter(cb => cb.checked).length;
+          const ca   = zsyn.querySelector('#bilan-check-all');
+          if (ca) { ca.checked = n === all.length; ca.indeterminate = n > 0 && n < all.length; }
+          return;
+        }
       });
     }
 
