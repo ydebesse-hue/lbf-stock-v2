@@ -505,6 +505,7 @@
     .btn-detail   { background: #e8e8e8;      color: var(--noir); }
     .btn-modifier { background: var(--vert);  color: white; }
     .btn-demander { background: var(--rouge); color: white; }
+    .btn-utiliser { background: #0277bd;      color: white; }
     .btn-valider  { background: #198754;      color: white; }
     .btn-refuser  { background: #6c757d;      color: white; }
 
@@ -1246,6 +1247,19 @@
       font-size: 13px;
     }
     .btn-historique:hover { background: #e0e0e0; }
+
+    /* ── MODALE CHAMP / LABEL / INPUT (générique) ────────────── */
+    .modale-champ  { margin-bottom: 12px; }
+    .modale-label  { display: block; font-size: 12px; font-weight: 600; color: #444; margin-bottom: 4px; }
+    .modale-input  { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; font-family: Tahoma; }
+    .modale-input:focus { outline: none; border-color: var(--bleu-info); box-shadow: 0 0 0 2px rgba(33,150,243,.15); }
+    .requis        { color: var(--rouge); }
+
+    /* ── MODALE UTILISER BARRE ────────────────────────────────── */
+    .ub-toggle { display: flex; gap: 16px; margin-bottom: 4px; }
+    .ub-toggle-opt { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; }
+    .ub-preview { background: #f5f5f5; border-radius: 4px; padding: 8px 12px; font-size: 13px; color: #555; min-height: 28px; margin-bottom: 4px; }
+    .ub-chute-options { display: flex; flex-direction: column; gap: 8px; }
 
     /* ── RESPONSIVE ───────────────────────────────────────────── */
     @media (max-width: 900px) { .input-recherche { width: 150px; } }
@@ -2734,6 +2748,69 @@
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="fermerM('m-supprimer')">Annuler</button>
         <button class="btn-modale btn-modale-rouge" onclick="confirmerSuppression()">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE — UTILISER UNE BARRE PROFILÉE
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-utiliser-barre" class="modale-bg" role="dialog" aria-modal="true"
+       aria-labelledby="ub-titre">
+    <div class="modale" onclick="event.stopPropagation()">
+      <div class="modale-titre" id="ub-titre">Utiliser la barre</div>
+
+      <!-- Info barre (lecture seule) -->
+      <div id="ub-info" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:12px;"></div>
+
+      <!-- Toggle mode : longueur utilisée / longueur restante -->
+      <div class="modale-champ">
+        <div class="ub-toggle">
+          <label class="ub-toggle-opt">
+            <input type="radio" name="ub-mode" value="utilisee" checked>
+            Longueur utilisée
+          </label>
+          <label class="ub-toggle-opt">
+            <input type="radio" name="ub-mode" value="restante">
+            Longueur restante
+          </label>
+        </div>
+      </div>
+
+      <!-- Saisie longueur -->
+      <div class="modale-champ" style="display:flex;gap:8px;align-items:center">
+        <input type="number" id="ub-longueur" min="0" step="0.01" placeholder="0.00"
+               style="flex:1" class="modale-input">
+        <span style="color:#888">m</span>
+      </div>
+
+      <!-- Aperçu live -->
+      <div id="ub-preview" class="ub-preview"></div>
+
+      <!-- Cas 1 (disponible) : chantier requis -->
+      <div id="ub-zone-chantier" class="modale-champ" style="display:none">
+        <label class="modale-label">Chantier d'utilisation <span class="requis">*</span></label>
+        <div id="ub-chantier-picker"></div>
+      </div>
+
+      <!-- Cas 2 (affectée) : disposition de la chute -->
+      <div id="ub-zone-chute" class="modale-champ" style="display:none">
+        <label class="modale-label">Chute — disposition</label>
+        <div class="ub-chute-options">
+          <label class="ub-toggle-opt">
+            <input type="radio" name="ub-chute" value="chantier" checked>
+            Garder pour le chantier (<span id="ub-chantier-nom"></span>)
+          </label>
+          <label class="ub-toggle-opt">
+            <input type="radio" name="ub-chute" value="dispo">
+            Remettre disponible
+          </label>
+        </div>
+      </div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" id="ub-btn-annuler">Annuler</button>
+        <button class="btn-modale btn-modale-valider" id="ub-btn-valider">Valider</button>
       </div>
     </div>
   </div>

@@ -1128,6 +1128,10 @@ const Stock = (() => {
       } else if (modif) {
         // Gestion / Admin : modifier
         h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${b.id}')" title="Modifier">Modifier</button>`;
+        // Utiliser : barre validée avec longueur > 0
+        if (b.statut === 'valide' && b.longueur_m > 0) {
+          h += ` <button class="btn-ligne btn-utiliser" onclick="Stock.ouvrirUtiliserBarre('${b.id}')" title="Utiliser">Utiliser</button>`;
+        }
       }
     }
 
@@ -2385,6 +2389,23 @@ const Stock = (() => {
       if (btnFermer) btnFermer.addEventListener('click', () => _fermerModale('m-historique-barre'));
     }
 
+    // ── Modale utiliser barre ─────────────────────────────────
+    const mUB = document.getElementById('m-utiliser-barre');
+    if (mUB) {
+      const btnAnnuler = mUB.querySelector('#ub-btn-annuler');
+      const btnValider = mUB.querySelector('#ub-btn-valider');
+      if (btnAnnuler) btnAnnuler.addEventListener('click', () => _fermerModale('m-utiliser-barre'));
+      if (btnValider) btnValider.addEventListener('click', _confirmerUtiliserBarre);
+      // Live preview : longueur input + changement de mode
+      const inpLong = mUB.querySelector('#ub-longueur');
+      if (inpLong) inpLong.addEventListener('input', _majPreviewUtiliserBarre);
+      mUB.querySelectorAll('input[name="ub-mode"]').forEach(r => {
+        r.addEventListener('change', _majPreviewUtiliserBarre);
+      });
+      // Fermeture au clic sur le fond
+      mUB.addEventListener('click', e => { if (e.target === mUB) _fermerModale('m-utiliser-barre'); });
+    }
+
     // ── Modale import CSV ─────────────────────────────────────
     const mImport = document.getElementById('m-import');
     if (mImport) {
@@ -3158,6 +3179,230 @@ const Stock = (() => {
      ────────────────────────────────────────────────────────────── */
 
   let _sortieToleId = null;
+
+  /* ──────────────────────────────────────────────────────────────
+     MODALE UTILISER UNE BARRE PROFILÉE
+     ────────────────────────────────────────────────────────────── */
+
+  let _utiliserBarreId = null;
+
+  function _ouvrirUtiliserBarre(id) {
+    const barre = _parId(id);
+    if (!barre) return;
+    _utiliserBarreId = id;
+
+    const m = document.getElementById('m-utiliser-barre');
+    if (!m) return;
+
+    // Titre
+    const titreEl = m.querySelector('#ub-titre');
+    if (titreEl) {
+      titreEl.textContent = `Utiliser — ${barre.section_type} ${barre.designation} (${barre.id})`;
+    }
+
+    // Info barre (chips lecture seule)
+    const infoEl = m.querySelector('#ub-info');
+    if (infoEl) {
+      const chips = [];
+      chips.push(`<span class="mod-meta-chip"><strong>Longueur :</strong>&nbsp;${barre.longueur_m.toFixed(2)} m</span>`);
+      if (barre.lieu_stockage) chips.push(`<span class="mod-meta-chip"><strong>Lieu :</strong>&nbsp;${_e(barre.lieu_stockage)}</span>`);
+      const dispLabel = barre.disponibilite === 'disponible' ? 'Disponible' : (barre.disponibilite === 'affecte' ? 'Affectée' : _e(barre.disponibilite));
+      chips.push(`<span class="mod-meta-chip"><strong>Statut :</strong>&nbsp;${dispLabel}</span>`);
+      if (barre.disponibilite === 'affecte' && barre.chantier_affectation) {
+        chips.push(`<span class="mod-meta-chip"><strong>Chantier :</strong>&nbsp;${_e(_labelChantier(barre.chantier_affectation))}</span>`);
+      }
+      infoEl.innerHTML = chips.join('');
+    }
+
+    // Réinitialiser le mode et la saisie
+    const radModeUtilisee = m.querySelector('input[name="ub-mode"][value="utilisee"]');
+    if (radModeUtilisee) radModeUtilisee.checked = true;
+    const inpLong = m.querySelector('#ub-longueur');
+    if (inpLong) inpLong.value = '';
+
+    // Afficher/masquer les zones selon la disponibilité
+    const zoneChantier = m.querySelector('#ub-zone-chantier');
+    const zoneChute    = m.querySelector('#ub-zone-chute');
+    if (barre.disponibilite === 'disponible') {
+      if (zoneChantier) zoneChantier.style.display = '';
+      if (zoneChute)    zoneChute.style.display    = 'none';
+      _monterPickerChantier('ub-chantier-picker', 'ub-chantier');
+    } else {
+      if (zoneChantier) zoneChantier.style.display = 'none';
+      if (zoneChute)    zoneChute.style.display    = '';
+      const nomEl = m.querySelector('#ub-chantier-nom');
+      if (nomEl) nomEl.textContent = _labelChantier(barre.chantier_affectation) || barre.chantier_affectation || '';
+      // Réinitialiser la radio chute
+      const radChuteChantier = m.querySelector('input[name="ub-chute"][value="chantier"]');
+      if (radChuteChantier) radChuteChantier.checked = true;
+    }
+
+    // Preview vide initial
+    const previewEl = m.querySelector('#ub-preview');
+    if (previewEl) previewEl.textContent = `Barre actuelle : ${barre.longueur_m.toFixed(2)} m — saisissez une longueur`;
+
+    _ouvrirModale('m-utiliser-barre');
+  }
+
+  function _majPreviewUtiliserBarre() {
+    const m = document.getElementById('m-utiliser-barre');
+    const barre = _utiliserBarreId ? _parId(_utiliserBarreId) : null;
+    const previewEl = m?.querySelector('#ub-preview');
+    if (!m || !barre || !previewEl) return;
+
+    const mode = m.querySelector('input[name="ub-mode"]:checked')?.value || 'utilisee';
+    const raw  = m.querySelector('#ub-longueur')?.value;
+    const val  = parseFloat(raw);
+
+    if (raw === '' || raw === null || raw === undefined || isNaN(val)) {
+      previewEl.textContent = `Barre actuelle : ${barre.longueur_m.toFixed(2)} m — saisissez une longueur`;
+      previewEl.style.color = '#555';
+      return;
+    }
+
+    let utilisee, restante;
+    if (mode === 'utilisee') {
+      utilisee = val;
+      restante = barre.longueur_m - val;
+    } else {
+      restante = val;
+      utilisee = barre.longueur_m - val;
+    }
+
+    if (utilisee <= 0 || restante < 0) {
+      previewEl.textContent = `⚠ Valeur invalide (max ${barre.longueur_m.toFixed(2)} m, min > 0 utilisé)`;
+      previewEl.style.color = 'var(--rouge)';
+    } else if (restante === 0) {
+      previewEl.textContent = `Utilisé : ${utilisee.toFixed(2)} m → Reste : 0 m (barre entièrement consommée — sera archivée)`;
+      previewEl.style.color = '#555';
+    } else {
+      previewEl.textContent = `Utilisé : ${utilisee.toFixed(2)} m → Reste : ${restante.toFixed(2)} m`;
+      previewEl.style.color = '#555';
+    }
+  }
+
+  async function _confirmerUtiliserBarre() {
+    const m = document.getElementById('m-utiliser-barre');
+    const barre = _parId(_utiliserBarreId);
+    if (!m || !barre) return;
+
+    const mode = m.querySelector('input[name="ub-mode"]:checked')?.value || 'utilisee';
+    const val  = parseFloat(m.querySelector('#ub-longueur')?.value);
+
+    if (isNaN(val) || val < 0) return _signalerErreur(m, '#ub-longueur', 'Longueur invalide');
+
+    const utilisee = mode === 'utilisee' ? val : barre.longueur_m - val;
+    const restante = barre.longueur_m - utilisee;
+
+    if (utilisee <= 0) return _signalerErreur(m, '#ub-longueur', 'La longueur utilisée doit être > 0');
+    if (restante < 0)  return _signalerErreur(m, '#ub-longueur', `Longueur max : ${barre.longueur_m} m`);
+
+    const session  = Auth.getSession();
+    const isAdmin  = Auth.hasRight('can_validate');
+    const operateur = session?.identifiant || null;
+
+    let chantier        = null;
+    let chuteDispo      = 'disponible';
+    let chuteAffectation = null;
+
+    if (barre.disponibilite === 'disponible') {
+      chantier = m.querySelector('#ub-chantier')?.value?.trim();
+      if (!chantier) return _signalerErreur(m, '#ub-chantier-picker', 'Le chantier est requis');
+      chuteDispo       = 'disponible';
+      chuteAffectation = null;
+    } else if (barre.disponibilite === 'affecte') {
+      chantier = barre.chantier_affectation;
+      const chuteOpt = m.querySelector('input[name="ub-chute"]:checked')?.value || 'chantier';
+      if (chuteOpt === 'chantier') {
+        chuteDispo       = 'affecte';
+        chuteAffectation = barre.chantier_affectation;
+      } else {
+        chuteDispo       = 'disponible';
+        chuteAffectation = null;
+      }
+    }
+
+    const estArchivage = restante === 0;
+    const poidsml      = barre.poids_ml || 0;
+    const poidsChute   = poidsml > 0 ? Math.round(restante  * poidsml * 10) / 10 : barre.poids_barre_kg;
+    const poidsUti     = poidsml > 0 ? Math.round(utilisee  * poidsml * 10) / 10 : null;
+
+    if (estArchivage) {
+      // Barre entièrement consommée — on archive en place avec le chantier pour le bilan
+      await _persisterElement({
+        ...barre,
+        longueur_m:           utilisee,
+        disponibilite:        'disponible',
+        chantier_affectation: chantier,
+        statut:               'archivee',
+        date_modif:           _dateAujourdhui(),
+        modifie_par:          operateur || 'inconnu',
+      });
+      await _enregistrerHistorique(
+        barre.id, 'ARCHIVAGE',
+        barre.longueur_m, 0,
+        chantier, operateur, null,
+        `Utilisé entièrement ${utilisee.toFixed(2)} m`,
+        barre.lieu_stockage || null
+      );
+    } else {
+      // Consommation partielle — générer l'ID AVANT de persister (évite collision)
+      const consId = _genererIdBarre();
+
+      // La barre originale devient la chute
+      await _persisterElement({
+        ...barre,
+        longueur_m:           restante,
+        poids_barre_kg:       poidsChute,
+        disponibilite:        chuteDispo,
+        chantier_affectation: chuteAffectation,
+        statut:               isAdmin ? 'valide' : 'en_attente',
+        valide_par:           isAdmin ? operateur : null,
+        date_validation:      isAdmin ? _dateAujourdhui() : null,
+        date_modif:           _dateAujourdhui(),
+        modifie_par:          operateur || 'inconnu',
+      });
+
+      // Nouvelle entrée archivée pour la portion consommée (visible dans le bilan)
+      await _persisterElement({
+        ...barre,
+        id:                   consId,
+        longueur_m:           utilisee,
+        poids_barre_kg:       poidsUti,
+        disponibilite:        'disponible',
+        chantier_affectation: chantier,
+        statut:               'archivee',
+        date_modif:           _dateAujourdhui(),
+        modifie_par:          operateur || 'inconnu',
+      });
+
+      await _enregistrerHistorique(
+        barre.id, 'SORTIE',
+        barre.longueur_m, restante,
+        chantier, operateur, null,
+        `Utilisé ${utilisee.toFixed(2)} m — chute ${consId}`,
+        barre.lieu_stockage || null
+      );
+      await _enregistrerHistorique(
+        consId, 'ARCHIVAGE',
+        utilisee, 0,
+        chantier, operateur, null,
+        `Issu de ${barre.id} — ${utilisee.toFixed(2)} m consommés`,
+        barre.lieu_stockage || null
+      );
+    }
+
+    _fermerModale('m-utiliser-barre');
+    _utiliserBarreId = null;
+    _peuplerFiltres();
+    _filtrer();
+    _majAlerteAttente();
+
+    const msg = estArchivage
+      ? `Barre utilisée entièrement — archivée`
+      : `${utilisee.toFixed(2)} m utilisés — chute de ${restante.toFixed(2)} m`;
+    _notif(msg, 'succes');
+  }
 
   function _ouvrirSortieTole(id) {
     const tole = _data?.barres.find(b => b.id === id && b.categorie === 'tole');
@@ -6680,7 +6925,8 @@ const Stock = (() => {
     ouvrirModification,
     ouvrirDemande,
     ouvrirDetailTole,
-    ouvrirSortieTole:  _ouvrirSortieTole,
+    ouvrirSortieTole:      _ouvrirSortieTole,
+    ouvrirUtiliserBarre:   _ouvrirUtiliserBarre,
     validerElement,
     refuserElement,
     getSelection,
@@ -6691,6 +6937,7 @@ const Stock = (() => {
     ouvrirAdminChantiers,
     exporterCSV: _exporterCSV,
     ouvrirImport: _ouvrirImport,
+    ouvrirUtiliserBarre: _ouvrirUtiliserBarre,
   };
 
 })();
