@@ -3131,6 +3131,19 @@ ${hasT ? `
     if (mHist) {
       const btnFermer = mHist.querySelector('.btn-fermer-hist');
       if (btnFermer) btnFermer.addEventListener('click', () => _fermerModale('m-historique-barre'));
+      // Navigation inter-portions : clic sur un badge data-hist-id
+      const contenuHist = document.getElementById('hist-contenu');
+      if (contenuHist) {
+        contenuHist.addEventListener('click', e => {
+          const badge = e.target.closest('[data-hist-id]');
+          if (!badge) return;
+          const targetId = badge.dataset.histId;
+          if (!targetId) return;
+          const barre = _parId(targetId);
+          if (barre && barre.categorie === 'tole') ouvrirHistoriqueTole(targetId);
+          else ouvrirHistoriqueBarre(targetId);
+        });
+      }
     }
 
     // ── Modale utiliser barre ─────────────────────────────────
@@ -5476,12 +5489,22 @@ ${hasT ? `
         ? `Historique — ${id} · ${tole.epaisseur_mm} mm ${_LABEL_TYPE_TOLE[tole.type_tole] || tole.type_tole || ''} ${tole.largeur_mm}×${tole.longueur_mm} mm`
         : `Historique — ${id}`;
     }
+
+    const portionPrefix = id + '-';
+    const portions = (_data?.barres || []).filter(b => {
+      if (!b.id || !b.id.startsWith(portionPrefix)) return false;
+      return /^\d+$/.test(b.id.slice(portionPrefix.length));
+    }).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    const parentMatch = id.match(/^(.+)-(\d+)$/);
+    const parentId    = parentMatch ? parentMatch[1] : null;
+    const parentBarre = parentId ? _parId(parentId) : null;
+
     const contenu = document.getElementById('hist-contenu');
     if (contenu) contenu.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Chargement…</div>';
     _ouvrirModale('m-historique-barre');
     try {
       const lignes = await window.SB.lireHistoriqueParBarre(id);
-      if (contenu) contenu.innerHTML = _htmlTableauHistoriqueTole(lignes);
+      if (contenu) contenu.innerHTML = _htmlBlocPortions(id, portions, parentId, parentBarre) + _htmlTableauHistoriqueTole(lignes);
     } catch(e) {
       console.error('[Stock] Erreur chargement historique tôle :', e);
       if (contenu) contenu.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rouge)">Impossible de charger l\'historique.</div>';
@@ -5506,7 +5529,7 @@ ${hasT ? `
     let h = `<table class="hist-table">
       <thead><tr>
         <th>Date</th><th>Opération</th><th>Qté avant</th><th>Qté après</th>
-        <th>Lieu</th><th>Chantier</th><th>Opérateur</th>
+        <th>Lieu</th><th>Chantier</th><th>Opérateur</th><th>Commentaire</th>
       </tr></thead><tbody>`;
     lignes.forEach(l => {
       const date  = l.date_operation
@@ -5523,6 +5546,7 @@ ${hasT ? `
         <td>${_e(l.lieu || '—')}</td>
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
         <td>${_e(l.operateur || '—')}</td>
+        <td style="font-size:12px;color:#555;max-width:220px">${_e(l.commentaire || '—')}</td>
       </tr>`;
     });
     return h + '</tbody></table>';
@@ -5548,6 +5572,18 @@ ${hasT ? `
       }
     }
 
+    // Portions issues de cette barre (BAR-XXXX-1, -2, ...)
+    const portionPrefix = id + '-';
+    const portions = (_data?.barres || []).filter(b => {
+      if (!b.id || !b.id.startsWith(portionPrefix)) return false;
+      return /^\d+$/.test(b.id.slice(portionPrefix.length));
+    }).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+
+    // Barre parente si cet ID est lui-même une portion (ex: BAR-0042-1 → BAR-0042)
+    const parentMatch = id.match(/^(.+)-(\d+)$/);
+    const parentId = parentMatch ? parentMatch[1] : null;
+    const parentBarre = parentId ? _parId(parentId) : null;
+
     // Afficher le loader et ouvrir la modale
     const contenu = document.getElementById('hist-contenu');
     if (contenu) {
@@ -5558,13 +5594,36 @@ ${hasT ? `
     // Charger l'historique depuis Supabase
     try {
       const lignes = await window.SB.lireHistoriqueParBarre(id);
-      if (contenu) contenu.innerHTML = _htmlTableauHistorique(lignes);
+      if (contenu) contenu.innerHTML = _htmlBlocPortions(id, portions, parentId, parentBarre) + _htmlTableauHistorique(lignes);
     } catch(e) {
       console.error('[Stock] Erreur chargement historique :', e);
       if (contenu) {
         contenu.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rouge)">Impossible de charger l\'historique.</div>';
       }
     }
+  }
+
+  // Génère le bloc "Portions archivées" + lien vers barre parente (si applicable)
+  function _htmlBlocPortions(id, portions, parentId, parentBarre) {
+    let h = '';
+    if (parentId) {
+      const label = parentBarre ? `${parentId} · ${parentBarre.section_type} ${parentBarre.designation}` : parentId;
+      h += `<div style="margin:0 0 10px;padding:8px 12px;background:#f0f7ff;border-left:3px solid #5b9bd5;border-radius:4px;font-size:13px">
+        ↑ Portion issue de
+        <span class="syn-lien" style="font-weight:bold;cursor:pointer" data-hist-id="${_e(parentId)}">${_e(label)}</span>
+      </div>`;
+    }
+    if (portions.length) {
+      const badges = portions.map(p => {
+        const info = p.longueur_m != null ? ` ${parseFloat(p.longueur_m).toFixed(2)} m` : '';
+        const ch   = p.chantier_affectation ? ` · ${_e(_labelChantier(p.chantier_affectation) || p.chantier_affectation)}` : '';
+        return `<span class="syn-lien" style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;font-size:12px;cursor:pointer;white-space:nowrap" data-hist-id="${_e(p.id)}">${_e(p.id)}${_e(info)}${ch}</span>`;
+      }).join('');
+      h += `<div style="margin:0 0 12px;padding:8px 12px;background:#f9f9f9;border-left:3px solid var(--vert);border-radius:4px;font-size:13px">
+        <span style="color:#666;margin-right:6px">Portions archivées :</span>${badges}
+      </div>`;
+    }
+    return h;
   }
 
   /**
@@ -5597,6 +5656,7 @@ ${hasT ? `
         <th>Lieu</th>
         <th>Chantier</th>
         <th>Opérateur</th>
+        <th>Commentaire</th>
       </tr></thead><tbody>`;
 
     lignes.forEach(l => {
@@ -5615,6 +5675,7 @@ ${hasT ? `
         <td>${_e(l.lieu || '—')}</td>
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
         <td>${_e(l.operateur || '—')}</td>
+        <td style="font-size:12px;color:#555;max-width:220px">${_e(l.commentaire || '—')}</td>
       </tr>`;
     });
 
