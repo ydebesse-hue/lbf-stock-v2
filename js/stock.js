@@ -231,6 +231,7 @@ const Stock = (() => {
   let _synTab        = 'profils';
   let _synProfilsTous = false;
   let _bilanChantier  = '';
+  let _archivesTab    = 'profils';  // sous-onglet de l'onglet Archivées
   let _racks     = [];  // { id, nom, nb_allees, nb_etages } depuis Supabase
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
   let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
@@ -615,8 +616,8 @@ const Stock = (() => {
 
     let source;
     if (_onglet === 'archivees') {
-      // Onglet archivées : tous éléments avec statut archivee (profils + tôles)
-      source = _data.barres.filter(b => b.statut === 'archivee');
+      const cat = _archivesTab === 'profils' ? 'profil' : 'tole';
+      source = _data.barres.filter(b => b.statut === 'archivee' && b.categorie === cat);
     } else {
       // Onglets actifs : exclure les archivées et masquer les refusés selon le profil
       source = _data.barres.filter(b => {
@@ -715,20 +716,38 @@ const Stock = (() => {
    * @returns {Array}
    */
   function _filtrerArchivees(source) {
-    const type  = _val('a-type');
-    const desig = _val('a-desig');
-    const texte = _val('a-recherche').toLowerCase().trim();
+    const texte    = _val('a-recherche').toLowerCase().trim();
+    const chantier = _val('a-chantier');
 
-    return source.filter(b => {
-      if (type  && b.section_type !== type)  return false;
-      if (desig && b.designation  !== desig) return false;
-      if (texte) {
-        const h = [b.section_type, b.designation, b.code_barre,
-          b.id, b.chantier_origine, b.commentaire].join(' ').toLowerCase();
-        if (!h.includes(texte)) return false;
-      }
-      return true;
-    });
+    if (_archivesTab === 'profils') {
+      const type  = _val('a-type');
+      const desig = _val('a-desig');
+      return source.filter(b => {
+        if (type     && b.section_type          !== type)     return false;
+        if (desig    && b.designation           !== desig)    return false;
+        if (chantier && b.chantier_affectation  !== chantier) return false;
+        if (texte) {
+          const h = [b.section_type, b.designation, b.id,
+            b.chantier_affectation, b.lieu_stockage, b.commentaire].join(' ').toLowerCase();
+          if (!h.includes(texte)) return false;
+        }
+        return true;
+      });
+    } else {
+      const ep       = _val('a-epaisseur');
+      const typeTole = _val('a-type-tole');
+      return source.filter(b => {
+        if (ep       && String(b.epaisseur_mm) !== ep)        return false;
+        if (typeTole && b.type_tole            !== typeTole)  return false;
+        if (chantier && b.chantier_affectation !== chantier)  return false;
+        if (texte) {
+          const h = [b.id, b.epaisseur_mm, b.type_tole,
+            b.largeur_mm, b.longueur_mm, b.chantier_affectation, b.lieu_stockage].join(' ').toLowerCase();
+          if (!h.includes(texte)) return false;
+        }
+        return true;
+      });
+    }
   }
 
 
@@ -781,9 +800,10 @@ const Stock = (() => {
     if (!zone) return;
 
     let html;
-    if (_onglet === 'profils')        html = _htmlProfils(data);
-    else if (_onglet === 'toles')     html = _htmlToles(data);
-    else                              html = _htmlArchivees(data);
+    if (_onglet === 'profils')            html = _htmlProfils(data);
+    else if (_onglet === 'toles')         html = _htmlToles(data);
+    else if (_archivesTab === 'profils')  html = _htmlArchiveesProfils(data);
+    else                                  html = _htmlArchiveesToles(data);
 
     zone.innerHTML = html;
 
@@ -879,22 +899,21 @@ const Stock = (() => {
   }
 
   /**
-   * Génère le HTML du tableau des barres archivées (lecture seule)
-   * @param {Array} data
-   * @returns {string}
+   * Génère le HTML du tableau des profilés archivés
    */
-  function _htmlArchivees(data) {
+  function _htmlArchiveesProfils(data) {
     const admin = Auth.hasRight('can_validate');
     const cols = [
-      { col: 'id',          label: 'ID'               },
-      { col: 'type',        label: 'Type / Catégorie'  },
-      { col: 'designation', label: 'Description'       },
-      { col: 'longueur',    label: 'Long. / Qté'       },
-      { col: 'poids',       label: 'Poids (kg)'        },
-      { col: 'lieu',        label: 'Stockage'          },
-      { col: 'date',        label: 'Date ajout'        },
-      { col: 'chantier',    label: 'Chantier origine'  },
+      { col: 'id',          label: 'ID'              },
+      { col: 'type',        label: 'Type'            },
+      { col: 'designation', label: 'Désignation'     },
+      { col: 'longueur',    label: 'Longueur'        },
+      { col: 'poids',       label: 'Poids (kg)'      },
+      { col: 'lieu',        label: 'Lieu stockage'   },
+      { col: 'date',        label: 'Date archivage'  },
+      { col: 'chantier',    label: 'Chantier'        },
     ];
+    const nbCols = cols.length + 1;
 
     let h = '<table><thead><tr>';
     cols.forEach(c => {
@@ -905,44 +924,89 @@ const Stock = (() => {
     h += '<th>Actions</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="9" class="vide">Aucun élément archivé.</td></tr>`;
+      h += `<tr><td colspan="${nbCols}" class="vide">Aucun profilé archivé.</td></tr>`;
     } else {
       data.forEach(b => {
-        const dateAjout = b.date_ajout
-          ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—';
-
-        let typeTxt, descTxt, longQteTxt, poidsTxt;
-        if (b.categorie === 'profil') {
-          const poidsEff = _poidsEffectifProfil(b);
-          typeTxt    = `<strong>${_e(b.section_type)}</strong>`;
-          descTxt    = _e(b.designation);
-          longQteTxt = typeof b.longueur_m === 'number' ? `${b.longueur_m.toFixed(2)} m` : '—';
-          poidsTxt   = poidsEff > 0 ? poidsEff.toFixed(1) : '—';
-        } else {
-          const poidsU = b.poids_unitaire_kg || 0;
-          typeTxt    = `<span style="color:#888">Tôle</span>`;
-          descTxt    = `${b.epaisseur_mm} mm · ${b.largeur_mm}×${b.longueur_mm} mm`;
-          longQteTxt = `${b.quantite ?? 0} pièce${(b.quantite ?? 0) > 1 ? 's' : ''}`;
-          poidsTxt   = poidsU > 0 ? `${poidsU.toFixed(1)} /u` : '—';
-        }
-
-        h += `<tr>`;
-        h += `<td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>`;
-        h += `<td>${typeTxt}</td>`;
-        h += `<td>${descTxt}</td>`;
-        h += `<td>${longQteTxt}</td>`;
-        h += `<td>${poidsTxt}</td>`;
-        h += `<td>${_e(b.lieu_stockage || '—')}</td>`;
-        h += `<td>${dateAjout}</td>`;
-        h += `<td>${_e(_labelChantier(b.chantier_origine) || '—')}</td>`;
-        h += `<td class="td-actions">
-          ${b.categorie === 'profil' ? `<button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button>` : ''}
-          ${admin ? `<button class="btn-ligne btn-supprimer-def" onclick="Stock.ouvrirSuppressionDefinitive('${_e(b.id)}')" title="Supprimer définitivement">🗑</button>` : ''}
-        </td>`;
-        h += `</tr>`;
+        const poidsEff  = _poidsEffectifProfil(b);
+        const dateLabel = b.date_modif
+          ? new Date(b.date_modif).toLocaleDateString('fr-FR')
+          : (b.date_ajout ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—');
+        const chantier  = _labelChantier(b.chantier_affectation) || '—';
+        h += `<tr>
+          <td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>
+          <td><strong>${_e(b.section_type || '—')}</strong></td>
+          <td>${_e(b.designation || '—')}</td>
+          <td>${typeof b.longueur_m === 'number' ? b.longueur_m.toFixed(2) + ' m' : '—'}</td>
+          <td>${poidsEff > 0 ? poidsEff.toFixed(1) : '—'}</td>
+          <td>${_e(b.lieu_stockage || '—')}</td>
+          <td>${dateLabel}</td>
+          <td>${_e(chantier)}</td>
+          <td class="td-actions">
+            <button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Historique">📋</button>
+            ${admin ? `<button class="btn-ligne btn-supprimer-def" onclick="Stock.ouvrirSuppressionDefinitive('${_e(b.id)}')" title="Supprimer définitivement">🗑</button>` : ''}
+          </td>
+        </tr>`;
       });
     }
+    return h + '</tbody></table>';
+  }
 
+  /**
+   * Génère le HTML du tableau des tôles archivées
+   */
+  function _htmlArchiveesToles(data) {
+    const admin = Auth.hasRight('can_validate');
+    const cols = [
+      { col: 'id',          label: 'ID'             },
+      { col: 'type',        label: 'Type'           },
+      { col: 'epaisseur',   label: 'Épaisseur'      },
+      { col: 'designation', label: 'Dimensions'     },
+      { col: 'longueur',    label: 'Quantité'       },
+      { col: 'surf',        label: 'Surface'        },
+      { col: 'poids',       label: 'Poids (kg)'     },
+      { col: 'lieu',        label: 'Lieu stockage'  },
+      { col: 'date',        label: 'Date archivage' },
+      { col: 'chantier',    label: 'Chantier'       },
+    ];
+    const nbCols = cols.length + 1;
+
+    let h = '<table><thead><tr>';
+    cols.forEach(c => {
+      const actif = _tri.col === c.col;
+      const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
+      h += `<th data-col="${c.col}" class="${actif ? 'tri-actif' : ''}">${c.label} <span class="tri-ind">${ind}</span></th>`;
+    });
+    h += '<th>Actions</th></tr></thead><tbody>';
+
+    if (!data.length) {
+      h += `<tr><td colspan="${nbCols}" class="vide">Aucune tôle archivée.</td></tr>`;
+    } else {
+      data.forEach(b => {
+        const surf     = _surfaceTole(b);
+        const surfTot  = surf * (b.quantite || 1);
+        const poidsU   = b.poids_unitaire_kg || 0;
+        const dateLabel = b.date_modif
+          ? new Date(b.date_modif).toLocaleDateString('fr-FR')
+          : (b.date_ajout ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—');
+        const chantier = _labelChantier(b.chantier_affectation) || '—';
+        h += `<tr>
+          <td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>
+          <td>${_badgeTypeTole(b.type_tole)}${b.is_chute ? ' <span class="chip-chute">chute</span>' : ''}</td>
+          <td><strong>${b.epaisseur_mm} mm</strong></td>
+          <td>${b.largeur_mm} × ${b.longueur_mm} mm</td>
+          <td>${b.quantite ?? 0} pièce${(b.quantite ?? 0) > 1 ? 's' : ''}</td>
+          <td>${surfTot > 0 ? surfTot.toFixed(2) + ' m²' : '—'}</td>
+          <td>${poidsU > 0 ? (b.poids_total_kg || poidsU).toFixed(1) : '—'}</td>
+          <td>${_e(b.lieu_stockage || '—')}</td>
+          <td>${dateLabel}</td>
+          <td>${_e(chantier)}</td>
+          <td class="td-actions">
+            <button class="btn-historique" onclick="Stock.ouvrirHistoriqueTole('${_e(b.id)}')" title="Historique">📋</button>
+            ${admin ? `<button class="btn-ligne btn-supprimer-def" onclick="Stock.ouvrirSuppressionDefinitive('${_e(b.id)}')" title="Supprimer définitivement">🗑</button>` : ''}
+          </td>
+        </tr>`;
+      });
+    }
     return h + '</tbody></table>';
   }
 
@@ -1198,9 +1262,18 @@ const Stock = (() => {
     _remplirSelect('t-lieu',
       [...new Set(toles.map(b => b.lieu_stockage))].sort()
     );
-    // Filtre type pour l'onglet archivées
+    // Filtres onglet archivées
+    const arcProfils = archivees.filter(b => b.categorie === 'profil');
+    const arcToles   = archivees.filter(b => b.categorie === 'tole');
     _remplirSelect('a-type',
-      [...new Set(archivees.map(b => b.section_type))].sort()
+      [...new Set(arcProfils.map(b => b.section_type))].sort()
+    );
+    _remplirSelect('a-epaisseur',
+      [...new Set(arcToles.map(b => String(b.epaisseur_mm)))].sort((a, b) => +a - +b),
+      'mm'
+    );
+    _remplirSelectChantiers('a-chantier',
+      [...new Set(archivees.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))]
     );
   }
 
@@ -2438,7 +2511,7 @@ ${hasT ? `
     const map = {
       profils:   ['p-type','p-desig','p-chantier','p-lieu','p-dispo','p-recherche'],
       toles:     ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo','t-recherche'],
-      archivees: ['a-type','a-desig','a-recherche'],
+      archivees: ['a-type','a-desig','a-epaisseur','a-type-tole','a-chantier','a-recherche'],
     };
     (map[onglet] || []).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     if (onglet === 'profils' || onglet === 'toles') {
@@ -2672,6 +2745,20 @@ ${hasT ? `
     if (rt) rt.addEventListener('click', () => { _resetFiltres('toles'); _filtrer(); });
     const ra = document.getElementById('btn-reset-archivees');
     if (ra) ra.addEventListener('click', () => { _resetFiltres('archivees'); _filtrer(); });
+
+    // Sous-onglets Profilés / Tôles dans l'onglet Archivées
+    document.querySelectorAll('[data-arc-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _archivesTab = btn.dataset.arcTab;
+        document.querySelectorAll('[data-arc-tab]').forEach(b => b.classList.toggle('actif', b.dataset.arcTab === _archivesTab));
+        // Afficher/masquer les filtres spécifiques
+        document.querySelectorAll('.arc-filtre-profil').forEach(el => el.style.display = _archivesTab === 'profils' ? '' : 'none');
+        document.querySelectorAll('.arc-filtre-tole').forEach(el => el.style.display = _archivesTab === 'toles' ? '' : 'none');
+        _resetFiltres('archivees');
+        _tri = { col: null, ordre: 'asc' };
+        _filtrer();
+      });
+    });
 
     // Export / Import CSV (admin)
     const btnExp = document.getElementById('btn-exporter');

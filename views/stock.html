@@ -275,6 +275,15 @@
     .sous-onglet:hover { color: #555; }
     .sous-onglet.actif { color: var(--vert); border-bottom-color: var(--vert); }
 
+    /* Sous-onglets internes (dans toolbar archivées) */
+    .sous-onglet-arc {
+      padding: 3px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;
+      border: 1px solid #ddd; background: #f5f5f5; color: #666; cursor: pointer;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .sous-onglet-arc:hover { background: #e8e8e8; color: #333; }
+    .sous-onglet-arc.actif { background: var(--vert); color: white; border-color: var(--vert); }
+
     /* ── TOOLBAR ──────────────────────────────────────────────── */
     .toolbar {
       background: white;
@@ -1587,13 +1596,34 @@
 
   <!-- ── TOOLBAR ARCHIVÉES ────────────────────────────────────── -->
   <div class="toolbar" id="toolbar-archivees" style="display:none">
-    <span class="toolbar-label" style="margin-left:4px">Filtrer :</span>
+    <button class="sous-onglet-arc actif" data-arc-tab="profils">Profilés</button>
+    <button class="sous-onglet-arc"       data-arc-tab="toles">Tôles</button>
 
-    <select id="a-type"  class="sel-filtre" title="Type de section">
+    <div class="toolbar-sep"></div>
+    <span class="toolbar-label">Filtrer :</span>
+
+    <!-- Filtres profilés archivés -->
+    <select id="a-type"  class="sel-filtre arc-filtre-profil" title="Type de section">
       <option value="">Tous types</option>
     </select>
-    <select id="a-desig" class="sel-filtre" title="Désignation">
+    <select id="a-desig" class="sel-filtre arc-filtre-profil" title="Désignation">
       <option value="">Toutes désignations</option>
+    </select>
+
+    <!-- Filtres tôles archivées -->
+    <select id="a-epaisseur" class="sel-filtre arc-filtre-tole" title="Épaisseur" style="display:none">
+      <option value="">Toutes épaisseurs</option>
+    </select>
+    <select id="a-type-tole" class="sel-filtre arc-filtre-tole" title="Type de tôle" style="display:none">
+      <option value="">Tous types</option>
+      <option value="noir">Noir</option>
+      <option value="inox">Inox</option>
+      <option value="larmee">Larmée</option>
+    </select>
+
+    <!-- Filtre chantier commun -->
+    <select id="a-chantier" class="sel-filtre" title="Chantier d'utilisation">
+      <option value="">Tous chantiers</option>
     </select>
 
     <div class="toolbar-sep"></div>
