@@ -1429,6 +1429,8 @@ const Stock = (() => {
               <tr class="syn-table-title-row">
                 <th colspan="4">
                   Par type
+                  <span class="syn-scope-btn" data-syn-action="print-syn-profils"
+                        title="Imprimer la synthèse profilés" style="margin-right:4px">📄 PDF</span>
                   <span class="syn-scope-btn" data-syn-action="toggle-all-types"
                         id="syn-btn-expand-all" title="Déployer ou réduire tous les types"
                         style="margin-right:4px">▼ Déployer</span>
@@ -1550,7 +1552,11 @@ const Stock = (() => {
             </tbody>
           </table>
         </div>
-        <div class="syn-section-titre">Seuils d'alerte par épaisseur</div>
+        <div class="syn-section-titre" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Seuils d'alerte par épaisseur</span>
+          <span class="syn-scope-btn" data-syn-action="print-syn-toles"
+                title="Imprimer la synthèse tôles">📄 PDF</span>
+        </div>
         <div class="syn-card" style="padding:0;overflow:hidden">
           <table class="syn-table">
             <thead><tr>
@@ -1781,6 +1787,207 @@ const Stock = (() => {
       </div>
       ${estBilan ? _contenuBilan() : estProfils ? _contenuProfils() : _contenuToles()}
     </div>`;
+  }
+
+
+  /* ──────────────────────────────────────────────────────────────
+     IMPRESSION PDF SYNTHÈSES
+     ────────────────────────────────────────────────────────────── */
+
+  function _imprimerSynProfils() {
+    const barres   = _data.barres || [];
+    const dispo    = barres.filter(b => b.categorie === 'profil' && b.statut === 'valide' && b.disponibilite === 'disponible');
+    const affectes = barres.filter(b => b.categorie === 'profil' && b.statut === 'valide' && b.disponibilite === 'affecte');
+    const source   = _synProfilsTous ? [...dispo, ...affectes] : dispo;
+
+    const parType = {};
+    source.forEach(b => {
+      const t = b.section_type || '?', d = b.designation || '?';
+      if (!parType[t]) parType[t] = { nb: 0, ml: 0, poids: 0, desigs: {} };
+      parType[t].nb++;
+      parType[t].ml    += b.longueur_m || 0;
+      parType[t].poids += _poidsEffectifProfil(b);
+      if (!parType[t].desigs[d]) parType[t].desigs[d] = { nb: 0, ml: 0, poids: 0 };
+      parType[t].desigs[d].nb++;
+      parType[t].desigs[d].ml    += b.longueur_m || 0;
+      parType[t].desigs[d].poids += _poidsEffectifProfil(b);
+    });
+    const lignesType = Object.entries(parType).sort((a, b) => b[1].ml - a[1].ml);
+
+    const mlDispo   = dispo.reduce((s, b) => s + (b.longueur_m || 0), 0);
+    const mlAff     = affectes.reduce((s, b) => s + (b.longueur_m || 0), 0);
+    const pDispo    = dispo.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+    const pAff      = affectes.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+
+    const f2  = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+    const fP  = v => !v ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + ' t';
+    const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const perimetre = _synProfilsTous ? 'Tous (disponibles + affectés)' : 'Disponibles uniquement';
+
+    const rowsHtml = lignesType.map(([type, d]) => {
+      const sousLignes = Object.entries(d.desigs).sort((a, b) => b[1].ml - a[1].ml)
+        .map(([desig, sd]) => `<tr>
+          <td style="padding:4px 8px 4px 24px;font-size:12px;color:#555">└ ${_e(desig)}</td>
+          <td style="text-align:right;padding:4px 8px">${sd.nb}</td>
+          <td style="text-align:right;padding:4px 8px">${f2(sd.ml)} m</td>
+          <td style="text-align:right;padding:4px 8px;color:#888">${fP(sd.poids)}</td>
+        </tr>`).join('');
+      return `<tr style="background:#f5f5f5;font-weight:bold">
+          <td colspan="4" style="padding:5px 8px">${_e(type)}
+            <span style="font-weight:normal;color:#888;font-size:11px;margin-left:8px">${d.nb} barre${d.nb>1?'s':''} · ${f2(d.ml)} m · ${fP(d.poids)}</span>
+          </td></tr>${sousLignes}`;
+    }).join('');
+
+    const mlTot = source.reduce((s, b) => s + (b.longueur_m || 0), 0);
+    const pTot  = source.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+    const totalRow = lignesType.length > 1
+      ? `<tr style="font-weight:bold;background:#f9f9f9;border-top:2px solid #ccc">
+          <td style="padding:5px 8px">Total</td>
+          <td style="text-align:right;padding:5px 8px">${source.length}</td>
+          <td style="text-align:right;padding:5px 8px">${f2(mlTot)} m</td>
+          <td style="text-align:right;padding:5px 8px">${fP(pTot)}</td>
+        </tr>` : '';
+
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<title>Synthèse Profilés — LBF</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#222;padding:20px 28px}
+  h2{font-size:13px;font-weight:bold;margin:16px 0 6px;border-bottom:1px solid #ddd;padding-bottom:3px}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px}
+  th{background:#f0f0f0;padding:5px 8px;text-align:left;font-size:11px;border:1px solid #ddd}
+  th.r{text-align:right}
+  td{padding:4px 8px;border:1px solid #eee;vertical-align:middle}
+  .kpi-tot td{font-weight:bold;background:#f9f9f9;border-top:2px solid #ccc}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px}
+  @media print{body{padding:10px 16px}@page{margin:1cm}}
+</style></head><body>
+<div class="hdr">
+  <div><div style="font-size:18px;font-weight:bold;letter-spacing:2px">LBF</div>
+       <div style="font-size:10px;color:#888">Synthèse Stock Profilés</div></div>
+  <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}<br>Périmètre : ${perimetre}</div>
+</div>
+<h2>Récapitulatif</h2>
+<table>
+  <thead><tr><th>Statut</th><th class="r">Barres</th><th class="r">Métrage</th><th class="r">Poids</th></tr></thead>
+  <tbody>
+    <tr><td>Disponible</td><td style="text-align:right">${dispo.length}</td><td style="text-align:right">${f2(mlDispo)} m</td><td style="text-align:right">${fP(pDispo)}</td></tr>
+    <tr><td>Affecté chantier</td><td style="text-align:right">${affectes.length}</td><td style="text-align:right">${f2(mlAff)} m</td><td style="text-align:right">${fP(pAff)}</td></tr>
+    <tr class="kpi-tot"><td>Total</td><td style="text-align:right">${dispo.length+affectes.length}</td><td style="text-align:right">${f2(mlDispo+mlAff)} m</td><td style="text-align:right">${fP(pDispo+pAff)}</td></tr>
+  </tbody>
+</table>
+<h2>Par type de section</h2>
+<table>
+  <thead><tr><th>Type / Désignation</th><th class="r">Barres</th><th class="r">ML</th><th class="r">Poids</th></tr></thead>
+  <tbody>
+    ${rowsHtml || '<tr><td colspan="4" style="color:#aaa;text-align:center;padding:10px">Aucun profilé</td></tr>'}
+    ${totalRow}
+  </tbody>
+</table>
+<script>window.onload=function(){window.print()}<\/script>
+</body></html>`;
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (win) { win.document.write(html); win.document.close(); }
+    else _notif('Fenêtre bloquée — autorisez les pop-ups', 'alerte');
+  }
+
+  function _imprimerSynToles() {
+    const barres   = _data.barres || [];
+    const dispo    = barres.filter(b => b.categorie === 'tole' && b.statut === 'valide' && b.disponibilite === 'disponible');
+    const affectes = barres.filter(b => b.categorie === 'tole' && b.statut === 'valide' && b.disponibilite === 'affecte');
+    const actives  = barres.filter(b => b.categorie === 'tole' && b.statut !== 'archivee');
+
+    const surfDispo = dispo.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0);
+    const surfAff   = affectes.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0);
+    const pDispo    = dispo.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
+    const pAff      = affectes.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
+
+    const parEp = {};
+    actives.forEach(b => {
+      const ep = b.epaisseur_mm;
+      if (!parEp[ep]) parEp[ep] = { surface: 0, poids: 0, types: new Set(), nb: 0 };
+      parEp[ep].surface += _surfaceTole(b) * (b.quantite || 1);
+      parEp[ep].poids   += b.poids_total_kg || 0;
+      parEp[ep].nb      += b.quantite || 1;
+      if (b.type_tole) parEp[ep].types.add(b.type_tole);
+    });
+    const lignesEp = Object.entries(parEp).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+
+    const f2  = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+    const fP  = v => !v ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + ' t';
+    const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const rowsHtml = lignesEp.map(([ep, d]) => {
+      const seuil  = _seuils[ep] || 0;
+      const alerte = seuil > 0 && d.surface < seuil;
+      const types  = [...d.types].map(t => _LABEL_TYPE_TOLE[t] || t).join(', ');
+      return `<tr${alerte ? ' style="background:#fff0f0"' : ''}>
+        <td style="padding:4px 8px;font-weight:bold">${_e(String(ep))} mm
+          ${types ? `<span style="font-weight:normal;color:#666;font-size:11px"> (${_e(types)})</span>` : ''}
+        </td>
+        <td style="text-align:right;padding:4px 8px">${d.nb}</td>
+        <td style="text-align:right;padding:4px 8px">${f2(d.surface)} m²</td>
+        <td style="text-align:right;padding:4px 8px">${fP(d.poids)}</td>
+        <td style="text-align:right;padding:4px 8px;color:#aaa">${seuil > 0 ? f2(seuil)+' m²' : '—'}</td>
+        <td style="text-align:center;padding:4px 8px;font-size:11px">${alerte ? '⚠ Bas' : '✓ OK'}</td>
+      </tr>`;
+    }).join('');
+
+    const surfTot = actives.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0);
+    const totalRow = lignesEp.length > 1
+      ? `<tr style="font-weight:bold;background:#f9f9f9;border-top:2px solid #ccc">
+          <td style="padding:5px 8px">Total (${lignesEp.length} épaisseur${lignesEp.length>1?'s':''})</td>
+          <td style="text-align:right;padding:5px 8px">${actives.reduce((s,b)=>s+(b.quantite||1),0)}</td>
+          <td style="text-align:right;padding:5px 8px">${f2(surfTot)} m²</td>
+          <td colspan="3"></td>
+        </tr>` : '';
+
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<title>Synthèse Tôles — LBF</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#222;padding:20px 28px}
+  h2{font-size:13px;font-weight:bold;margin:16px 0 6px;border-bottom:1px solid #ddd;padding-bottom:3px}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px}
+  th{background:#f0f0f0;padding:5px 8px;text-align:left;font-size:11px;border:1px solid #ddd}
+  th.r{text-align:right}
+  td{padding:4px 8px;border:1px solid #eee;vertical-align:middle}
+  .kpi-tot td{font-weight:bold;background:#f9f9f9;border-top:2px solid #ccc}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px}
+  @media print{body{padding:10px 16px}@page{margin:1cm}}
+</style></head><body>
+<div class="hdr">
+  <div><div style="font-size:18px;font-weight:bold;letter-spacing:2px">LBF</div>
+       <div style="font-size:10px;color:#888">Synthèse Stock Tôles</div></div>
+  <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}</div>
+</div>
+<h2>Récapitulatif</h2>
+<table>
+  <thead><tr><th>Statut</th><th class="r">Tôles</th><th class="r">Surface</th><th class="r">Poids</th></tr></thead>
+  <tbody>
+    <tr><td>Disponible</td><td style="text-align:right">${dispo.length}</td><td style="text-align:right">${f2(surfDispo)} m²</td><td style="text-align:right">${fP(pDispo)}</td></tr>
+    <tr><td>Affecté chantier</td><td style="text-align:right">${affectes.length}</td><td style="text-align:right">${f2(surfAff)} m²</td><td style="text-align:right">${fP(pAff)}</td></tr>
+    <tr class="kpi-tot"><td>Total</td><td style="text-align:right">${dispo.length+affectes.length}</td><td style="text-align:right">${f2(surfDispo+surfAff)} m²</td><td style="text-align:right">${fP(pDispo+pAff)}</td></tr>
+  </tbody>
+</table>
+<h2>Par épaisseur</h2>
+<table>
+  <thead><tr>
+    <th>Épaisseur / Type</th><th class="r">Qté</th><th class="r">Surface en stock</th>
+    <th class="r">Poids</th><th class="r">Seuil alerte</th><th style="text-align:center;width:52px">État</th>
+  </tr></thead>
+  <tbody>
+    ${rowsHtml || '<tr><td colspan="6" style="color:#aaa;text-align:center;padding:10px">Aucune tôle active</td></tr>'}
+    ${totalRow}
+  </tbody>
+</table>
+<script>window.onload=function(){window.print()}<\/script>
+</body></html>`;
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (win) { win.document.write(html); win.document.close(); }
+    else _notif('Fenêtre bloquée — autorisez les pop-ups', 'alerte');
   }
 
 
@@ -2139,6 +2346,10 @@ ${hasT ? `
           el.textContent = anyCollapsed ? '▲ Réduire' : '▼ Déployer';
         } else if (action === 'export-bilan-pdf') {
           _exporterBilanPDF();
+        } else if (action === 'print-syn-profils') {
+          _imprimerSynProfils();
+        } else if (action === 'print-syn-toles') {
+          _imprimerSynToles();
         } else if (action === 'voir-desig') {
           const desig = el.dataset.synDesig || '';
           _basculerOnglet('profils');
