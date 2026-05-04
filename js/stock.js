@@ -2686,7 +2686,9 @@ ${hasT ? `
       if (titre) titre.textContent = 'Changer le lieu de stockage';
       if (label) label.textContent = 'Lieu de stockage';
       if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s).`;
-      const lieux = [...new Set((_data?.barres || []).map(b => b.lieu_stockage).filter(Boolean))].sort();
+      const lieuxRacks = _lieux.length ? _lieux : [];
+      const lieuxUtilises = [...new Set((_data?.barres || []).map(b => b.lieu_stockage).filter(Boolean))];
+      const lieux = [...new Set([...lieuxRacks, ...lieuxUtilises])];
       if (dl) dl.innerHTML = lieux.map(v => `<option value="${_e(v)}">`).join('');
     }
 
@@ -4738,16 +4740,19 @@ ${hasT ? `
       } else if (field === 'chantier') {
         const chantier = rawVal || null;
         const type = chantier ? 'AFFECTATION' : 'RETOUR';
+        const labelCh = chantier ? `Chantier → ${_labelChantier(chantier) || chantier}` : 'Retour stock';
         await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
-          chantier, op, null, null, lieuActuel);
+          chantier, op, null, labelCh, lieuActuel);
       } else if (field === 'dispo') {
         const type = rawVal === 'affecte' ? 'AFFECTATION' : 'RETOUR';
+        const labelDispo = rawVal === 'affecte' ? 'Statut → Affecté' : 'Statut → Disponible';
         await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
-          original.chantier_affectation || null, op, null, null, lieuActuel);
+          original.chantier_affectation || null, op, null, labelDispo, lieuActuel);
       } else if (field === 'lieu') {
         const nouveauLieu = rawVal || null;
         await _enregistrerHistorique(id, 'MODIFICATION', original.longueur_m, original.longueur_m,
-          original.chantier_affectation || null, op, null, null, nouveauLieu);
+          original.chantier_affectation || null, op, null,
+          `Lieu → ${nouveauLieu || 'Aucun'}`, nouveauLieu);
       }
     }
 
@@ -4922,7 +4927,8 @@ ${hasT ? `
           original.chantier_affectation || null, op, null, commentaire || null, lieu || null);
       } else if (lieu !== original.lieu_stockage) {
         await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
-          affectation || original.chantier_affectation || null, op, null, null, lieu || null);
+          affectation || original.chantier_affectation || null, op, null,
+          `Lieu → ${lieu || 'Aucun'}`, lieu || null);
       }
 
     } else {
