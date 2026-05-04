@@ -6420,7 +6420,7 @@ ${hasT ? `
 
   /** Retourne la date du jour au format ISO (YYYY-MM-DD) */
   function _dateAujourdhui() {
-    return new Date().toISOString().split('T')[0];
+    return new Date().toISOString();
   }
 
 
@@ -7422,8 +7422,11 @@ ${hasT ? `
       </tr></thead><tbody>`;
 
     items.forEach(b => {
-      const dateAff  = new Date(_dateRef(b)).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
       const dernH    = dernOps[b.id];
+      const dateRaw  = dernH?.date_operation || b.date_modif || b.date_ajout;
+      const dateAff  = dateRaw
+        ? new Date(dateRaw).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+        : '—';
       const opType   = dernH?.type_operation || (b.date_modif ? 'MODIFICATION' : 'ENTREE');
       const opInfo   = OP_LABELS[opType] || { label: opType, color: '#666' };
       const par      = _e(dernH?.operateur || b.modifie_par || b.ajoute_par || '—');
