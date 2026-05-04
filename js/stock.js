@@ -1562,7 +1562,7 @@ const Stock = (() => {
       const lignesEp = Object.entries(parEp).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
       const surfMax  = lignesEp.length ? Math.max(...lignesEp.map(([, d]) => d.surface)) : 1;
 
-      const canEdit = Auth.hasRight('can_edit');
+      const canEdit = Auth.hasRight('can_validate'); // seuils modifiables uniquement par l'admin
 
       const rowsEp = lignesEp.map(([ep, d]) => {
         const seuil    = _seuils[ep] || 0;
