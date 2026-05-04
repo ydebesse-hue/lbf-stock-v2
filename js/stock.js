@@ -2714,12 +2714,34 @@ ${hasT ? `
       patch = { [champ]: valeur };
     }
 
+    const operateur = Auth.getSession()?.identifiant || 'inconnu';
+    const dateMaj   = _dateAujourdhui();
+
+    const OP_LABELS_AG = {
+      chantier:    'Chantier → ' + valeur,
+      lieu:        'Lieu → ' + valeur,
+      statut:      'Statut → ' + valeur,
+      commentaire: 'Commentaire mis à jour',
+    };
+    const commentaireHist = OP_LABELS_AG[type] || 'Modification groupée';
+
     let n = 0;
     for (const id of ids) {
       const barre = _parId(id);
       if (!barre) continue;
       try {
-        await _persisterElement({ ...barre, ...patch });
+        await _persisterElement({
+          ...barre,
+          ...patch,
+          date_modif:  dateMaj,
+          modifie_par: operateur,
+        });
+        await _enregistrerHistorique(
+          id, 'MODIFICATION',
+          barre.longueur_m, barre.longueur_m,
+          barre.chantier_affectation || null,
+          operateur, operateur, commentaireHist, barre.lieu_stockage || null
+        );
         n++;
       } catch {}
     }
