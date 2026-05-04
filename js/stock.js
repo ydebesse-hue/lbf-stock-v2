@@ -843,10 +843,12 @@ const Stock = (() => {
     const admin = Auth.hasRight('can_validate');
     const modif = Auth.hasRight('can_edit');
     const vis   = _chargerColsVis();
-    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + 3; // +check +hist +actions
+    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + (modif ? 3 : 2); // +check(si modif) +hist +actions
 
     let h = '<table class="table-profils"><thead><tr>';
-    h += '<th class="col-p-check"><input type="checkbox" id="chk-select-all-profils" title="Tout sélectionner"></th>';
+    if (modif) {
+      h += '<th class="col-p-check"><input type="checkbox" id="chk-select-all-profils" title="Tout sélectionner"></th>';
+    }
     COLS_PROFILS.forEach(c => {
       if (!vis[c.key]) return;
       const cls   = `col-p-${c.key}`;
@@ -865,12 +867,14 @@ const Stock = (() => {
     } else {
       data.forEach(b => {
         const attente  = b.statut === 'en_attente';
-        const selectee = _selectionIds.has(b.id);
+        const selectee = modif && _selectionIds.has(b.id);
         let rowClass = '';
         if (selectee) rowClass = 'ligne-selectee';
         else if (attente) rowClass = 'ligne-attente';
         h += `<tr${rowClass ? ` class="${rowClass}"` : ''} data-id="${_e(b.id)}">`;
-        h += `<td class="col-p-check" onclick="event.stopPropagation()"><input type="checkbox" class="chk-barre" data-id="${_e(b.id)}"${selectee ? ' checked' : ''}></td>`;
+        if (modif) {
+          h += `<td class="col-p-check" onclick="event.stopPropagation()"><input type="checkbox" class="chk-barre" data-id="${_e(b.id)}"${selectee ? ' checked' : ''}></td>`;
+        }
         COLS_PROFILS.forEach(c => {
           if (!vis[c.key]) return;
           const ed = modif && COLS_EDITABLES_PROFIL.has(c.key);
@@ -2638,6 +2642,7 @@ ${hasT ? `
     const barre = document.getElementById('barre-selection');
     const nb    = document.getElementById('barre-sel-nb');
     if (!barre) return;
+    if (!Auth.hasRight('can_edit')) { barre.classList.remove('visible'); return; }
     const n = _selectionIds.size;
     if (n > 0) {
       barre.classList.add('visible');
@@ -2715,6 +2720,7 @@ ${hasT ? `
   }
 
   async function _appliquerActionGroupee() {
+    if (!Auth.hasRight('can_edit')) return;
     const modale    = document.getElementById('m-action-groupee');
     const container = document.getElementById('ag-champ-container');
     if (!modale || !container) return;
