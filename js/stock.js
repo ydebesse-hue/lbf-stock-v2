@@ -244,25 +244,37 @@ const Stock = (() => {
   let _planImg   = null;        // image plan (base64), chargée au démarrage depuis Supabase
   let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
   let _filtreEnAttente = false; // true quand l'admin clique l'alerte pour voir les en_attente
-  let _seuils = {};             // { [epaisseur_mm]: seuil_m2 } — définis depuis la synthèse, stockés en localStorage
+  let _seuils = {};             // { [epaisseur_mm]: seuil_m2 } — persistés dans Supabase config
 
-  const _SEUILS_STORAGE_KEY = 'lbf_seuils_toles';
+  const _SEUILS_CONFIG_KEY   = 'lbf_seuils_toles';
+  const _SEUILS_STORAGE_KEY  = 'lbf_seuils_toles'; // clé localStorage (fallback offline)
 
-  function _chargerSeuils() {
+  async function _chargerSeuils() {
     try {
-      const raw = localStorage.getItem(_SEUILS_STORAGE_KEY);
+      const raw = await window.SB.lireConfig(_SEUILS_CONFIG_KEY);
       _seuils = raw ? JSON.parse(raw) : {};
-    } catch { _seuils = {}; }
+      // Mettre à jour le localStorage pour usage hors ligne
+      try { localStorage.setItem(_SEUILS_STORAGE_KEY, raw || '{}'); } catch { /* rien */ }
+    } catch {
+      // Supabase indisponible — fallback localStorage
+      try {
+        const raw = localStorage.getItem(_SEUILS_STORAGE_KEY);
+        _seuils = raw ? JSON.parse(raw) : {};
+      } catch { _seuils = {}; }
+    }
   }
 
-  function _sauvegarderSeuil(ep, valeur) {
+  async function _sauvegarderSeuil(ep, valeur) {
     const v = parseFloat(valeur);
     if (isNaN(v) || v <= 0) {
       delete _seuils[ep];
     } else {
       _seuils[ep] = v;
     }
-    try { localStorage.setItem(_SEUILS_STORAGE_KEY, JSON.stringify(_seuils)); } catch { /* rien */ }
+    const json = JSON.stringify(_seuils);
+    // Persister dans Supabase et localStorage en parallèle
+    try { await window.SB.sauvegarderConfig(_SEUILS_CONFIG_KEY, json); } catch { /* hors ligne */ }
+    try { localStorage.setItem(_SEUILS_STORAGE_KEY, json); } catch { /* rien */ }
   }
 
 
@@ -277,7 +289,7 @@ const Stock = (() => {
     Auth.requireAuth();
     Auth.afficherInfosSession('#header-user', '#header-badge');
     Auth.appliquerDroitsDOM();
-    _chargerSeuils();
+    await _chargerSeuils();
 
     try {
       // Chargement stock depuis Supabase
@@ -2702,7 +2714,7 @@ ${hasT ? `
         const inp = e.target.closest('.syn-seuil-input');
         if (inp) {
           const ep = parseFloat(inp.dataset.ep);
-          if (!isNaN(ep)) { _sauvegarderSeuil(ep, inp.value); _majAlerteSeuil(); _rendreSynthese(); }
+          if (!isNaN(ep)) { _sauvegarderSeuil(ep, inp.value).then(() => { _majAlerteSeuil(); _rendreSynthese(); }); }
           return;
         }
         // Case "Tout sélectionner" du bilan
