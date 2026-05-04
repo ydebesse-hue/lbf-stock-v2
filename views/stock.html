@@ -940,11 +940,41 @@
     .table-profils thead th { white-space: normal; word-break: break-word; line-height: 1.3; vertical-align: bottom; }
     .table-profils td       { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+    /* Colonne case à cocher */
+    .col-p-check { width: 34px; text-align: center; padding: 0 6px !important; }
+    .table-profils th.col-p-check,
+    .table-profils td.col-p-check {
+      position: sticky; left: 0; z-index: 2; background: white;
+    }
+    .table-profils thead th.col-p-check { background: var(--noir); z-index: 3; }
+    .table-profils tbody tr:hover    td.col-p-check { background: #fafafa; }
+    .table-profils tr.ligne-attente  td.col-p-check { background: #fffde7; }
+    .table-profils tr.ligne-focus    td.col-p-check { background: #fff0f0; }
+    .table-profils tr.ligne-selectee td.col-p-check { background: #e8f5e9; }
+    .table-profils tr.ligne-selectee td              { background: #f1fbf2; }
+
+    /* Barre d'actions groupées */
+    .barre-selection {
+      display: none; align-items: center; gap: 8px;
+      padding: 8px 16px; background: #1a237e; color: white;
+      font-size: 13px; position: sticky; bottom: 0; z-index: 50;
+      box-shadow: 0 -2px 8px rgba(0,0,0,.2);
+    }
+    .barre-selection.visible { display: flex; }
+    .barre-sel-count { font-weight: bold; white-space: nowrap; }
+    .btn-sel { padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: bold;
+               border: none; cursor: pointer; }
+    .btn-sel-action { background: white; color: #1a237e; }
+    .btn-sel-action:hover { background: #e8eaf6; }
+    .btn-sel-cancel { background: transparent; color: #aaa; border: 1px solid #555; }
+    .btn-sel-cancel:hover { background: rgba(255,255,255,.1); color: white; }
+
     /* Colonne ID collante lors du défilement horizontal */
+    .table-profils th.col-p-id,
     .table-profils th.col-p-id,
     .table-profils td.col-p-id {
       position: sticky;
-      left: 0;
+      left: 34px;
       z-index: 2;
       background: white;
       box-shadow: 2px 0 5px -2px rgba(0,0,0,.15);
@@ -953,10 +983,11 @@
       background: var(--noir);
       z-index: 3;
     }
-    /* Conserver les fonds de ligne sur la cellule collante */
+    /* Conserver les fonds de ligne sur les cellules collantes */
     .table-profils tbody tr:hover       td.col-p-id { background: #fafafa; }
     .table-profils tr.ligne-attente     td.col-p-id { background: #fffde7; }
     .table-profils tr.ligne-focus       td.col-p-id { background: #fff0f0; }
+    .table-profils tr.ligne-selectee    td.col-p-id { background: #e8f5e9; }
 
     /* Colonnes fixes */
     .col-p-id          { width: 75px;  }
@@ -1661,6 +1692,16 @@
       <span id="stock-compteur"></span>
     </div>
     <div id="zone-synthese"></div>
+  </div>
+
+  <!-- ── BARRE SÉLECTION GROUPÉE ─────────────────────────────── -->
+  <div id="barre-selection" class="barre-selection">
+    <span class="barre-sel-count"><span id="barre-sel-nb">0</span> sélectionné(s)</span>
+    <div class="toolbar-sep" style="background:rgba(255,255,255,.3)"></div>
+    <button class="btn-sel btn-sel-action" id="btn-sel-chantier">⚑ Changer chantier</button>
+    <button class="btn-sel btn-sel-action" id="btn-sel-lieu">📦 Changer lieu</button>
+    <div style="flex:1"></div>
+    <button class="btn-sel btn-sel-cancel" id="btn-sel-annuler">✕ Désélectionner</button>
   </div>
 
   </div><!-- fin #section-stock -->
@@ -2810,6 +2851,27 @@
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="fermerM('m-supprimer')">Annuler</button>
         <button class="btn-modale btn-modale-rouge" onclick="confirmerSuppression()">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE — ACTION GROUPÉE (chantier / lieu)
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-action-groupee" class="modale-bg" role="dialog" aria-modal="true" aria-label="Action groupée">
+    <div class="modale" style="max-width:420px">
+      <h2 id="ag-titre" class="modale-titre">Action groupée</h2>
+      <div id="ag-corps" style="margin:16px 0">
+        <div class="champ">
+          <label id="ag-label" for="ag-valeur">Valeur</label>
+          <input id="ag-valeur" class="champ-input" list="ag-datalist" autocomplete="off" placeholder="—">
+          <datalist id="ag-datalist"></datalist>
+        </div>
+        <p id="ag-desc" style="font-size:12px;color:#888;margin-top:6px"></p>
+      </div>
+      <div class="form-actions">
+        <button class="btn-modale btn-modale-gris" id="ag-btn-annuler">Annuler</button>
+        <button class="btn-modale btn-modale-rouge" id="ag-btn-confirmer">Appliquer</button>
       </div>
     </div>
   </div>

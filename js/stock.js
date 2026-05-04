@@ -232,6 +232,7 @@ const Stock = (() => {
   let _synProfilsTous = false;
   let _bilanChantier  = '';
   let _archivesTab    = 'profils';  // sous-onglet de l'onglet Archivées
+  let _selectionIds   = new Set();  // IDs sélectionnés pour actions groupées
   let _racks     = [];  // { id, nom, nb_allees, nb_etages } depuis Supabase
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
   let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
@@ -839,9 +840,10 @@ const Stock = (() => {
     const admin = Auth.hasRight('can_validate');
     const modif = Auth.hasRight('can_edit');
     const vis   = _chargerColsVis();
-    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + 2; // +hist +actions
+    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + 3; // +check +hist +actions
 
     let h = '<table class="table-profils"><thead><tr>';
+    h += '<th class="col-p-check"><input type="checkbox" id="chk-select-all-profils" title="Tout sélectionner"></th>';
     COLS_PROFILS.forEach(c => {
       if (!vis[c.key]) return;
       const cls   = `col-p-${c.key}`;
@@ -859,8 +861,13 @@ const Stock = (() => {
       h += `<tr><td colspan="${nbCols}" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
     } else {
       data.forEach(b => {
-        const attente = b.statut === 'en_attente';
-        h += `<tr${attente ? ' class="ligne-attente"' : ''} data-id="${_e(b.id)}">`;
+        const attente  = b.statut === 'en_attente';
+        const selectee = _selectionIds.has(b.id);
+        let rowClass = '';
+        if (selectee) rowClass = 'ligne-selectee';
+        else if (attente) rowClass = 'ligne-attente';
+        h += `<tr${rowClass ? ` class="${rowClass}"` : ''} data-id="${_e(b.id)}">`;
+        h += `<td class="col-p-check" onclick="event.stopPropagation()"><input type="checkbox" class="chk-barre" data-id="${_e(b.id)}"${selectee ? ' checked' : ''}></td>`;
         COLS_PROFILS.forEach(c => {
           if (!vis[c.key]) return;
           const ed = modif && COLS_EDITABLES_PROFIL.has(c.key);
@@ -2525,6 +2532,13 @@ ${hasT ? `
     };
     document.title = titres[onglet] || 'Stock — LBF';
 
+    // Vider la sélection multiple en changeant d'onglet
+    if (precedent !== onglet && _selectionIds.size) {
+      _selectionIds.clear();
+      const barre = document.getElementById('barre-selection');
+      if (barre) barre.classList.remove('visible');
+    }
+
     // Réinitialiser les filtres de l'onglet quitté
     if (precedent !== onglet) _resetFiltres(precedent);
     _filtrer();
@@ -2610,6 +2624,93 @@ ${hasT ? `
   /* ──────────────────────────────────────────────────────────────
      ÉVÉNEMENTS PRINCIPAUX
      ────────────────────────────────────────────────────────────── */
+
+  /* ──────────────────────────────────────────────────────────────
+     SÉLECTION MULTIPLE
+     ────────────────────────────────────────────────────────────── */
+
+  function _majBarreSelection() {
+    const barre = document.getElementById('barre-selection');
+    const nb    = document.getElementById('barre-sel-nb');
+    if (!barre) return;
+    const n = _selectionIds.size;
+    if (n > 0) {
+      barre.classList.add('visible');
+      if (nb) nb.textContent = n;
+    } else {
+      barre.classList.remove('visible');
+    }
+    // Sync case "tout sélectionner"
+    const chkAll = document.getElementById('chk-select-all-profils');
+    if (chkAll) {
+      const total = document.querySelectorAll('.chk-barre').length;
+      chkAll.checked       = total > 0 && n === total;
+      chkAll.indeterminate = n > 0 && n < total;
+    }
+  }
+
+  function _ouvrirActionGroupee(type) {
+    const titre  = document.getElementById('ag-titre');
+    const label  = document.getElementById('ag-label');
+    const desc   = document.getElementById('ag-desc');
+    const inp    = document.getElementById('ag-valeur');
+    const dl     = document.getElementById('ag-datalist');
+    const modale = document.getElementById('m-action-groupee');
+    if (!modale || !inp) return;
+
+    modale.dataset.agType = type;
+    inp.value = '';
+
+    if (type === 'chantier') {
+      if (titre) titre.textContent = 'Changer le chantier';
+      if (label) label.textContent = 'Chantier d\'affectation';
+      if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s).`;
+      const chantiers = [...new Set((_chantiers || []).map(c => c.nom || c.id))].sort();
+      if (dl) dl.innerHTML = chantiers.map(v => `<option value="${_e(v)}">`).join('');
+    } else {
+      if (titre) titre.textContent = 'Changer le lieu de stockage';
+      if (label) label.textContent = 'Lieu de stockage';
+      if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s).`;
+      const lieux = [...new Set((_data?.barres || []).map(b => b.lieu_stockage).filter(Boolean))].sort();
+      if (dl) dl.innerHTML = lieux.map(v => `<option value="${_e(v)}">`).join('');
+    }
+
+    _ouvrirModale('m-action-groupee');
+    setTimeout(() => inp.focus(), 80);
+  }
+
+  async function _appliquerActionGroupee() {
+    const modale = document.getElementById('m-action-groupee');
+    const inp    = document.getElementById('ag-valeur');
+    if (!modale || !inp) return;
+
+    const type   = modale.dataset.agType;
+    const valeur = inp.value.trim();
+    if (!valeur) { inp.focus(); return; }
+
+    const ids = [..._selectionIds];
+    _fermerModale('m-action-groupee');
+
+    const champ = type === 'chantier' ? 'chantier_affectation' : 'lieu_stockage';
+
+    // Le champ chantier_affectation stocke le nom (identifiant métier)
+    const valeurFinal = valeur;
+
+    let n = 0;
+    for (const id of ids) {
+      const barre = _parId(id);
+      if (!barre) continue;
+      try {
+        await _persisterElement({ ...barre, [champ]: valeurFinal });
+        n++;
+      } catch {}
+    }
+
+    _selectionIds.clear();
+    _majBarreSelection();
+    _filtrer();
+    _notif(`${n} barre(s) mise(s) à jour.`, 'succes');
+  }
 
   function _attacherEvenements() {
     // Onglets
@@ -2957,6 +3058,58 @@ ${hasT ? `
     ['btn-ajout-tole','btn-ajout-tole-tab'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('click', () => _ouvrirModaleAjoutTole());
+    });
+
+    // ── Sélection multiple — checkboxes (délégation sur le tableau) ──
+    if (zoneTab) {
+      zoneTab.addEventListener('change', e => {
+        // Case individuelle
+        if (e.target.classList.contains('chk-barre')) {
+          const id = e.target.dataset.id;
+          if (e.target.checked) _selectionIds.add(id);
+          else _selectionIds.delete(id);
+          const tr = e.target.closest('tr');
+          if (tr) tr.classList.toggle('ligne-selectee', e.target.checked);
+          _majBarreSelection();
+          return;
+        }
+        // Case "tout sélectionner"
+        if (e.target.id === 'chk-select-all-profils') {
+          const cases = zoneTab.querySelectorAll('.chk-barre');
+          cases.forEach(cb => {
+            cb.checked = e.target.checked;
+            const id = cb.dataset.id;
+            if (e.target.checked) _selectionIds.add(id);
+            else _selectionIds.delete(id);
+            const tr = cb.closest('tr');
+            if (tr) tr.classList.toggle('ligne-selectee', e.target.checked);
+          });
+          _majBarreSelection();
+        }
+      });
+    }
+
+    // ── Barre d'actions groupées ──
+    document.getElementById('btn-sel-chantier')?.addEventListener('click', () => _ouvrirActionGroupee('chantier'));
+    document.getElementById('btn-sel-lieu')?.addEventListener('click',     () => _ouvrirActionGroupee('lieu'));
+    document.getElementById('btn-sel-annuler')?.addEventListener('click',  () => {
+      _selectionIds.clear();
+      // Décocher toutes les cases sans refiltrer tout le tableau
+      document.querySelectorAll('.chk-barre').forEach(cb => {
+        cb.checked = false;
+        const tr = cb.closest('tr');
+        if (tr) tr.classList.remove('ligne-selectee');
+      });
+      const chkAll = document.getElementById('chk-select-all-profils');
+      if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+      _majBarreSelection();
+    });
+
+    // ── Modale action groupée ──
+    document.getElementById('ag-btn-annuler')?.addEventListener('click',   () => _fermerModale('m-action-groupee'));
+    document.getElementById('ag-btn-confirmer')?.addEventListener('click', () => _appliquerActionGroupee());
+    document.getElementById('ag-valeur')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); _appliquerActionGroupee(); }
     });
   }
 
