@@ -165,6 +165,10 @@
     }
     .alerte-attente:hover { filter: brightness(.95); }
     .alerte-attente-lien { font-size: 12px; opacity: .75; margin-left: 4px; }
+    .alerte-demandes {
+      background: #fff0f0; border-bottom-color: #f5c6cb; color: var(--rouge);
+    }
+    .alerte-demandes .alerte-nb-demandes { background: var(--rouge); }
     .badge-filtre-actif {
       display: none;
       align-items: center;
@@ -1550,6 +1554,12 @@
   <div id="stock-alerte-attente" class="alerte-attente" role="alert" title="Voir les modifications récentes" style="display:none">
     🕐&nbsp; <span class="alerte-nb">0</span>&nbsp; modification(s) récente(s)
     <span class="alerte-attente-lien">→ Voir</span>
+  </div>
+
+  <!-- Bannière admin : demandes d'attribution en attente -->
+  <div id="stock-alerte-demandes" class="alerte-attente alerte-demandes" role="alert" title="Voir les demandes en attente" style="display:none">
+    🔔&nbsp; <span class="alerte-nb alerte-nb-demandes">0</span>&nbsp; demande(s) d'attribution en attente
+    <span class="alerte-attente-lien">→ Traiter</span>
   </div>
 
   <!-- ══ SECTION STOCK ════════════════════════════════════════════ -->

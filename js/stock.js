@@ -377,6 +377,7 @@ const Stock = (() => {
     _peuplerFiltres();
     _filtrer();
     _majAlerteAttente();
+    _majBannieresDemandes();
     _majDatalistChantiers();
     _attacherEvenements();
     _initialiserModales();
@@ -392,6 +393,7 @@ const Stock = (() => {
           if (nouvelles.length !== avant) {
             _filtrer();
             _majAlerteAttente();
+            _majBannieresDemandes();
           }
         } catch(e) {}
       }, 30000);
@@ -2607,6 +2609,19 @@ ${hasT ? `
 
   function _majAlerteAttente() { _majBanniereRecents(); } // alias rétro-compatibilité
 
+  function _majBannieresDemandes() {
+    const z = document.getElementById('stock-alerte-demandes');
+    if (!z || !Auth.hasRight('can_validate')) { if (z) z.style.display = 'none'; return; }
+    const nb = _demandes.length;
+    if (nb === 0) {
+      z.style.display = 'none';
+    } else {
+      z.style.display = 'flex';
+      const span = z.querySelector('.alerte-nb-demandes');
+      if (span) span.textContent = nb;
+    }
+  }
+
   function _majBanniereRecents() {
     const z = document.getElementById('stock-alerte-attente');
     if (!z || !Auth.hasRight('can_validate')) {
@@ -2808,6 +2823,14 @@ ${hasT ? `
     // Bannière admin : clic pour ouvrir le panneau modifications récentes
     document.getElementById('stock-alerte-attente')?.addEventListener('click', () => {
       _activerSectionAdmin('recents');
+    });
+
+    // Bannière demandes : clic pour basculer sur Profilés filtré sur les en_attente
+    document.getElementById('stock-alerte-demandes')?.addEventListener('click', () => {
+      _basculerOnglet('profils', true);
+      _filtreEnAttente = true;
+      _majBadgeAttente();
+      _filtrer();
     });
 
     // Liens de navigation depuis la synthèse (event delegation)
@@ -5571,6 +5594,7 @@ ${hasT ? `
     } catch(e) {
       _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
     }
+    _majBannieresDemandes();
 
     // Sauvegarder le nouveau demandeur s'il n'était pas encore dans la liste
     if (!dem.demandeur_id && dem.demandeur_nom) {
@@ -5634,6 +5658,7 @@ ${hasT ? `
       } catch(e) {
         _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
       }
+      _majBannieresDemandes();
       _fermerModale('m-confirmation');
       _filtrer();
       _notif(`Demande ${id} refusée`, 'info');
