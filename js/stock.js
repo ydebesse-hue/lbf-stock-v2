@@ -2672,6 +2672,11 @@ ${hasT ? `
       if (label) label.textContent = 'Disponibilité';
       if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s).`;
       if (dl) dl.innerHTML = '<option value="Disponible"><option value="Affecté">';
+    } else if (type === 'commentaire') {
+      if (titre) titre.textContent = 'Modifier le commentaire';
+      if (label) label.textContent = 'Commentaire';
+      if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s). Laisser vide pour effacer.`;
+      if (dl) dl.innerHTML = '';
     } else {
       if (titre) titre.textContent = 'Changer le lieu de stockage';
       if (label) label.textContent = 'Lieu de stockage';
@@ -2691,13 +2696,15 @@ ${hasT ? `
 
     const type   = modale.dataset.agType;
     const valeur = inp.value.trim();
-    if (!valeur) { inp.focus(); return; }
+    if (!valeur && type !== 'commentaire') { inp.focus(); return; }
 
     const ids = [..._selectionIds];
     _fermerModale('m-action-groupee');
 
     let patch;
-    if (type === 'statut') {
+    if (type === 'commentaire') {
+      patch = { commentaire: valeur || null };
+    } else if (type === 'statut') {
       const dispo = valeur.toLowerCase().startsWith('d') ? 'disponible' : 'affecte';
       patch = dispo === 'disponible'
         ? { disponibilite: 'disponible', chantier_affectation: null }
@@ -3101,9 +3108,10 @@ ${hasT ? `
     }
 
     // ── Barre d'actions groupées ──
-    document.getElementById('btn-sel-chantier')?.addEventListener('click', () => _ouvrirActionGroupee('chantier'));
-    document.getElementById('btn-sel-lieu')?.addEventListener('click',     () => _ouvrirActionGroupee('lieu'));
-    document.getElementById('btn-sel-statut')?.addEventListener('click',   () => _ouvrirActionGroupee('statut'));
+    document.getElementById('btn-sel-chantier')?.addEventListener('click',    () => _ouvrirActionGroupee('chantier'));
+    document.getElementById('btn-sel-lieu')?.addEventListener('click',        () => _ouvrirActionGroupee('lieu'));
+    document.getElementById('btn-sel-statut')?.addEventListener('click',      () => _ouvrirActionGroupee('statut'));
+    document.getElementById('btn-sel-commentaire')?.addEventListener('click', () => _ouvrirActionGroupee('commentaire'));
     document.getElementById('btn-sel-annuler')?.addEventListener('click',  () => {
       _selectionIds.clear();
       // Décocher toutes les cases sans refiltrer tout le tableau

@@ -955,18 +955,24 @@
 
     /* Barre d'actions groupées */
     .barre-selection {
-      display: none; align-items: center; gap: 8px;
-      padding: 8px 16px; background: #1a237e; color: white;
-      font-size: 13px; position: sticky; bottom: 0; z-index: 50;
-      box-shadow: 0 -2px 8px rgba(0,0,0,.2);
+      display: none; align-items: center; gap: 6px;
+      padding: 6px 8px 6px 4px;
+      background: #1a237e; color: white; font-size: 12px;
+      border-radius: 4px; margin-bottom: 4px;
+      min-width: max-content;
     }
     .barre-selection.visible { display: flex; }
-    .barre-sel-count { font-weight: bold; white-space: nowrap; }
-    .btn-sel { padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: bold;
-               border: none; cursor: pointer; }
-    .btn-sel-action { background: white; color: #1a237e; }
-    .btn-sel-action:hover { background: #e8eaf6; }
-    .btn-sel-cancel { background: transparent; color: #aaa; border: 1px solid #555; }
+    .barre-sel-count { font-weight: bold; white-space: nowrap;
+                       padding: 0 8px; min-width: 90px; }
+    .barre-sel-sep { width: 1px; align-self: stretch;
+                     background: rgba(255,255,255,.3); margin: 2px 2px; }
+    .btn-sel { padding: 4px 10px; border-radius: 3px; font-size: 12px; font-weight: 600;
+               border: none; cursor: pointer; white-space: nowrap; }
+    .btn-sel-action { background: rgba(255,255,255,.15); color: white;
+                      border: 1px solid rgba(255,255,255,.3); }
+    .btn-sel-action:hover { background: rgba(255,255,255,.28); }
+    .btn-sel-cancel { background: transparent; color: rgba(255,255,255,.6);
+                      border: 1px solid rgba(255,255,255,.25); }
     .btn-sel-cancel:hover { background: rgba(255,255,255,.1); color: white; }
 
     /* Colonne ID collante lors du défilement horizontal */
@@ -1683,6 +1689,18 @@
 
   <!-- ── TABLEAU PRINCIPAL ─────────────────────────────────────── -->
   <div class="zone-tableau">
+    <!-- ── BARRE SÉLECTION GROUPÉE ──────────────────────────────── -->
+    <div id="barre-selection" class="barre-selection">
+      <span class="barre-sel-count"><span id="barre-sel-nb">0</span> sélectionné(s)</span>
+      <div class="barre-sel-sep"></div>
+      <button class="btn-sel btn-sel-action" id="btn-sel-chantier">⚑ Chantier</button>
+      <button class="btn-sel btn-sel-action" id="btn-sel-lieu">📦 Lieu</button>
+      <button class="btn-sel btn-sel-action" id="btn-sel-statut">↔ Statut</button>
+      <button class="btn-sel btn-sel-action" id="btn-sel-commentaire">✏ Commentaire</button>
+      <div style="flex:1"></div>
+      <button class="btn-sel btn-sel-cancel" id="btn-sel-annuler">✕ Désélectionner</button>
+    </div>
+
     <div id="tableau-stock" style="display:none">
       <div style="padding:30px; text-align:center; color:#aaa; font-style:italic;">
         Chargement du stock…
@@ -1692,17 +1710,6 @@
       <span id="stock-compteur"></span>
     </div>
     <div id="zone-synthese"></div>
-  </div>
-
-  <!-- ── BARRE SÉLECTION GROUPÉE ─────────────────────────────── -->
-  <div id="barre-selection" class="barre-selection">
-    <span class="barre-sel-count"><span id="barre-sel-nb">0</span> sélectionné(s)</span>
-    <div class="toolbar-sep" style="background:rgba(255,255,255,.3)"></div>
-    <button class="btn-sel btn-sel-action" id="btn-sel-chantier">⚑ Changer chantier</button>
-    <button class="btn-sel btn-sel-action" id="btn-sel-lieu">📦 Changer lieu</button>
-    <button class="btn-sel btn-sel-action" id="btn-sel-statut">↔ Changer statut</button>
-    <div style="flex:1"></div>
-    <button class="btn-sel btn-sel-cancel" id="btn-sel-annuler">✕ Désélectionner</button>
   </div>
 
   </div><!-- fin #section-stock -->
