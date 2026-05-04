@@ -2655,55 +2655,85 @@ ${hasT ? `
   }
 
   function _ouvrirActionGroupee(type) {
-    const titre  = document.getElementById('ag-titre');
-    const label  = document.getElementById('ag-label');
-    const desc   = document.getElementById('ag-desc');
-    const inp    = document.getElementById('ag-valeur');
-    const dl     = document.getElementById('ag-datalist');
-    const modale = document.getElementById('m-action-groupee');
-    if (!modale || !inp) return;
+    const titre     = document.getElementById('ag-titre');
+    const label     = document.getElementById('ag-label');
+    const desc      = document.getElementById('ag-desc');
+    const container = document.getElementById('ag-champ-container');
+    const modale    = document.getElementById('m-action-groupee');
+    if (!modale || !container) return;
 
     modale.dataset.agType = type;
-    inp.value = '';
+    container.innerHTML = '';
+    const n = _selectionIds.size;
+    if (desc) desc.textContent = `Appliquer à ${n} barre(s) sélectionnée(s).`;
 
     if (type === 'chantier') {
       if (titre) titre.textContent = 'Changer le chantier';
       if (label) label.textContent = 'Chantier d\'affectation';
-      if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s).`;
-      const chantiers = [...new Set((_chantiers || []).map(c => c.nom || c.id))].sort();
-      if (dl) dl.innerHTML = chantiers.map(v => `<option value="${_e(v)}">`).join('');
+      const sel = document.createElement('select');
+      sel.id = 'ag-ctrl'; sel.className = 'champ-input';
+      sel.innerHTML = `<option value="">— Aucun —</option>` +
+        (_chantiers || []).map(c => {
+          const lbl = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
+          return `<option value="${_e(c.nom)}">${_e(lbl)}</option>`;
+        }).join('');
+      container.appendChild(sel);
+      setTimeout(() => sel.focus(), 80);
+
     } else if (type === 'statut') {
       if (titre) titre.textContent = 'Changer le statut';
       if (label) label.textContent = 'Disponibilité';
-      if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s).`;
-      if (dl) dl.innerHTML = '<option value="Disponible"><option value="Affecté">';
-    } else if (type === 'commentaire') {
-      if (titre) titre.textContent = 'Modifier le commentaire';
-      if (label) label.textContent = 'Commentaire';
-      if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s). Laisser vide pour effacer.`;
-      if (dl) dl.innerHTML = '';
-    } else {
+      const sel = document.createElement('select');
+      sel.id = 'ag-ctrl'; sel.className = 'champ-input';
+      sel.innerHTML = `<option value="disponible">Disponible</option>
+                       <option value="affecte">Affecté</option>`;
+      container.appendChild(sel);
+      setTimeout(() => sel.focus(), 80);
+
+    } else if (type === 'lieu') {
       if (titre) titre.textContent = 'Changer le lieu de stockage';
       if (label) label.textContent = 'Lieu de stockage';
-      if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s).`;
-      const lieuxRacks = _lieux.length ? _lieux : [];
-      const lieuxUtilises = [...new Set((_data?.barres || []).map(b => b.lieu_stockage).filter(Boolean))];
-      const lieux = [...new Set([...lieuxRacks, ...lieuxUtilises])];
-      if (dl) dl.innerHTML = lieux.map(v => `<option value="${_e(v)}">`).join('');
+      const wrapper = document.createElement('span');
+      wrapper.id = 'ag-ctrl'; wrapper.className = 'lieu-cascade';
+      _monterSelecteurLieu(wrapper, '');
+      container.appendChild(wrapper);
+      setTimeout(() => wrapper.querySelector('.lieu-sel-rack')?.focus(), 80);
+
+    } else {
+      if (titre) titre.textContent = 'Modifier le commentaire';
+      if (label) label.textContent = 'Commentaire';
+      if (desc)  desc.textContent  = `Appliquer à ${n} barre(s). Laisser vide pour effacer.`;
+      const inp = document.createElement('input');
+      inp.id = 'ag-ctrl'; inp.type = 'text'; inp.className = 'champ-input';
+      inp.placeholder = 'Commentaire…';
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); _appliquerActionGroupee(); } });
+      container.appendChild(inp);
+      setTimeout(() => inp.focus(), 80);
     }
 
     _ouvrirModale('m-action-groupee');
-    setTimeout(() => inp.focus(), 80);
   }
 
   async function _appliquerActionGroupee() {
-    const modale = document.getElementById('m-action-groupee');
-    const inp    = document.getElementById('ag-valeur');
-    if (!modale || !inp) return;
+    const modale    = document.getElementById('m-action-groupee');
+    const container = document.getElementById('ag-champ-container');
+    if (!modale || !container) return;
 
-    const type   = modale.dataset.agType;
-    const valeur = inp.value.trim();
-    if (!valeur && type !== 'commentaire') { inp.focus(); return; }
+    const type  = modale.dataset.agType;
+    const ctrl  = container.querySelector('#ag-ctrl');
+
+    // Lire la valeur selon le type de contrôle
+    let valeur;
+    if (type === 'lieu') {
+      valeur = _lireLieu(ctrl) || '';
+    } else {
+      valeur = ctrl?.value?.trim() ?? '';
+    }
+
+    if (!valeur && type !== 'commentaire') {
+      ctrl?.focus();
+      return;
+    }
 
     const ids = [..._selectionIds];
     _fermerModale('m-action-groupee');
@@ -2712,25 +2742,28 @@ ${hasT ? `
     if (type === 'commentaire') {
       patch = { commentaire: valeur || null };
     } else if (type === 'statut') {
-      const dispo = valeur.toLowerCase().startsWith('d') ? 'disponible' : 'affecte';
-      patch = dispo === 'disponible'
+      patch = valeur === 'disponible'
         ? { disponibilite: 'disponible', chantier_affectation: null }
         : { disponibilite: 'affecte' };
+    } else if (type === 'chantier') {
+      patch = { chantier_affectation: valeur || null };
     } else {
-      const champ = type === 'chantier' ? 'chantier_affectation' : 'lieu_stockage';
-      patch = { [champ]: valeur };
+      patch = { lieu_stockage: valeur };
     }
 
     const operateur = Auth.getSession()?.identifiant || 'inconnu';
     const dateMaj   = _dateAujourdhui();
 
     const OP_LABELS_AG = {
-      chantier:    'Chantier → ' + valeur,
-      lieu:        'Lieu → ' + valeur,
-      statut:      'Statut → ' + valeur,
+      chantier:    valeur ? `Chantier → ${_labelChantier(valeur) || valeur}` : 'Retour stock',
+      lieu:        `Lieu → ${valeur}`,
+      statut:      valeur === 'disponible' ? 'Statut → Disponible' : 'Statut → Affecté',
       commentaire: 'Commentaire mis à jour',
     };
     const commentaireHist = OP_LABELS_AG[type] || 'Modification groupée';
+    const typeHist = type === 'chantier'
+      ? (valeur ? 'AFFECTATION' : 'RETOUR')
+      : 'MODIFICATION';
 
     let n = 0;
     for (const id of ids) {
@@ -2744,10 +2777,11 @@ ${hasT ? `
           modifie_par: operateur,
         });
         await _enregistrerHistorique(
-          id, 'MODIFICATION',
+          id, typeHist,
           barre.longueur_m, barre.longueur_m,
-          barre.chantier_affectation || null,
-          operateur, operateur, commentaireHist, barre.lieu_stockage || null
+          type === 'chantier' ? (valeur || barre.chantier_affectation || null) : (barre.chantier_affectation || null),
+          operateur, operateur, commentaireHist,
+          type === 'lieu' ? valeur : (barre.lieu_stockage || null)
         );
         n++;
       } catch {}
@@ -3157,9 +3191,6 @@ ${hasT ? `
     // ── Modale action groupée ──
     document.getElementById('ag-btn-annuler')?.addEventListener('click',   () => _fermerModale('m-action-groupee'));
     document.getElementById('ag-btn-confirmer')?.addEventListener('click', () => _appliquerActionGroupee());
-    document.getElementById('ag-valeur')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); _appliquerActionGroupee(); }
-    });
   }
 
 
