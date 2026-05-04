@@ -2572,15 +2572,16 @@ ${hasT ? `
     if (span) span.textContent = nb;
   }
 
-  function _majAlerteAttente() {
+  function _majAlerteAttente() { _majBanniereRecents(); } // alias rétro-compatibilité
+
+  function _majBanniereRecents() {
     const z = document.getElementById('stock-alerte-attente');
     if (!z || !Auth.hasRight('can_validate')) {
       if (z) z.style.display = 'none';
       return;
     }
-    const nbItems   = _data.barres.filter(b => b.statut === 'en_attente').length;
-    const nbDemandes = _demandes.length;
-    const nb = nbItems + nbDemandes;
+    const hier = Date.now() - 24 * 60 * 60 * 1000;
+    const nb = (_data?.barres || []).filter(b => b.date_modif && new Date(b.date_modif).getTime() >= hier).length;
     if (nb === 0) {
       z.style.display = 'none';
     } else {
@@ -2601,13 +2602,9 @@ ${hasT ? `
       b.addEventListener('click', () => _basculerOnglet(b.dataset.onglet));
     });
 
-    // Alerte admin : clic pour voir les éléments en attente de validation
+    // Bannière admin : clic pour ouvrir le panneau modifications récentes
     document.getElementById('stock-alerte-attente')?.addEventListener('click', () => {
-      _filtreEnAttente = true;
-      if (_sectionActive === 'admin') _activerSectionStock();
-      _basculerOnglet('profils', true);
-      _majBadgeAttente();
-      _filtrer();
+      _activerSectionAdmin('recents');
     });
 
     // Liens de navigation depuis la synthèse (event delegation)
@@ -3513,7 +3510,6 @@ ${hasT ? `
     if (!longueur || longueur <= 0) return _signalerErreur(m, '#ap-longueur', 'La longueur est obligatoire');
 
     const session = Auth.getSession();
-    const isAdmin = Auth.hasRight('can_validate');
 
     const poidsml    = parseFloat(m.dataset.poidsml) || 0;
     const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
@@ -3534,11 +3530,11 @@ ${hasT ? `
       classe_acier: classe || null,
       ref_commande: null,
       fournisseur: null,
-      statut: isAdmin ? 'valide' : 'en_attente',
+      statut: 'valide',
       date_ajout: _dateAujourdhui(),
       ajoute_par: session?.identifiant || 'inconnu',
-      valide_par: isAdmin ? session?.identifiant : null,
-      date_validation: isAdmin ? _dateAujourdhui() : null,
+      valide_par: session?.identifiant || null,
+      date_validation: _dateAujourdhui(),
       commentaire,
     };
 
@@ -3548,12 +3544,9 @@ ${hasT ? `
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
     _filtrer();
-    _majAlerteAttente();
+    _majBanniereRecents();
 
-    const msg = isAdmin
-      ? `Profilé ${type} ${desig} ajouté (${nouvelleId})`
-      : `Profilé ${type} ${desig} soumis pour validation`;
-    _notif(msg + (enLigne ? '' : ' — ⚠ mode hors ligne'), isAdmin ? (enLigne ? 'succes' : 'alerte') : 'info');
+    _notif(`Profilé ${type} ${desig} ajouté (${nouvelleId})` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
   }
 
   /**
@@ -3580,7 +3573,6 @@ ${hasT ? `
     }
 
     const session = Auth.getSession();
-    const isAdmin = Auth.hasRight('can_validate');
 
     // Résumé par ligne pour affichage post-soumission
     const resumeLignes = [];
@@ -3617,11 +3609,11 @@ ${hasT ? `
           classe_acier: classe || null,
           ref_commande: refCmd || null,
           fournisseur: fournisseur || null,
-          statut: isAdmin ? 'valide' : 'en_attente',
+          statut: 'valide',
           date_ajout: _dateAujourdhui(),
           ajoute_par: session?.identifiant || 'inconnu',
-          valide_par: isAdmin ? session?.identifiant : null,
-          date_validation: isAdmin ? _dateAujourdhui() : null,
+          valide_par: session?.identifiant || null,
+          date_validation: _dateAujourdhui(),
           commentaire: '',
         };
 
@@ -3637,7 +3629,7 @@ ${hasT ? `
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
     _filtrer();
-    _majAlerteAttente();
+    _majBanniereRecents();
 
     if (!toutEnLigne) _notif('⚠ Sauvegarde en mode hors ligne — données non synchronisées', 'alerte');
 
@@ -3886,7 +3878,6 @@ ${hasT ? `
     if (!type)                   return _signalerErreur(m, '#at-type-tole',   'Le type de tôle est obligatoire');
 
     const session = Auth.getSession();
-    const isAdmin = Auth.hasRight('can_validate');
 
     const poidsU = Math.round(((ep/1000)*(lrg/1000)*(lng/1000)*7850)*10)/10;
     const poidsT = Math.round(poidsU * qty * 10) / 10;
@@ -3908,11 +3899,11 @@ ${hasT ? `
       lieu_stockage: lieu,
       disponibilite: dispo,
       chantier_affectation: null,
-      statut: isAdmin ? 'valide' : 'en_attente',
+      statut: 'valide',
       date_ajout: _dateAujourdhui(),
       ajoute_par: session?.identifiant || 'inconnu',
-      valide_par: isAdmin ? session?.identifiant : null,
-      date_validation: isAdmin ? _dateAujourdhui() : null,
+      valide_par: session?.identifiant || null,
+      date_validation: _dateAujourdhui(),
       commentaire
     };
 
@@ -3921,13 +3912,10 @@ ${hasT ? `
     _fermerModale('m-ajout-tole');
     _peuplerFiltres();
     _filtrer();
-    _majAlerteAttente();
+    _majBanniereRecents();
     _majAlerteSeuil();
 
-    const msg = isAdmin
-      ? `Tôle ${ep}mm (${_LABEL_TYPE_TOLE[type] || type}) ajoutée (${nouvelleId})`
-      : `Tôle ${ep}mm soumise pour validation`;
-    _notif(msg + (enLigne ? '' : ' — ⚠ mode hors ligne'), isAdmin ? (enLigne ? 'succes' : 'alerte') : 'info');
+    _notif(`Tôle ${ep}mm (${_LABEL_TYPE_TOLE[type] || type}) ajoutée (${nouvelleId})` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
   }
 
 
@@ -4054,8 +4042,7 @@ ${hasT ? `
     if (utilisee <= 0) return _signalerErreur(m, '#ub-longueur', 'La longueur utilisée doit être > 0');
     if (restante < 0)  return _signalerErreur(m, '#ub-longueur', `Longueur max : ${barre.longueur_m} m`);
 
-    const session  = Auth.getSession();
-    const isAdmin  = Auth.hasRight('can_validate');
+    const session   = Auth.getSession();
     const operateur = session?.identifiant || null;
 
     let chantier        = null;
@@ -4113,9 +4100,9 @@ ${hasT ? `
         poids_barre_kg:       poidsChute,
         disponibilite:        chuteDispo,
         chantier_affectation: chuteAffectation,
-        statut:               isAdmin ? 'valide' : 'en_attente',
-        valide_par:           isAdmin ? operateur : null,
-        date_validation:      isAdmin ? _dateAujourdhui() : null,
+        statut:               'valide',
+        valide_par:           operateur,
+        date_validation:      _dateAujourdhui(),
         date_modif:           _dateAujourdhui(),
         modifie_par:          operateur || 'inconnu',
       });
@@ -4153,7 +4140,7 @@ ${hasT ? `
     _utiliserBarreId = null;
     _peuplerFiltres();
     _filtrer();
-    _majAlerteAttente();
+    _majBanniereRecents();
 
     const msg = estArchivage
       ? `Barre utilisée entièrement — archivée`
@@ -4442,7 +4429,6 @@ ${hasT ? `
     const original = _parId(id);
     if (!original) return;
     const session = Auth.getSession();
-    const isAdmin = Auth.hasRight('can_validate');
 
     let patch = {};
     if (categorie === 'profil') {
@@ -4508,9 +4494,9 @@ ${hasT ? `
     const modif = {
       ...original,
       ...patch,
-      statut: original.statut === 'en_attente' ? 'en_attente' : (isAdmin ? 'valide' : 'en_attente'),
-      valide_par:      isAdmin ? session?.identifiant : null,
-      date_validation: isAdmin ? _dateAujourdhui() : null,
+      statut: original.statut === 'en_attente' ? 'valide' : 'valide',
+      valide_par:      session?.identifiant || null,
+      date_validation: _dateAujourdhui(),
       date_modif:      _dateAujourdhui(),
       modifie_par:     session?.identifiant || 'inconnu'
     };
@@ -4669,7 +4655,6 @@ ${hasT ? `
     if (!original) return;
 
     const session = Auth.getSession();
-    const isAdmin = Auth.hasRight('can_validate');
 
     if (categorie === 'profil') {
       const longueur    = parseFloat(m.querySelector('#mod-longueur')?.value);
@@ -4694,9 +4679,9 @@ ${hasT ? `
         disponibilite: dispo,
         chantier_affectation: affectation,
         commentaire,
-        statut: estArchivage ? 'archivee' : (isAdmin ? 'valide' : 'en_attente'),
-        valide_par: isAdmin ? session?.identifiant : null,
-        date_validation: isAdmin ? _dateAujourdhui() : null,
+        statut: estArchivage ? 'archivee' : 'valide',
+        valide_par: session?.identifiant || null,
+        date_validation: _dateAujourdhui(),
         date_modif: _dateAujourdhui(),
         modifie_par: session?.identifiant || 'inconnu'
       };
@@ -4760,9 +4745,9 @@ ${hasT ? `
         lieu_stockage: lieu,
         disponibilite: dispo,
         commentaire,
-        statut: isAdmin ? 'valide' : 'en_attente',
-        valide_par: isAdmin ? session?.identifiant : null,
-        date_validation: isAdmin ? _dateAujourdhui() : null,
+        statut: 'valide',
+        valide_par: session?.identifiant || null,
+        date_validation: _dateAujourdhui(),
         date_modif: _dateAujourdhui(),
         modifie_par: session?.identifiant || 'inconnu'
       };
@@ -4781,15 +4766,11 @@ ${hasT ? `
     _fermerModale('m-modification');
     _peuplerFiltres();
     _filtrer();
-    _majAlerteAttente();
+    _majBanniereRecents();
 
-    // Message adapté selon le type d'opération
     const estArch = categorie === 'profil' && parseFloat(m.querySelector('#mod-longueur')?.value) === 0;
-    const msgBase = estArch
-      ? 'Barre archivée'
-      : (isAdmin ? 'Modification enregistrée' : 'Modification soumise pour validation');
-    const typeNotif = _enLigneModif ? 'succes' : 'alerte';
-    _notif(msgBase + (_enLigneModif ? '' : ' — ⚠ mode hors ligne'), typeNotif);
+    const msgBase = estArch ? 'Barre archivée' : 'Modification enregistrée';
+    _notif(msgBase + (_enLigneModif ? '' : ' — ⚠ mode hors ligne'), _enLigneModif ? 'succes' : 'alerte');
   }
 
 
@@ -5713,13 +5694,8 @@ ${hasT ? `
   function _majNoteStatut(m, selector) {
     const note = m.querySelector(selector);
     if (!note) return;
-    const isAdmin = Auth.hasRight('can_validate');
-    note.textContent = isAdmin
-      ? '✔ En tant qu\'administrateur, cet enregistrement sera validé directement.'
-      : '⏳ Cet enregistrement sera soumis à validation par l\'administrateur.';
-    note.className = isAdmin
-      ? `note-statut note-statut-direct ${selector.replace('.','')}`
-      : `note-statut note-statut-attente ${selector.replace('.','')}`;;
+    note.textContent = '✔ Cet enregistrement sera validé directement.';
+    note.className = `note-statut note-statut-direct ${selector.replace('.', '')}`;
   }
 
   /**
@@ -7174,6 +7150,78 @@ ${hasT ? `
     if (onglet === 'fournisseurs') _rendreFournisseurs();
     if (onglet === 'demandeurs')   _rendreDemandeurs();
     if (onglet === 'comptes' && typeof chargerUsers === 'function') chargerUsers();
+    if (onglet === 'recents')      _rendreRecents();
+  }
+
+  let _recentsPeriode = '24h';
+
+  function _rendreRecents() {
+    const contenu = document.getElementById('recents-contenu');
+    if (!contenu) return;
+    // Boutons de période
+    document.querySelectorAll('[data-recents-periode]').forEach(btn => {
+      btn.classList.toggle('actif', btn.dataset.recentsPeriode === _recentsPeriode);
+      btn.onclick = () => {
+        _recentsPeriode = btn.dataset.recentsPeriode;
+        _rendreRecents();
+      };
+    });
+    contenu.innerHTML = _htmlRecents(_recentsPeriode);
+  }
+
+  function _htmlRecents(periode) {
+    const durees = { '24h': 1, '7j': 7, '30j': 30 };
+    const jours  = durees[periode] || 1;
+    const limite = Date.now() - jours * 24 * 60 * 60 * 1000;
+
+    const items = (_data?.barres || [])
+      .filter(b => b.date_modif && new Date(b.date_modif).getTime() >= limite)
+      .sort((a, b) => new Date(b.date_modif) - new Date(a.date_modif));
+
+    if (!items.length) {
+      return `<div style="padding:24px;color:#aaa;font-style:italic">Aucune modification dans cette période.</div>`;
+    }
+
+    const STATUTS = {
+      valide:     '<span class="badge badge-valide">✔ Validé</span>',
+      en_attente: '<span class="badge badge-attente">⏳ En attente</span>',
+      archivee:   '<span class="badge badge-archive">📦 Archivé</span>',
+    };
+
+    let h = `<table class="hist-table">
+      <thead><tr>
+        <th>Date modif.</th><th>Par</th><th>ID</th><th>Type</th>
+        <th>Désignation</th><th>Statut</th><th>Qté / Long.</th><th>Chantier</th><th></th>
+      </tr></thead><tbody>`;
+
+    items.forEach(b => {
+      const date  = new Date(b.date_modif).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+      const desig = b.categorie === 'profil'
+        ? `${_e(b.section_type || '')} ${_e(b.designation || '')}`
+        : `${_e(String(b.epaisseur_mm))} mm ${_e(_LABEL_TYPE_TOLE[b.type_tole] || b.type_tole || '')} ${_e(String(b.largeur_mm))}×${_e(String(b.longueur_mm))}`;
+      const qty = b.categorie === 'profil'
+        ? (b.longueur_m != null ? `${parseFloat(b.longueur_m).toFixed(2)} m` : '—')
+        : (b.quantite   != null ? `${b.quantite} pcs` : '—');
+      const statut = STATUTS[b.statut] || `<span class="badge">${_e(b.statut)}</span>`;
+      const btnHist = b.categorie === 'tole'
+        ? `<button class="btn-ligne" onclick="Stock.ouvrirHistoriqueTole('${_e(b.id)}')" title="Historique">📋</button>`
+        : `<button class="btn-ligne" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Historique">📋</button>`;
+
+      h += `<tr>
+        <td style="white-space:nowrap">${_e(date)}</td>
+        <td>${_e(b.modifie_par || '—')}</td>
+        <td><span style="font-family:monospace;font-size:12px">${_e(b.id)}</span></td>
+        <td>${b.categorie === 'profil' ? 'Profilé' : 'Tôle'}</td>
+        <td>${desig}</td>
+        <td>${statut}</td>
+        <td>${_e(qty)}</td>
+        <td>${_e(_labelChantier(b.chantier_affectation) || b.chantier_affectation || '—')}</td>
+        <td>${btnHist}</td>
+      </tr>`;
+    });
+
+    return h + `</tbody></table>
+      <div style="margin-top:8px;font-size:12px;color:#aaa;text-align:right">${items.length} élément(s)</div>`;
   }
 
   function _attacherNavAdmin() {

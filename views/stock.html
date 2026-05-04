@@ -1491,9 +1491,9 @@
   <!-- Datalist chantiers (partagé par tous les inputs chantier) -->
   <datalist id="dl-chantiers"></datalist>
 
-  <!-- Alerte admin : éléments en attente (cliquable pour filtrer, visible en stock ET en admin) -->
-  <div id="stock-alerte-attente" class="alerte-attente" role="alert" title="Voir les éléments en attente">
-    ⚠&nbsp; <span class="alerte-nb">0</span>&nbsp; élément(s) en attente de validation
+  <!-- Bannière admin : modifications récentes (visible uniquement pour can_validate) -->
+  <div id="stock-alerte-attente" class="alerte-attente" role="alert" title="Voir les modifications récentes" style="display:none">
+    🕐&nbsp; <span class="alerte-nb">0</span>&nbsp; modification(s) récente(s)
     <span class="alerte-attente-lien">→ Voir</span>
   </div>
 
@@ -1657,6 +1657,7 @@
       <button class="sous-onglet"       data-admin-onglet="export">⬇ Export</button>
       <button class="sous-onglet"       data-admin-onglet="import">⬆ Import</button>
       <button class="sous-onglet"       data-admin-onglet="comptes">👤 Comptes</button>
+      <button class="sous-onglet"       data-admin-onglet="recents">🕐 Récents</button>
     </div>
     <div class="admin-panel-zone">
 
@@ -1807,6 +1808,19 @@
               <tr><td colspan="7" class="vide" style="padding:20px;text-align:center;color:#aaa">Chargement…</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div id="admin-panel-recents" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Modifications récentes</h3>
+        <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+          <span style="font-size:13px;color:#666">Période :</span>
+          <button class="sous-onglet-arc actif" data-recents-periode="24h">24 h</button>
+          <button class="sous-onglet-arc" data-recents-periode="7j">7 jours</button>
+          <button class="sous-onglet-arc" data-recents-periode="30j">30 jours</button>
+        </div>
+        <div id="recents-contenu">
+          <div style="padding:24px;color:#aaa;font-style:italic">Chargement…</div>
         </div>
       </div>
 
