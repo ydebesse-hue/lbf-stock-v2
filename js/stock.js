@@ -2581,7 +2581,10 @@ ${hasT ? `
       return;
     }
     const hier = Date.now() - 24 * 60 * 60 * 1000;
-    const nb = (_data?.barres || []).filter(b => b.date_modif && new Date(b.date_modif).getTime() >= hier).length;
+    const nb = (_data?.barres || []).filter(b => {
+      const d = b.date_modif || b.date_ajout;
+      return d && new Date(d).getTime() >= hier;
+    }).length;
     if (nb === 0) {
       z.style.display = 'none';
     } else {
@@ -7174,12 +7177,15 @@ ${hasT ? `
     const jours  = durees[periode] || 1;
     const limite = Date.now() - jours * 24 * 60 * 60 * 1000;
 
+    const _dateRef = b => b.date_modif || b.date_ajout;
+    const _tsRef   = b => new Date(_dateRef(b) || 0).getTime();
+
     const items = (_data?.barres || [])
-      .filter(b => b.date_modif && new Date(b.date_modif).getTime() >= limite)
-      .sort((a, b) => new Date(b.date_modif) - new Date(a.date_modif));
+      .filter(b => _tsRef(b) >= limite)
+      .sort((a, b) => _tsRef(b) - _tsRef(a));
 
     if (!items.length) {
-      return `<div style="padding:24px;color:#aaa;font-style:italic">Aucune modification dans cette période.</div>`;
+      return `<div style="padding:24px;color:#aaa;font-style:italic">Aucune activité dans cette période.</div>`;
     }
 
     const STATUTS = {
@@ -7190,12 +7196,17 @@ ${hasT ? `
 
     let h = `<table class="hist-table">
       <thead><tr>
-        <th>Date modif.</th><th>Par</th><th>ID</th><th>Type</th>
+        <th>Date</th><th>Action</th><th>Par</th><th>ID</th><th>Type</th>
         <th>Désignation</th><th>Statut</th><th>Qté / Long.</th><th>Chantier</th><th></th>
       </tr></thead><tbody>`;
 
     items.forEach(b => {
-      const date  = new Date(b.date_modif).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+      const estModif = !!b.date_modif;
+      const dateAff  = new Date(_dateRef(b)).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+      const par      = _e(b.modifie_par || b.ajoute_par || '—');
+      const action   = estModif
+        ? '<span style="color:#e67e22;font-size:11px;font-weight:bold">MODIF</span>'
+        : '<span style="color:#27ae60;font-size:11px;font-weight:bold">AJOUT</span>';
       const desig = b.categorie === 'profil'
         ? `${_e(b.section_type || '')} ${_e(b.designation || '')}`
         : `${_e(String(b.epaisseur_mm))} mm ${_e(_LABEL_TYPE_TOLE[b.type_tole] || b.type_tole || '')} ${_e(String(b.largeur_mm))}×${_e(String(b.longueur_mm))}`;
@@ -7208,8 +7219,9 @@ ${hasT ? `
         : `<button class="btn-ligne" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Historique">📋</button>`;
 
       h += `<tr>
-        <td style="white-space:nowrap">${_e(date)}</td>
-        <td>${_e(b.modifie_par || '—')}</td>
+        <td style="white-space:nowrap">${_e(dateAff)}</td>
+        <td>${action}</td>
+        <td>${par}</td>
         <td><span style="font-family:monospace;font-size:12px">${_e(b.id)}</span></td>
         <td>${b.categorie === 'profil' ? 'Profilé' : 'Tôle'}</td>
         <td>${desig}</td>
