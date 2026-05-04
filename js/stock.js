@@ -2667,6 +2667,11 @@ ${hasT ? `
       if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s).`;
       const chantiers = [...new Set((_chantiers || []).map(c => c.nom || c.id))].sort();
       if (dl) dl.innerHTML = chantiers.map(v => `<option value="${_e(v)}">`).join('');
+    } else if (type === 'statut') {
+      if (titre) titre.textContent = 'Changer le statut';
+      if (label) label.textContent = 'Disponibilité';
+      if (desc)  desc.textContent  = `Appliquer à ${_selectionIds.size} barre(s) sélectionnée(s).`;
+      if (dl) dl.innerHTML = '<option value="Disponible"><option value="Affecté">';
     } else {
       if (titre) titre.textContent = 'Changer le lieu de stockage';
       if (label) label.textContent = 'Lieu de stockage';
@@ -2691,17 +2696,23 @@ ${hasT ? `
     const ids = [..._selectionIds];
     _fermerModale('m-action-groupee');
 
-    const champ = type === 'chantier' ? 'chantier_affectation' : 'lieu_stockage';
-
-    // Le champ chantier_affectation stocke le nom (identifiant métier)
-    const valeurFinal = valeur;
+    let patch;
+    if (type === 'statut') {
+      const dispo = valeur.toLowerCase().startsWith('d') ? 'disponible' : 'affecte';
+      patch = dispo === 'disponible'
+        ? { disponibilite: 'disponible', chantier_affectation: null }
+        : { disponibilite: 'affecte' };
+    } else {
+      const champ = type === 'chantier' ? 'chantier_affectation' : 'lieu_stockage';
+      patch = { [champ]: valeur };
+    }
 
     let n = 0;
     for (const id of ids) {
       const barre = _parId(id);
       if (!barre) continue;
       try {
-        await _persisterElement({ ...barre, [champ]: valeurFinal });
+        await _persisterElement({ ...barre, ...patch });
         n++;
       } catch {}
     }
@@ -3092,6 +3103,7 @@ ${hasT ? `
     // ── Barre d'actions groupées ──
     document.getElementById('btn-sel-chantier')?.addEventListener('click', () => _ouvrirActionGroupee('chantier'));
     document.getElementById('btn-sel-lieu')?.addEventListener('click',     () => _ouvrirActionGroupee('lieu'));
+    document.getElementById('btn-sel-statut')?.addEventListener('click',   () => _ouvrirActionGroupee('statut'));
     document.getElementById('btn-sel-annuler')?.addEventListener('click',  () => {
       _selectionIds.clear();
       // Décocher toutes les cases sans refiltrer tout le tableau
