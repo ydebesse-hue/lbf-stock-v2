@@ -940,6 +940,24 @@
     .table-profils thead th { white-space: normal; word-break: break-word; line-height: 1.3; vertical-align: bottom; }
     .table-profils td       { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+    /* Colonne ID collante lors du défilement horizontal */
+    .table-profils th.col-p-id,
+    .table-profils td.col-p-id {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: white;
+      box-shadow: 2px 0 5px -2px rgba(0,0,0,.15);
+    }
+    .table-profils thead th.col-p-id {
+      background: var(--noir);
+      z-index: 3;
+    }
+    /* Conserver les fonds de ligne sur la cellule collante */
+    .table-profils tbody tr:hover       td.col-p-id { background: #fafafa; }
+    .table-profils tr.ligne-attente     td.col-p-id { background: #fffde7; }
+    .table-profils tr.ligne-focus       td.col-p-id { background: #fff0f0; }
+
     /* Colonnes fixes */
     .col-p-id          { width: 75px;  }
     .col-p-type        { width: 60px;  }
