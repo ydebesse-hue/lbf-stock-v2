@@ -7158,55 +7158,72 @@ ${hasT ? `
 
   let _recentsPeriode = '24h';
 
-  function _rendreRecents() {
+  async function _rendreRecents() {
     const contenu = document.getElementById('recents-contenu');
     if (!contenu) return;
-    // Boutons de période
+
     document.querySelectorAll('[data-recents-periode]').forEach(btn => {
       btn.classList.toggle('actif', btn.dataset.recentsPeriode === _recentsPeriode);
-      btn.onclick = () => {
-        _recentsPeriode = btn.dataset.recentsPeriode;
-        _rendreRecents();
-      };
+      btn.onclick = () => { _recentsPeriode = btn.dataset.recentsPeriode; _rendreRecents(); };
     });
-    contenu.innerHTML = _htmlRecents(_recentsPeriode);
-  }
 
-  function _htmlRecents(periode) {
     const durees = { '24h': 1, '7j': 7, '30j': 30 };
-    const jours  = durees[periode] || 1;
+    const jours  = durees[_recentsPeriode] || 1;
     const limite = Date.now() - jours * 24 * 60 * 60 * 1000;
-
-    const _dateRef = b => b.date_modif || b.date_ajout;
-    const _tsRef   = b => new Date(_dateRef(b) || 0).getTime();
+    const _tsRef = b => new Date(b.date_modif || b.date_ajout || 0).getTime();
 
     const items = (_data?.barres || [])
       .filter(b => _tsRef(b) >= limite)
       .sort((a, b) => _tsRef(b) - _tsRef(a));
 
+    contenu.innerHTML = '<div style="padding:16px;color:#aaa;font-style:italic">Chargement…</div>';
+
+    let dernOps = {};
+    try {
+      dernOps = await window.SB.derniereOpParBarres(items.map(b => b.id));
+    } catch(e) { /* hors ligne — on affiche sans détail opération */ }
+
+    contenu.innerHTML = _htmlRecents(items, dernOps);
+  }
+
+  function _htmlRecents(items, dernOps = {}) {
     if (!items.length) {
       return `<div style="padding:24px;color:#aaa;font-style:italic">Aucune activité dans cette période.</div>`;
     }
+
+    const _dateRef = b => b.date_modif || b.date_ajout;
 
     const STATUTS = {
       valide:     '<span class="badge badge-valide">✔ Validé</span>',
       en_attente: '<span class="badge badge-attente">⏳ En attente</span>',
       archivee:   '<span class="badge badge-archive">📦 Archivé</span>',
     };
+    const OP_LABELS = {
+      ENTREE:       { label: 'Ajout',       color: '#27ae60' },
+      MODIFICATION: { label: 'Modification', color: '#e67e22' },
+      SORTIE:       { label: 'Utilisation', color: '#2980b9' },
+      ARCHIVAGE:    { label: 'Archivage',   color: '#8e44ad' },
+      AFFECTATION:  { label: 'Affectation', color: '#16a085' },
+      RETOUR:       { label: 'Retour stock', color: '#27ae60' },
+      VALIDATION:   { label: 'Validation',  color: '#27ae60' },
+    };
 
     let h = `<table class="hist-table">
       <thead><tr>
-        <th>Date</th><th>Action</th><th>Par</th><th>ID</th><th>Type</th>
+        <th>Date</th><th>Opération</th><th>Par</th><th>ID</th><th>Type</th>
         <th>Désignation</th><th>Statut</th><th>Qté / Long.</th><th>Chantier</th><th></th>
       </tr></thead><tbody>`;
 
     items.forEach(b => {
-      const estModif = !!b.date_modif;
       const dateAff  = new Date(_dateRef(b)).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-      const par      = _e(b.modifie_par || b.ajoute_par || '—');
-      const action   = estModif
-        ? '<span style="color:#e67e22;font-size:11px;font-weight:bold">MODIF</span>'
-        : '<span style="color:#27ae60;font-size:11px;font-weight:bold">AJOUT</span>';
+      const dernH    = dernOps[b.id];
+      const opType   = dernH?.type_operation || (b.date_modif ? 'MODIFICATION' : 'ENTREE');
+      const opInfo   = OP_LABELS[opType] || { label: opType, color: '#666' };
+      const par      = _e(dernH?.operateur || b.modifie_par || b.ajoute_par || '—');
+      const commentaire = dernH?.commentaire ? `<div style="font-size:11px;color:#888;margin-top:2px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_e(dernH.commentaire)}">${_e(dernH.commentaire)}</div>` : '';
+
+      const action = `<span style="color:${opInfo.color};font-size:11px;font-weight:bold">${_e(opInfo.label)}</span>${commentaire}`;
+
       const desig = b.categorie === 'profil'
         ? `${_e(b.section_type || '')} ${_e(b.designation || '')}`
         : `${_e(String(b.epaisseur_mm))} mm ${_e(_LABEL_TYPE_TOLE[b.type_tole] || b.type_tole || '')} ${_e(String(b.largeur_mm))}×${_e(String(b.longueur_mm))}`;

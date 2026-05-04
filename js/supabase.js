@@ -196,6 +196,25 @@ async function sbSauvegarderConfig(cle, valeur) {
 //  EXPORT
 // ═══════════════════════════════════════════════════════
 
+/**
+ * Retourne la dernière entrée d'historique pour chaque ID fourni.
+ * @param {string[]} ids
+ * @returns {Promise<Object>} map barre_id → dernière ligne historique
+ */
+async function sbDerniereOpParBarres(ids) {
+  if (!ids.length) return {};
+  const param = ids.map(id => encodeURIComponent(id)).join(',');
+  const rep = await fetch(
+    `${SUPABASE_URL}/rest/v1/lbf_barres_historique?barre_id=in.(${param})&order=date_operation.desc`,
+    { headers: _headers }
+  );
+  if (!rep.ok) throw new Error(`Erreur historique multiple : ${rep.status}`);
+  const lignes = await rep.json();
+  const map = {};
+  lignes.forEach(l => { if (!map[l.barre_id]) map[l.barre_id] = l; });
+  return map;
+}
+
 window.SB = {
   lire:                   sbLire,
   inserer:                sbInserer,
@@ -206,4 +225,5 @@ window.SB = {
   insererHistorique:      sbInsererHistorique,
   lireConfig:             sbLireConfig,
   sauvegarderConfig:      sbSauvegarderConfig,
+  derniereOpParBarres:    sbDerniereOpParBarres,
 };
