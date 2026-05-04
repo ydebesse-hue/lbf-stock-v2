@@ -233,6 +233,9 @@ const Stock = (() => {
   let _bilanChantier  = '';
   let _archivesTab    = 'profils';  // sous-onglet de l'onglet Archivées
   let _selectionIds   = new Set();  // IDs sélectionnés pour actions groupées
+  let _recentsVuLe    = (() => {    // timestamp de dernière consultation des Récents
+    try { return parseInt(localStorage.getItem('lbf_recents_vu_le') || '0', 10); } catch { return 0; }
+  })();
   let _racks     = [];  // { id, nom, nb_allees, nb_etages } depuis Supabase
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
   let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
@@ -2606,10 +2609,12 @@ ${hasT ? `
       if (z) z.style.display = 'none';
       return;
     }
-    const hier = Date.now() - 24 * 60 * 60 * 1000;
+    // Compter uniquement les éléments modifiés DEPUIS la dernière consultation
+    // (au maximum sur les 24 dernières heures pour éviter d'accumuler indéfiniment)
+    const depuis = Math.max(_recentsVuLe, Date.now() - 24 * 60 * 60 * 1000);
     const nb = (_data?.barres || []).filter(b => {
       const d = b.date_modif || b.date_ajout;
-      return d && new Date(d).getTime() >= hier;
+      return d && new Date(d).getTime() > depuis;
     }).length;
     if (nb === 0) {
       z.style.display = 'none';
@@ -7368,6 +7373,11 @@ ${hasT ? `
   async function _rendreRecents() {
     const contenu = document.getElementById('recents-contenu');
     if (!contenu) return;
+
+    // Marquer comme consulté → réinitialise le compteur du bandeau
+    _recentsVuLe = Date.now();
+    try { localStorage.setItem('lbf_recents_vu_le', String(_recentsVuLe)); } catch {}
+    _majBanniereRecents();
 
     document.querySelectorAll('[data-recents-periode]').forEach(btn => {
       btn.classList.toggle('actif', btn.dataset.recentsPeriode === _recentsPeriode);
