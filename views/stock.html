@@ -261,7 +261,12 @@
       border-bottom: 1px solid var(--gris-clair);
       display: flex;
       padding: 0 20px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; /* Firefox */
     }
+    .sous-onglets::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+    .sous-onglet { flex-shrink: 0; }
 
     .sous-onglet {
       padding: 7px 14px;
@@ -1333,6 +1338,7 @@
     @media (max-width: 900px) { .input-recherche { width: 150px; } }
 
     @media (max-width: 768px) {
+      body { overflow-x: hidden; }
       header { padding: 0 12px; height: 54px; align-items: stretch; }
       .logo-zone { flex: 0 0 auto; align-items: flex-start; padding-top: 4px; }
       .logo-zone img { height: 26px; }
