@@ -1333,16 +1333,18 @@
     @media (max-width: 900px) { .input-recherche { width: 150px; } }
 
     @media (max-width: 768px) {
-      header {
-        padding: 6px 12px;
-        height: auto;
-        flex-wrap: wrap;
-        gap: 4px;
-      }
+      header { padding: 5px 12px; height: auto; }
       .logo-zone { flex: 0 0 auto; }
-      .logo-zone img { height: 28px; }
-      .app-title { font-size: 13px; flex: 1; }
-      .header-droite { flex: 0 0 auto; }
+      .logo-zone img { height: 26px; }
+      .app-title { font-size: 12px; flex: 1; min-width: 0; }
+      .header-droite {
+        flex: 0 0 auto;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 3px;
+      }
+      #header-badge { font-size: 9px; padding: 2px 5px; letter-spacing: 0.5px; }
+      .btn-deco { font-size: 10px; padding: 3px 7px; }
       #header-user { display: none; }
       .nav-principale { padding: 0 8px; }
       .nav-item { padding: 8px 10px; font-size: 12px; }
