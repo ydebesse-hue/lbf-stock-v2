@@ -1338,7 +1338,6 @@
     @media (max-width: 900px) { .input-recherche { width: 150px; } }
 
     @media (max-width: 768px) {
-      body { overflow-x: hidden; }
       header { padding: 0 12px; height: 54px; align-items: stretch; }
       .logo-zone { flex: 0 0 auto; align-items: flex-start; padding-top: 4px; }
       .logo-zone img { height: 26px; }
@@ -1356,6 +1355,8 @@
       .nav-principale { padding: 0 8px; }
       .nav-item { padding: 8px 10px; font-size: 12px; }
       .sous-onglets { padding: 0 8px; }
+      .admin-panel-zone { padding: 12px 12px; max-width: 100%; overflow-x: auto; }
+      #section-admin, #section-stock { max-width: 100vw; overflow-x: clip; }
       .toolbar { padding: 8px 12px; gap: 6px; }
       .zone-tableau { padding: 8px 0; }
       #tableau-stock table { font-size: 12px; }
