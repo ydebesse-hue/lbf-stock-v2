@@ -883,8 +883,18 @@ header {
    RESPONSIVE MOBILE
 ══════════════════════════════════════════════ */
 @media (max-width: 640px) {
-  header { padding: 0 12px; height: 48px; }
-  .app-title { font-size: 15px; }
+  header { padding: 0 12px; height: 54px; align-items: stretch; }
+  .logo-zone { flex: 0 0 auto; align-items: flex-start; padding-top: 4px; }
+  .logo-zone img { height: 26px; }
+  .app-title { font-size: 12px; flex: 1; min-width: 0; align-self: flex-end; padding-bottom: 4px; }
+  .header-right {
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+  #header-badge { font-size: 9px; padding: 2px 5px; letter-spacing: 0.5px; }
   .user-info { display: none; }
   .main-nav  { padding: 0 12px; }
   .nav-item  { padding: 9px 12px; font-size: 12px; }
