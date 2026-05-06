@@ -1907,6 +1907,8 @@ const Stock = (() => {
     };
 
     // ── Rendu final ───────────────────────────────────────────────
+    const adminSyn   = Auth.hasRight('can_validate');
+    if (_synTab === 'bilan' && !adminSyn) _synTab = 'profils'; // reset si non-admin
     const estBilan   = _synTab === 'bilan';
     const estProfils = _synTab === 'profils';
     zone.innerHTML = `
@@ -1914,7 +1916,7 @@ const Stock = (() => {
       <div class="syn-sous-nav">
         <button class="syn-tab${estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="profils">Profilés</button>
         <button class="syn-tab${_synTab === 'toles' ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="toles">Tôles</button>
-        <button class="syn-tab${estBilan ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="bilan">Bilan chantiers</button>
+        ${adminSyn ? `<button class="syn-tab${estBilan ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="bilan">Bilan chantiers</button>` : ''}
       </div>
       ${estBilan ? _contenuBilan() : estProfils ? _contenuProfils() : _contenuToles()}
     </div>`;
@@ -2846,6 +2848,7 @@ ${hasT ? `
         const type    = el.dataset.synType   || '';
         const dispo   = el.dataset.synDispo  || '';
         if (action === 'changer-syn-tab') {
+          if (el.dataset.synTab === 'bilan' && !Auth.hasRight('can_validate')) return;
           _synTab = el.dataset.synTab;
           _bilanChantier = '';
           _rendreSynthese();
