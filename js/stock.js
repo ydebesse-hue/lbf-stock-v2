@@ -7459,8 +7459,8 @@ ${hasT ? `
     });
 
     const durees = { '24h': 1, '7j': 7, '30j': 30 };
-    const jours  = durees[_recentsPeriode] || 1;
-    const limite = Date.now() - jours * 24 * 60 * 60 * 1000;
+    const jours  = durees[_recentsPeriode];
+    const limite = jours ? Date.now() - jours * 24 * 60 * 60 * 1000 : 0;
     const _tsRef = b => new Date(b.date_modif || b.date_ajout || 0).getTime();
 
     const items = (_data?.barres || [])
