@@ -1853,7 +1853,8 @@ const Stock = (() => {
                       + [...chTa, ...chTr].reduce((s, b) => s + _poidsTole(b), 0);
         const chObj = _chantiers.find(c => c.nom === ch);
         const meta  = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
-        return `<tr class="bilan-ch-row" data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail">
+        const adminBilan = Auth.hasRight('can_validate');
+        return `<tr class="${adminBilan ? 'bilan-ch-row' : ''}" ${adminBilan ? `data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail"` : ''}>
           <td onclick="event.stopPropagation()" style="width:30px;text-align:center;padding:4px 6px">
             <input type="checkbox" class="bilan-ch-check" data-ch="${_e(ch)}">
           </td>
@@ -2505,6 +2506,7 @@ ${hasT ? `
      ────────────────────────────────────────────────────────────── */
 
   function _basculerOnglet(onglet, garderFiltreAttente = false) {
+    if (onglet === 'archivees' && !Auth.hasRight('can_validate')) return;
     const precedent = _onglet;
     _onglet = onglet;
     _tri    = { col: null, ordre: 'asc' };
@@ -2911,6 +2913,7 @@ ${hasT ? `
           if (selEp && ep) selEp.value = ep;
           _filtrer();
         } else if (action === 'voir-bilan-chantier') {
+          if (!Auth.hasRight('can_validate')) return;
           _bilanChantier = el.dataset.synChantier;
           _rendreSynthese();
         } else if (action === 'retour-bilan') {
