@@ -1334,9 +1334,10 @@
 
     @media (max-width: 768px) {
       header { padding: 0 12px; height: 48px; }
-      .app-title { font-size: 14px; }
-      .logo-zone img { height: 28px; }
+      .app-title { display: none; }
+      .logo-zone img { height: 32px; }
       #header-user { display: none; }
+      #header-badge { display: none; }
       .nav-principale { padding: 0 8px; }
       .nav-item { padding: 8px 10px; font-size: 12px; }
       .sous-onglets { padding: 0 8px; }
@@ -1351,6 +1352,9 @@
       .modale { padding: 16px; }
       .syn-kpi-grid { grid-template-columns: repeat(2, 1fr); }
       .syn-cols2    { grid-template-columns: 1fr; }
+      /* Bannières admin : empêcher le débordement sur mobile */
+      .alerte-attente { font-size: 12px; padding: 6px 12px; gap: 6px; flex-wrap: wrap; }
+      .alerte-nb { width: 18px; height: 18px; font-size: 10px; }
     }
 
     /* ── SYNTHÈSE ──────────────────────────────────────────────── */
