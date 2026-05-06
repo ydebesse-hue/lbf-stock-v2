@@ -760,6 +760,7 @@
     .admin-rack-form {
       display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: end; margin-top: 14px;
     }
+    .admin-dem-form { grid-template-columns: 1fr 1fr 1fr auto; }
     .admin-rack-form label { font-size: 11px; color: #555; font-weight: bold; display: block; margin-bottom: 3px; }
     .admin-plan-actions { display:flex; gap:8px; align-items:center; margin-top:10px; }
     .admin-plan-upload-btn { cursor:pointer; }
@@ -1356,8 +1357,14 @@
       .nav-item { padding: 8px 10px; font-size: 12px; }
       .sous-onglets { padding: 0 8px; }
       .admin-panel-zone { padding: 12px 12px; max-width: 100%; overflow-x: auto; }
-      #section-admin, #section-stock { max-width: 100vw; overflow-x: clip; }
+      #section-admin, #section-stock { max-width: 100vw; overflow-x: hidden; }
       .toolbar { padding: 8px 12px; gap: 6px; }
+      .barre-selection { min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .barre-selection::-webkit-scrollbar { display: none; }
+      .admin-ref-cols { grid-template-columns: 1fr; }
+      .admin-ch-form { grid-template-columns: 1fr 1fr; }
+      .admin-rack-form, .admin-dem-form { grid-template-columns: 1fr; }
+      .cpt-table-wrap { overflow-x: auto; }
       .zone-tableau { padding: 8px 0; }
       #tableau-stock table { font-size: 12px; }
       #tableau-stock thead th { padding: 7px 8px; font-size: 11px; }
@@ -1854,7 +1861,7 @@
         <h3 class="admin-panel-titre">Demandeurs</h3>
         <div id="admin-demandeurs-liste" class="admin-ref-liste" style="max-height:380px"></div>
         <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un demandeur</div>
-        <div class="admin-rack-form" style="grid-template-columns:1fr 1fr 1fr auto">
+        <div class="admin-rack-form admin-dem-form">
           <div>
             <label for="admin-dem-prenom">Prénom</label>
             <input id="admin-dem-prenom" type="text" placeholder="ex. Jean" class="admin-ref-inp">
