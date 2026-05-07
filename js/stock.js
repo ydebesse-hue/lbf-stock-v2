@@ -4500,6 +4500,9 @@ ${hasT ? `
     const operateur = session?.identifiant || null;
     const nouvelleQty = tole.quantite - qtySortie;
 
+    // sortieId sera défini dans le bloc else et réutilisé pour la chute
+    let sortieId = null;
+
     // 1 — Mettre à jour la tôle d'origine
     if (nouvelleQty <= 0) {
       // Archiver si plus rien en stock — enregistrer le chantier consommateur
@@ -4519,8 +4522,8 @@ ${hasT ? `
       if (b) { b.quantite = nouvelleQty; b.poids_total_kg = poidsT; }
 
       // Créer un enregistrement archivé représentant la quantité consommée (TOL-XXXX-1, -2, ...)
-      const poidsS   = Math.round(tole.poids_unitaire_kg * qtySortie * 10) / 10;
-      const sortieId = _genererIdPortion(tole.id);
+      const poidsS = Math.round(tole.poids_unitaire_kg * qtySortie * 10) / 10;
+      sortieId = _genererIdPortion(tole.id);
       const sortieObj = {
         id: sortieId,
         categorie: 'tole',
@@ -4550,9 +4553,11 @@ ${hasT ? `
     }
 
     // 2 — Créer la chute si demandée
+    // L'ID est rattaché hiérarchiquement à la portion consommée (ou au parent si tout consommé)
     if (avecChute) {
-      const poidsU = Math.round(((tole.epaisseur_mm/1000)*(chuteLrg/1000)*(chuteLng/1000)*7850)*10)/10;
-      const chuteId = _genererIdTole();
+      const sourceId = sortieId || _sortieToleId;
+      const poidsU   = Math.round(((tole.epaisseur_mm/1000)*(chuteLrg/1000)*(chuteLng/1000)*7850)*10)/10;
+      const chuteId  = _genererIdPortion(sourceId);
       const chuteObj = {
         id: chuteId,
         categorie: 'tole',
@@ -4575,9 +4580,10 @@ ${hasT ? `
         ajoute_par: operateur || 'inconnu',
         valide_par: operateur,
         date_validation: _dateAujourdhui(),
-        commentaire: `Chute issue de ${_sortieToleId} — sortie chantier ${chantierDest}`
+        commentaire: `Chute issue de ${sourceId} — sortie chantier ${chantierDest}`
       };
       await _persisterElement(chuteObj);
+      await _enregistrerHistoriqueTole(chuteId, 'ENTREE', null, 1, chantierDest, operateur, `Chute issue de ${sourceId}`, tole.lieu_stockage || null);
     }
 
     _fermerModale('m-sortie-tole');
@@ -5749,74 +5755,186 @@ ${hasT ? `
   }
 
   /**
+   * Trouve la tôle racine d'une famille à partir d'un ID quelconque.
+   * Remonte la hiérarchie des IDs jusqu'à trouver une tôle sans parent en base.
+   */
+  function _trouverRacineTole(id) {
+    const allItems = _data?.barres || [];
+    let current = id;
+    while (true) {
+      const match = current.match(/^(.+)-(\d+)$/);
+      if (!match) break;
+      const parentId = match[1];
+      if (allItems.some(b => b.id === parentId)) {
+        current = parentId;
+      } else {
+        break;
+      }
+    }
+    return current;
+  }
+
+  /**
+   * Construit récursivement l'arbre des descendants d'une tôle.
+   * @returns {Array} [{item, children:[…]}]
+   */
+  function _construireArbreTole(rootId) {
+    const allItems = _data?.barres || [];
+    const prefix   = rootId + '-';
+    const children = allItems
+      .filter(b => b.id && b.id.startsWith(prefix) && /^\d+$/.test(b.id.slice(prefix.length)))
+      .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    return children.map(child => ({ item: child, children: _construireArbreTole(child.id) }));
+  }
+
+  /**
    * Ouvre la modale d'historique pour une tôle.
+   * Affiche l'arbre complet de la famille depuis la racine + journal de l'élément cliqué.
    */
   async function ouvrirHistoriqueTole(id) {
-    const tole = _parId(id);
+    const tole    = _parId(id);
     const titreEl = document.getElementById('hist-titre');
     if (titreEl) {
       titreEl.textContent = tole
         ? `Historique — ${id} · ${tole.epaisseur_mm} mm ${_LABEL_TYPE_TOLE[tole.type_tole] || tole.type_tole || ''} ${tole.largeur_mm}×${tole.longueur_mm} mm`
         : `Historique — ${id}`;
     }
-
-    const portionPrefix = id + '-';
-    const portions = (_data?.barres || []).filter(b => {
-      if (!b.id || !b.id.startsWith(portionPrefix)) return false;
-      return /^\d+$/.test(b.id.slice(portionPrefix.length));
-    }).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
-    const parentMatch = id.match(/^(.+)-(\d+)$/);
-    const parentId    = parentMatch ? parentMatch[1] : null;
-    const parentBarre = parentId ? _parId(parentId) : null;
-
     const contenu = document.getElementById('hist-contenu');
     if (contenu) contenu.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Chargement…</div>';
     _ouvrirModale('m-historique-barre');
+
     try {
-      const lignes = await window.SB.lireHistoriqueParBarre(id);
-      if (contenu) contenu.innerHTML = _htmlBlocPortions(id, portions, parentId, parentBarre) + _htmlTableauHistoriqueTole(lignes);
+      const racineId = _trouverRacineTole(id);
+      const racine   = _parId(racineId);
+      const arbre    = _construireArbreTole(racineId);
+      const lignes   = await window.SB.lireHistoriqueParBarre(id);
+
+      if (contenu) {
+        contenu.innerHTML =
+          _htmlFamilleTole(racine || { id: racineId }, arbre, id) +
+          _htmlSectionJournalTole(id, lignes);
+      }
     } catch(e) {
       console.error('[Stock] Erreur chargement historique tôle :', e);
       if (contenu) contenu.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rouge)">Impossible de charger l\'historique.</div>';
     }
   }
 
+  /** Bloc arbre famille tôle. */
+  function _htmlFamilleTole(racine, arbre, currentId) {
+    const enStock   = racine.quantite ?? 0;
+    const nbSorties = arbre.length;
+    const typeLabel = _LABEL_TYPE_TOLE[racine.type_tole] || racine.type_tole || '';
+    const dim       = racine.largeur_mm ? `${racine.largeur_mm}×${racine.longueur_mm} mm` : '';
+
+    let statsHtml = '';
+    if (nbSorties > 0 || enStock > 0) {
+      statsHtml = `<span class="tole-famille-stats">${nbSorties} sortie${nbSorties !== 1 ? 's' : ''} · ${enStock} en stock</span>`;
+    }
+
+    let h = `<div class="tole-famille">
+      <div class="tole-famille-header">
+        <strong>${_e(racine.id)}</strong>
+        <span>${_e(racine.epaisseur_mm)} mm ${_e(typeLabel)} ${_e(dim)}</span>
+        ${statsHtml}
+      </div>`;
+
+    if (!arbre.length) {
+      h += `<div style="padding:10px 14px;color:#aaa;font-size:12px;font-style:italic">Aucune sortie enregistrée.</div>`;
+    } else {
+      h += `<table class="hist-table" style="margin-top:0">
+        <thead><tr>
+          <th>ID</th><th>Chantier</th><th>Dimensions</th><th>Statut</th><th>Date sortie</th>
+        </tr></thead>
+        <tbody>${_htmlNoeudsTole(arbre, currentId, 0)}</tbody>
+      </table>`;
+    }
+    return h + `</div>`;
+  }
+
+  /** Rendu récursif des lignes de l'arbre tôle. */
+  function _htmlNoeudsTole(noeuds, currentId, niveau) {
+    return noeuds.map(({ item, children }) => {
+      const isCurrent = item.id === currentId;
+      const indent    = niveau > 0
+        ? `<span class="tole-arbre-indent">${'&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(niveau - 1)}└─&nbsp;</span>`
+        : '';
+
+      const chantier = _e(_labelChantier(item.chantier_affectation) || item.chantier_affectation || '—');
+      const dim      = item.largeur_mm ? `${item.largeur_mm}×${item.longueur_mm}` : '—';
+
+      let statutHtml;
+      if (item.statut === 'archivee' && children.length) {
+        statutHtml = `<span class="tole-statut-reste">● Reste utilisé</span>`;
+      } else if (item.statut === 'archivee') {
+        statutHtml = `<span class="tole-statut-consomme">● Consommé</span>`;
+      } else if (item.statut === 'en_attente') {
+        statutHtml = `<span class="tole-statut-attente">● En attente</span>`;
+      } else {
+        statutHtml = `<span class="tole-statut-stock">● En stock</span>`;
+      }
+
+      const dateRaw = item.date_validation || item.date_modif;
+      const dateAff = dateRaw
+        ? new Date(dateRaw).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+        : '—';
+
+      const rowCls = isCurrent ? ' class="tole-arbre-current"' : '';
+      let h = `<tr${rowCls}>
+        <td style="font-family:monospace;font-size:11px;white-space:nowrap">${indent}${_e(item.id)}</td>
+        <td>${chantier}</td>
+        <td style="white-space:nowrap;font-size:11px">${_e(dim)} mm</td>
+        <td>${statutHtml}</td>
+        <td style="white-space:nowrap;font-size:11px;color:#888">${_e(dateAff)}</td>
+      </tr>`;
+      if (children.length) h += _htmlNoeudsTole(children, currentId, niveau + 1);
+      return h;
+    }).join('');
+  }
+
+  /** Section journal des opérations sous l'arbre. */
+  function _htmlSectionJournalTole(id, lignes) {
+    return `<div class="tole-journal-section">
+      <div class="tole-journal-titre">Journal des opérations — ${_e(id)}</div>
+      ${_htmlTableauHistoriqueTole(lignes)}
+    </div>`;
+  }
+
   /**
-   * Génère le HTML du tableau historique d'une tôle.
-   * longueur_avant/après = quantité avant/après dans ce contexte.
+   * Tableau journal des opérations d'une tôle.
+   * longueur_avant/après stocke la quantité dans ce contexte.
    */
   function _htmlTableauHistoriqueTole(lignes) {
-    if (!lignes || !lignes.length) {
-      return '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Aucune entrée dans l\'historique.</div>';
+    if (!lignes?.length) {
+      return '<div style="padding:14px;color:#aaa;font-size:12px;font-style:italic">Aucune entrée dans le journal.</div>';
     }
-    const BADGES = {
-      ENTREE:       'badge-op-entree',
-      SORTIE:       'badge-op-sortie',
-      ARCHIVAGE:    'badge-op-archivage',
-      MODIFICATION: 'badge-op-modification',
-      VALIDATION:   'badge-op-validation',
+    const OP = {
+      ENTREE:       { label: 'Entrée stock',  cls: 'badge-op-entree' },
+      SORTIE:       { label: 'Sortie',        cls: 'badge-op-sortie' },
+      ARCHIVAGE:    { label: 'Archivage',     cls: 'badge-op-archivage' },
+      MODIFICATION: { label: 'Modification',  cls: 'badge-op-modification' },
+      VALIDATION:   { label: 'Validation',    cls: 'badge-op-validation' },
     };
     let h = `<table class="hist-table">
       <thead><tr>
         <th>Date</th><th>Opération</th><th>Qté avant</th><th>Qté après</th>
-        <th>Lieu</th><th>Chantier</th><th>Opérateur</th><th>Commentaire</th>
+        <th>Chantier</th><th>Par</th><th>Commentaire</th>
       </tr></thead><tbody>`;
     lignes.forEach(l => {
       const date  = l.date_operation
         ? new Date(l.date_operation).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
         : '—';
-      const cls   = BADGES[l.type_operation] || '';
-      const avant = l.longueur_avant_m != null ? parseFloat(l.longueur_avant_m) : null;
-      const apres = l.longueur_apres_m != null ? parseFloat(l.longueur_apres_m) : null;
+      const op    = OP[l.type_operation] || { label: l.type_operation, cls: '' };
+      const avant = l.longueur_avant_m != null ? `${parseFloat(l.longueur_avant_m)} pcs` : '—';
+      const apres = l.longueur_apres_m != null ? `${parseFloat(l.longueur_apres_m)} pcs` : '—';
       h += `<tr>
         <td style="white-space:nowrap">${_e(date)}</td>
-        <td><span class="badge-operation ${cls}">${_e(l.type_operation)}</span></td>
-        <td>${avant != null ? avant : '—'}</td>
-        <td>${apres != null ? apres : '—'}</td>
-        <td>${_e(l.lieu || '—')}</td>
+        <td><span class="badge-operation ${op.cls}">${_e(op.label)}</span></td>
+        <td>${avant}</td>
+        <td>${apres}</td>
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
         <td>${_e(l.operateur || '—')}</td>
-        <td style="font-size:12px;color:#555;max-width:220px">${_e(l.commentaire || '—')}</td>
+        <td style="font-size:11px;color:#555">${_e(l.commentaire || '—')}</td>
       </tr>`;
     });
     return h + '</tbody></table>';

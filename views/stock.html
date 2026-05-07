@@ -1281,6 +1281,31 @@
     .hist-table tr:last-child td { border-bottom: none; }
     .hist-table tr:hover td { background: #f7f7f7; }
 
+    /* ── Arbre de traçabilité tôle ─────────────────────────────── */
+    .tole-famille { margin-bottom: 18px; border: 1px solid var(--gris-clair); border-radius: 4px; overflow: hidden; }
+    .tole-famille-header {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: #f0f7ff; border-bottom: 1px solid #d0e4f7;
+      padding: 9px 14px; font-size: 13px;
+    }
+    .tole-famille-stats { color: #888; font-size: 12px; margin-left: auto; white-space: nowrap; }
+    .tole-famille .hist-table { margin-top: 0; border: none; }
+    .tole-famille .hist-table th { background: #f7f7f7; color: #555; font-family: Tahoma; }
+    .tole-arbre-indent { color: #ccc; font-family: monospace; }
+    .tole-arbre-current td { background: #fffde7 !important; }
+    .tole-arbre-current td:first-child { border-left: 3px solid var(--or); }
+    .tole-statut-consomme { color: #999; font-size: 11px; }
+    .tole-statut-reste    { color: #e67e22; font-size: 11px; }
+    .tole-statut-stock    { color: var(--vert); font-size: 11px; }
+    .tole-statut-attente  { color: var(--or); font-size: 11px; }
+    .tole-journal-section { margin-top: 4px; }
+    .tole-journal-titre {
+      font-size: 11px; font-weight: bold; text-transform: uppercase;
+      letter-spacing: .4px; color: #666;
+      border-bottom: 1px solid var(--gris-clair);
+      padding-bottom: 6px; margin-bottom: 0;
+    }
+
     /* Barre filtres / tri — Modifications récentes */
     .recents-toolbar {
       display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
