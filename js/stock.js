@@ -5863,6 +5863,18 @@ ${hasT ? `
       const chantier = _e(_labelChantier(item.chantier_affectation) || item.chantier_affectation || '—');
       const dim      = item.largeur_mm ? `${item.largeur_mm}×${item.longueur_mm}` : '—';
 
+      // Surface consommée = aire de cette tôle − somme des aires des chutes directes
+      let surfHtml = '';
+      if (children.length && item.largeur_mm && item.longueur_mm) {
+        const surfItem   = item.largeur_mm * item.longueur_mm * (item.quantite || 1);
+        const surfChutes = children.reduce((s, c) =>
+          s + (c.item.largeur_mm || 0) * (c.item.longueur_mm || 0) * (c.item.quantite || 1), 0);
+        const surfCons   = (surfItem - surfChutes) / 1_000_000; // mm² → m²
+        if (surfCons > 0.0001) {
+          surfHtml = `<div class="tole-surf-cons">▸ ${surfCons.toFixed(3)} m² consommé</div>`;
+        }
+      }
+
       let statutHtml;
       if (item.statut === 'archivee' && children.length) {
         statutHtml = `<span class="tole-statut-reste">● Reste utilisé</span>`;
@@ -5883,7 +5895,7 @@ ${hasT ? `
       let h = `<tr${rowCls}>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${indent}${_e(item.id)}</td>
         <td>${chantier}</td>
-        <td style="white-space:nowrap;font-size:11px">${_e(dim)} mm</td>
+        <td style="white-space:nowrap;font-size:11px">${_e(dim)} mm${surfHtml}</td>
         <td>${statutHtml}</td>
         <td style="white-space:nowrap;font-size:11px;color:#888">${_e(dateAff)}</td>
       </tr>`;
