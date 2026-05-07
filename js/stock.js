@@ -7482,63 +7482,59 @@ ${hasT ? `
       return `<div style="padding:24px;color:#aaa;font-style:italic">Aucune activité dans cette période.</div>`;
     }
 
-    const _dateRef = b => b.date_modif || b.date_ajout;
-
-    const STATUTS = {
-      valide:     '<span class="badge badge-valide">✔ Validé</span>',
-      en_attente: '<span class="badge badge-attente">⏳ En attente</span>',
-      archivee:   '<span class="badge badge-archive">📦 Archivé</span>',
-    };
     const OP_LABELS = {
-      ENTREE:       { label: 'Ajout',       color: '#27ae60' },
+      ENTREE:       { label: 'Ajout',        color: '#27ae60' },
       MODIFICATION: { label: 'Modification', color: '#e67e22' },
-      SORTIE:       { label: 'Utilisation', color: '#2980b9' },
-      ARCHIVAGE:    { label: 'Archivage',   color: '#8e44ad' },
-      AFFECTATION:  { label: 'Affectation', color: '#16a085' },
+      SORTIE:       { label: 'Utilisation',  color: '#2980b9' },
+      ARCHIVAGE:    { label: 'Archivage',    color: '#8e44ad' },
+      AFFECTATION:  { label: 'Affectation',  color: '#16a085' },
       RETOUR:       { label: 'Retour stock', color: '#27ae60' },
-      VALIDATION:   { label: 'Validation',  color: '#27ae60' },
+      VALIDATION:   { label: 'Validation',   color: '#27ae60' },
     };
 
     let h = `<table class="hist-table">
       <thead><tr>
-        <th>Date</th><th>Opération</th><th>Par</th><th>ID</th><th>Type</th>
-        <th>Désignation</th><th>Statut</th><th>Qté / Long.</th><th>Chantier</th><th></th>
+        <th>ID</th><th>Désignation</th><th>Modification</th><th>Date</th><th>Par</th><th></th>
       </tr></thead><tbody>`;
 
     items.forEach(b => {
-      const dernH    = dernOps[b.id];
-      const dateRaw  = dernH?.date_operation || b.date_modif || b.date_ajout;
-      const dateAff  = dateRaw
+      const dernH   = dernOps[b.id];
+      const dateRaw = dernH?.date_operation || b.date_modif || b.date_ajout;
+      const dateAff = dateRaw
         ? new Date(dateRaw).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
         : '—';
-      const opType   = dernH?.type_operation || (b.date_modif ? 'MODIFICATION' : 'ENTREE');
-      const opInfo   = OP_LABELS[opType] || { label: opType, color: '#666' };
-      const par      = _e(dernH?.operateur || b.modifie_par || b.ajoute_par || '—');
-      const commentaire = dernH?.commentaire ? `<div style="font-size:11px;color:#888;margin-top:2px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_e(dernH.commentaire)}">${_e(dernH.commentaire)}</div>` : '';
-
-      const action = `<span style="color:${opInfo.color};font-size:11px;font-weight:bold">${_e(opInfo.label)}</span>${commentaire}`;
+      const opType  = dernH?.type_operation || (b.date_modif ? 'MODIFICATION' : 'ENTREE');
+      const opInfo  = OP_LABELS[opType] || { label: opType, color: '#666' };
+      const par     = _e(dernH?.operateur || b.modifie_par || b.ajoute_par || '—');
 
       const desig = b.categorie === 'profil'
         ? `${_e(b.section_type || '')} ${_e(b.designation || '')}`
         : `${_e(String(b.epaisseur_mm))} mm ${_e(_LABEL_TYPE_TOLE[b.type_tole] || b.type_tole || '')} ${_e(String(b.largeur_mm))}×${_e(String(b.longueur_mm))}`;
-      const qty = b.categorie === 'profil'
-        ? (b.longueur_m != null ? `${parseFloat(b.longueur_m).toFixed(2)} m` : '—')
-        : (b.quantite   != null ? `${b.quantite} pcs` : '—');
-      const statut = STATUTS[b.statut] || `<span class="badge">${_e(b.statut)}</span>`;
+
+      // — Colonne modification : type + commentaire sémantique + avant→après numérique
+      const opBadge = `<span style="color:${opInfo.color};font-weight:bold;font-size:11px">${_e(opInfo.label)}</span>`;
+      const commentLigne = dernH?.commentaire
+        ? `<div style="font-size:11px;color:#555;margin-top:2px">${_e(dernH.commentaire)}</div>`
+        : '';
+      let avApresLigne = '';
+      const av = dernH?.longueur_avant_m != null ? parseFloat(dernH.longueur_avant_m) : null;
+      const ap = dernH?.longueur_apres_m != null ? parseFloat(dernH.longueur_apres_m) : null;
+      if (av !== null && ap !== null && av !== ap) {
+        const u = b.categorie === 'profil' ? ' m' : ' pcs';
+        avApresLigne = `<div style="font-size:11px;color:#888;margin-top:2px">${av.toFixed(2)}${u} → ${ap.toFixed(2)}${u}</div>`;
+      }
+      const modifCol = opBadge + commentLigne + avApresLigne;
+
       const btnHist = b.categorie === 'tole'
         ? `<button class="btn-ligne" onclick="Stock.ouvrirHistoriqueTole('${_e(b.id)}')" title="Historique">📋</button>`
         : `<button class="btn-ligne" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Historique">📋</button>`;
 
       h += `<tr>
-        <td style="white-space:nowrap">${_e(dateAff)}</td>
-        <td>${action}</td>
-        <td>${par}</td>
         <td><span style="font-family:monospace;font-size:12px">${_e(b.id)}</span></td>
-        <td>${b.categorie === 'profil' ? 'Profilé' : 'Tôle'}</td>
         <td>${desig}</td>
-        <td>${statut}</td>
-        <td>${_e(qty)}</td>
-        <td>${_e(_labelChantier(b.chantier_affectation) || b.chantier_affectation || '—')}</td>
+        <td>${modifCol}</td>
+        <td style="white-space:nowrap">${_e(dateAff)}</td>
+        <td>${par}</td>
         <td>${btnHist}</td>
       </tr>`;
     });
