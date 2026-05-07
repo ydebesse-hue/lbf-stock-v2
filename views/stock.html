@@ -1271,6 +1271,8 @@
       letter-spacing: .4px;
       white-space: nowrap;
     }
+    .hist-table th[data-recents-tri] { cursor: pointer; user-select: none; }
+    .hist-table th[data-recents-tri]:hover { background: #3a3a42; }
     .hist-table td {
       padding: 6px 10px;
       border-bottom: 1px solid var(--gris-clair);
@@ -1278,6 +1280,25 @@
     }
     .hist-table tr:last-child td { border-bottom: none; }
     .hist-table tr:hover td { background: #f7f7f7; }
+
+    /* Barre filtres / tri — Modifications récentes */
+    .recents-toolbar {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .recents-input {
+      flex: 1; min-width: 140px; max-width: 260px;
+      padding: 5px 9px; border: 1px solid var(--gris-bord); border-radius: 3px;
+      font-family: Tahoma; font-size: 12px; color: var(--noir); outline: none;
+    }
+    .recents-input:focus { border-color: var(--vert); }
+    .recents-sel {
+      padding: 5px 8px; border: 1px solid var(--gris-bord); border-radius: 3px;
+      font-family: Tahoma; font-size: 12px; color: var(--noir); outline: none;
+      background: white; cursor: pointer;
+    }
+    .recents-sel:focus { border-color: var(--vert); }
+    .recents-nb { font-size: 12px; color: #888; margin-left: auto; white-space: nowrap; }
 
     /* Badges type d'opération */
     .badge-operation {

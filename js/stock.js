@@ -7442,13 +7442,29 @@ ${hasT ? `
     if (onglet === 'recents')      _rendreRecents();
   }
 
-  let _recentsPeriode = '24h';
+  let _recentsPeriode     = '24h';
+  let _recentsTriCol      = 'date';
+  let _recentsTriDir      = 'desc';
+  let _recentsFiltreType  = '';
+  let _recentsFiltreTexte = '';
+  let _recentsFiltreOp    = '';
+  let _recentsItemsAll    = [];
+  let _recentsDernOps     = {};
+
+  const _RECENTS_OP = {
+    ENTREE:       { label: 'Ajout',        color: '#27ae60' },
+    MODIFICATION: { label: 'Modification', color: '#e67e22' },
+    SORTIE:       { label: 'Utilisation',  color: '#2980b9' },
+    ARCHIVAGE:    { label: 'Archivage',    color: '#8e44ad' },
+    AFFECTATION:  { label: 'Affectation',  color: '#16a085' },
+    RETOUR:       { label: 'Retour stock', color: '#27ae60' },
+    VALIDATION:   { label: 'Validation',   color: '#27ae60' },
+  };
 
   async function _rendreRecents() {
     const contenu = document.getElementById('recents-contenu');
     if (!contenu) return;
 
-    // Marquer comme consulté → réinitialise le compteur du bandeau
     _recentsVuLe = Date.now();
     try { localStorage.setItem('lbf_recents_vu_le', String(_recentsVuLe)); } catch {}
     _majBanniereRecents();
@@ -7463,38 +7479,135 @@ ${hasT ? `
     const limite = jours ? Date.now() - jours * 24 * 60 * 60 * 1000 : 0;
     const _tsRef = b => new Date(b.date_modif || b.date_ajout || 0).getTime();
 
-    const items = (_data?.barres || [])
-      .filter(b => _tsRef(b) >= limite)
-      .sort((a, b) => _tsRef(b) - _tsRef(a));
+    _recentsItemsAll = (_data?.barres || []).filter(b => _tsRef(b) >= limite);
 
     contenu.innerHTML = '<div style="padding:16px;color:#aaa;font-style:italic">Chargement…</div>';
 
-    let dernOps = {};
     try {
-      dernOps = await window.SB.derniereOpParBarres(items.map(b => b.id));
-    } catch(e) { /* hors ligne — on affiche sans détail opération */ }
+      _recentsDernOps = await window.SB.derniereOpParBarres(_recentsItemsAll.map(b => b.id));
+    } catch(e) { _recentsDernOps = {}; }
 
-    contenu.innerHTML = _htmlRecents(items, dernOps);
+    // Construit la toolbar avec les valeurs uniques issues des données chargées
+    const typesPresents = [...new Set(
+      _recentsItemsAll.map(b => {
+        const d = _recentsDernOps[b.id];
+        return d?.type_operation || (b.date_modif ? 'MODIFICATION' : 'ENTREE');
+      })
+    )].sort();
+    const opsPresents = [...new Set(
+      _recentsItemsAll.map(b => {
+        const d = _recentsDernOps[b.id];
+        return d?.operateur || b.modifie_par || b.ajoute_par || '';
+      }).filter(Boolean)
+    )].sort();
+
+    contenu.innerHTML = `
+      <div class="recents-toolbar">
+        <input id="recents-rech" type="text" class="recents-input" placeholder="🔍 ID ou désignation…"
+               value="${_e(_recentsFiltreTexte)}" autocomplete="off">
+        <select id="recents-type" class="recents-sel">
+          <option value="">Toutes opérations</option>
+          ${typesPresents.map(t => `<option value="${_e(t)}"${_recentsFiltreType === t ? ' selected' : ''}>${_e(_RECENTS_OP[t]?.label || t)}</option>`).join('')}
+        </select>
+        <select id="recents-op" class="recents-sel">
+          <option value="">Tous utilisateurs</option>
+          ${opsPresents.map(o => `<option value="${_e(o)}"${_recentsFiltreOp === o ? ' selected' : ''}>${_e(o)}</option>`).join('')}
+        </select>
+      </div>
+      <div id="recents-table-zone"></div>`;
+
+    document.getElementById('recents-rech')?.addEventListener('input', e => {
+      _recentsFiltreTexte = e.target.value;
+      _actualiserTableauRecents();
+    });
+    document.getElementById('recents-type')?.addEventListener('change', e => {
+      _recentsFiltreType = e.target.value;
+      _actualiserTableauRecents();
+    });
+    document.getElementById('recents-op')?.addEventListener('change', e => {
+      _recentsFiltreOp = e.target.value;
+      _actualiserTableauRecents();
+    });
+
+    _actualiserTableauRecents();
+  }
+
+  function _actualiserTableauRecents() {
+    const zone = document.getElementById('recents-table-zone');
+    if (!zone) return;
+
+    const _tsRef = b => {
+      const d = _recentsDernOps[b.id];
+      return new Date(d?.date_operation || b.date_modif || b.date_ajout || 0).getTime();
+    };
+    const _opType = b => {
+      const d = _recentsDernOps[b.id];
+      return d?.type_operation || (b.date_modif ? 'MODIFICATION' : 'ENTREE');
+    };
+    const _par = b => {
+      const d = _recentsDernOps[b.id];
+      return (d?.operateur || b.modifie_par || b.ajoute_par || '—').toLowerCase();
+    };
+    const _desigBrut = b => b.categorie === 'profil'
+      ? `${b.section_type || ''} ${b.designation || ''}`.trim()
+      : `${b.epaisseur_mm}mm ${b.type_tole || ''} ${b.largeur_mm}×${b.longueur_mm}`;
+
+    let items = _recentsItemsAll.slice();
+
+    if (_recentsFiltreType)  items = items.filter(b => _opType(b) === _recentsFiltreType);
+    if (_recentsFiltreOp)    items = items.filter(b => _par(b) === _recentsFiltreOp.toLowerCase());
+    if (_recentsFiltreTexte) {
+      const q = _recentsFiltreTexte.toLowerCase();
+      items = items.filter(b => b.id.toLowerCase().includes(q) || _desigBrut(b).toLowerCase().includes(q));
+    }
+
+    items.sort((a, b) => {
+      let va, vb;
+      switch (_recentsTriCol) {
+        case 'id':    va = a.id;          vb = b.id;          break;
+        case 'desig': va = _desigBrut(a); vb = _desigBrut(b); break;
+        case 'par':   va = _par(a);       vb = _par(b);       break;
+        default:      va = _tsRef(a);     vb = _tsRef(b);     break;
+      }
+      if (va < vb) return _recentsTriDir === 'asc' ? -1 : 1;
+      if (va > vb) return _recentsTriDir === 'asc' ?  1 : -1;
+      return 0;
+    });
+
+    zone.innerHTML = _htmlRecents(items, _recentsDernOps);
+
+    zone.querySelectorAll('th[data-recents-tri]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.recentsTri;
+        if (_recentsTriCol === col) {
+          _recentsTriDir = _recentsTriDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          _recentsTriCol = col;
+          _recentsTriDir = col === 'date' ? 'desc' : 'asc';
+        }
+        _actualiserTableauRecents();
+      });
+    });
   }
 
   function _htmlRecents(items, dernOps = {}) {
-    if (!items.length) {
-      return `<div style="padding:24px;color:#aaa;font-style:italic">Aucune activité dans cette période.</div>`;
-    }
-
-    const OP_LABELS = {
-      ENTREE:       { label: 'Ajout',        color: '#27ae60' },
-      MODIFICATION: { label: 'Modification', color: '#e67e22' },
-      SORTIE:       { label: 'Utilisation',  color: '#2980b9' },
-      ARCHIVAGE:    { label: 'Archivage',    color: '#8e44ad' },
-      AFFECTATION:  { label: 'Affectation',  color: '#16a085' },
-      RETOUR:       { label: 'Retour stock', color: '#27ae60' },
-      VALIDATION:   { label: 'Validation',   color: '#27ae60' },
+    const _ind = col => {
+      if (_recentsTriCol !== col) return '<span class="tri-ind">↕</span>';
+      return `<span class="tri-ind">${_recentsTriDir === 'asc' ? '↑' : '↓'}</span>`;
     };
+
+    if (!items.length) {
+      return `<div style="padding:24px;color:#aaa;font-style:italic">Aucun résultat pour ces filtres.</div>`;
+    }
 
     let h = `<table class="hist-table">
       <thead><tr>
-        <th>ID</th><th>Désignation</th><th>Modification</th><th>Date</th><th>Par</th><th></th>
+        <th data-recents-tri="id">ID ${_ind('id')}</th>
+        <th data-recents-tri="desig">Désignation ${_ind('desig')}</th>
+        <th>Modification</th>
+        <th data-recents-tri="date">Date ${_ind('date')}</th>
+        <th data-recents-tri="par">Par ${_ind('par')}</th>
+        <th></th>
       </tr></thead><tbody>`;
 
     items.forEach(b => {
@@ -7504,14 +7617,13 @@ ${hasT ? `
         ? new Date(dateRaw).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
         : '—';
       const opType  = dernH?.type_operation || (b.date_modif ? 'MODIFICATION' : 'ENTREE');
-      const opInfo  = OP_LABELS[opType] || { label: opType, color: '#666' };
+      const opInfo  = _RECENTS_OP[opType] || { label: opType, color: '#666' };
       const par     = _e(dernH?.operateur || b.modifie_par || b.ajoute_par || '—');
 
       const desig = b.categorie === 'profil'
         ? `${_e(b.section_type || '')} ${_e(b.designation || '')}`
         : `${_e(String(b.epaisseur_mm))} mm ${_e(_LABEL_TYPE_TOLE[b.type_tole] || b.type_tole || '')} ${_e(String(b.largeur_mm))}×${_e(String(b.longueur_mm))}`;
 
-      // — Colonne modification : type + commentaire sémantique + avant→après numérique
       const opBadge = `<span style="color:${opInfo.color};font-weight:bold;font-size:11px">${_e(opInfo.label)}</span>`;
       const commentLigne = dernH?.commentaire
         ? `<div style="font-size:11px;color:#555;margin-top:2px">${_e(dernH.commentaire)}</div>`
@@ -7523,7 +7635,6 @@ ${hasT ? `
         const u = b.categorie === 'profil' ? ' m' : ' pcs';
         avApresLigne = `<div style="font-size:11px;color:#888;margin-top:2px">${av.toFixed(2)}${u} → ${ap.toFixed(2)}${u}</div>`;
       }
-      const modifCol = opBadge + commentLigne + avApresLigne;
 
       const btnHist = b.categorie === 'tole'
         ? `<button class="btn-ligne" onclick="Stock.ouvrirHistoriqueTole('${_e(b.id)}')" title="Historique">📋</button>`
@@ -7532,7 +7643,7 @@ ${hasT ? `
       h += `<tr>
         <td><span style="font-family:monospace;font-size:12px">${_e(b.id)}</span></td>
         <td>${desig}</td>
-        <td>${modifCol}</td>
+        <td>${opBadge}${commentLigne}${avApresLigne}</td>
         <td style="white-space:nowrap">${_e(dateAff)}</td>
         <td>${par}</td>
         <td>${btnHist}</td>
@@ -7540,7 +7651,7 @@ ${hasT ? `
     });
 
     return h + `</tbody></table>
-      <div style="margin-top:8px;font-size:12px;color:#aaa;text-align:right">${items.length} élément(s)</div>`;
+      <div style="margin-top:8px;font-size:12px;color:#aaa;text-align:right">${items.length} résultat(s)</div>`;
   }
 
   function _attacherNavAdmin() {
