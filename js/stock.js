@@ -4521,34 +4521,34 @@ ${hasT ? `
       const b = _data.barres.find(x => x.id === _sortieToleId);
       if (b) { b.quantite = nouvelleQty; b.poids_total_kg = poidsT; }
 
-      // Créer un enregistrement archivé représentant la quantité consommée (TOL-XXXX-1, -2, ...)
-      const poidsS = Math.round(tole.poids_unitaire_kg * qtySortie * 10) / 10;
-      sortieId = _genererIdPortion(tole.id);
-      const sortieObj = {
-        id: sortieId,
-        categorie: 'tole',
-        type_tole: tole.type_tole,
-        epaisseur_mm: tole.epaisseur_mm,
-        largeur_mm: tole.largeur_mm,
-        longueur_mm: tole.longueur_mm,
-        quantite: qtySortie,
-        is_chute: false,
-        ref_commande: tole.ref_commande || null,
-        seuil_surface_m2: null,
-        poids_unitaire_kg: tole.poids_unitaire_kg,
-        poids_total_kg: poidsS,
-        chantier_origine: tole.chantier_origine || null,
-        chantier_affectation: chantierDest,
-        lieu_stockage: tole.lieu_stockage,
-        disponibilite: 'disponible',
-        statut: 'archivee',
-        date_ajout: tole.date_ajout,
-        ajoute_par: tole.ajoute_par || operateur || 'inconnu',
-        valide_par: operateur,
-        date_validation: _dateAujourdhui(),
-        commentaire: `${qtySortie} pièce${qtySortie > 1 ? 's' : ''} consommée${qtySortie > 1 ? 's' : ''} → chantier ${chantierDest} (issu de ${_sortieToleId})`
-      };
-      await _persisterElement(sortieObj);
+      // Créer une entrée individuelle par pièce consommée (TOL-XXXX-1, TOL-XXXX-2, ...)
+      for (let i = 0; i < qtySortie; i++) {
+        sortieId = _genererIdPortion(tole.id);
+        await _persisterElement({
+          id: sortieId,
+          categorie: 'tole',
+          type_tole: tole.type_tole,
+          epaisseur_mm: tole.epaisseur_mm,
+          largeur_mm: tole.largeur_mm,
+          longueur_mm: tole.longueur_mm,
+          quantite: 1,
+          is_chute: false,
+          ref_commande: tole.ref_commande || null,
+          seuil_surface_m2: null,
+          poids_unitaire_kg: tole.poids_unitaire_kg,
+          poids_total_kg: tole.poids_unitaire_kg,
+          chantier_origine: tole.chantier_origine || null,
+          chantier_affectation: chantierDest,
+          lieu_stockage: tole.lieu_stockage,
+          disponibilite: 'disponible',
+          statut: 'archivee',
+          date_ajout: tole.date_ajout,
+          ajoute_par: tole.ajoute_par || operateur || 'inconnu',
+          valide_par: operateur,
+          date_validation: _dateAujourdhui(),
+          commentaire: `1 pièce consommée → chantier ${chantierDest} (issu de ${_sortieToleId})`
+        });
+      }
       await _enregistrerHistoriqueTole(_sortieToleId, 'SORTIE', tole.quantite, nouvelleQty, chantierDest, operateur, null, tole.lieu_stockage || null);
     }
 
