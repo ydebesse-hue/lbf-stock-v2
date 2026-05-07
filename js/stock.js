@@ -5875,8 +5875,13 @@ ${hasT ? `
         }
       }
 
+      const hasChutes = children.some(c => c.item.is_chute);
       let statutHtml;
-      if (item.statut === 'archivee' && children.length) {
+      if (item.statut === 'archivee' && item.is_chute) {
+        statutHtml = `<span class="tole-statut-consomme">● Consommé</span>`;
+      } else if (item.statut === 'archivee' && hasChutes) {
+        statutHtml = `<span class="tole-statut-reste">● Consommé partiellement</span>`;
+      } else if (item.statut === 'archivee' && children.length) {
         statutHtml = `<span class="tole-statut-reste">● Reste utilisé</span>`;
       } else if (item.statut === 'archivee') {
         statutHtml = `<span class="tole-statut-consomme">● Consommé</span>`;
