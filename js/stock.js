@@ -308,6 +308,14 @@ const Stock = (() => {
         barres = json.barres || [];
       }
 
+      // Fusionner les éventuels items offline (localStorage) — ils priment sur SB car plus récents
+      const _localPending = _chargerLocal();
+      if (_localPending.barres.length) {
+        const map = new Map(barres.map(b => [b.id, b]));
+        _localPending.barres.forEach(b => map.set(b.id, b));
+        barres = Array.from(map.values());
+      }
+
       // Calculer le compteur depuis les IDs existants
       const nums = barres.map(b => parseInt((b.id||'').replace(/[^0-9]/g,''),10)).filter(n=>!isNaN(n));
       const compteur = nums.length ? Math.max(...nums) : 0;
@@ -382,6 +390,18 @@ const Stock = (() => {
     _attacherEvenements();
     _initialiserModales();
 
+    // Synchronisation hors-ligne : sync au démarrage + listeners online/offline
+    window.addEventListener('offline', _majIndicateurSync);
+    window.addEventListener('online', async () => {
+      const n = await _synchroPendingLocale();
+      _majIndicateurSync();
+      if (n) _notif(`${n} modification(s) synchronisée(s) automatiquement`, 'succes');
+    });
+    _synchroPendingLocale().then(n => {
+      _majIndicateurSync();
+      if (n) _notif(`${n} modification(s) hors-ligne synchronisée(s)`, 'succes');
+    });
+
     // Rafraîchissement automatique des demandes pour les admins
     if (Auth.hasRight('can_validate')) {
       setInterval(async () => {
@@ -427,6 +447,67 @@ const Stock = (() => {
       localStorage.setItem(CLE_LOCAL, JSON.stringify(local));
     } catch (e) {
       console.error('Impossible de sauvegarder dans localStorage :', e);
+    }
+  }
+
+  // Pousse vers Supabase les modifications faites hors-ligne (localStorage).
+  // Retourne le nombre d'éléments synchronisés avec succès.
+  async function _synchroPendingLocale() {
+    let synced = 0;
+
+    // Stock (barres / tôles)
+    const local = _chargerLocal();
+    if (local.barres.length) {
+      const failed = [];
+      for (const barre of local.barres) {
+        try { await window.SB.upsert('stock', barre); synced++; }
+        catch(e) { failed.push(barre); }
+      }
+      _sauvegarderLocal({ ...local, barres: failed });
+    }
+
+    // Demandes
+    const storeDem = _chargerDemandes();
+    if (storeDem.demandes.length) {
+      const failedDem = [];
+      for (const dem of storeDem.demandes) {
+        try { await window.SB.upsert('demandes', dem); synced++; }
+        catch(e) { failedDem.push(dem); }
+      }
+      try { localStorage.setItem(CLE_DEMANDES, JSON.stringify({ ...storeDem, demandes: failedDem })); } catch {}
+    }
+
+    return synced;
+  }
+
+  function _majIndicateurSync() {
+    const el = document.getElementById('sync-indicateur');
+    if (!el) return;
+    const pendingStock = _chargerLocal().barres.length;
+    const pendingDem   = _chargerDemandes().demandes.length;
+    const total = pendingStock + pendingDem;
+
+    if (!navigator.onLine) {
+      el.className = 'sync-offline';
+      el.textContent = '● Hors ligne';
+      el.title = 'Aucune connexion — modifications sauvegardées localement';
+      el.onclick = null;
+    } else if (total > 0) {
+      el.className = 'sync-pending';
+      el.textContent = `⚠ ${total} non synchronisé${total > 1 ? 'es' : 'e'}`;
+      el.title = `${total} modification(s) en attente — cliquer pour synchroniser`;
+      el.onclick = async () => {
+        el.textContent = '…';
+        el.onclick = null;
+        const n = await _synchroPendingLocale();
+        _majIndicateurSync();
+        if (n) _notif(`${n} modification(s) synchronisée(s)`, 'succes');
+      };
+    } else {
+      el.className = 'sync-ok';
+      el.textContent = '● Synchronisé';
+      el.title = 'Toutes les données sont synchronisées avec le serveur';
+      el.onclick = null;
     }
   }
 
