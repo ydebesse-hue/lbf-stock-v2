@@ -1141,12 +1141,20 @@ const Stock = (() => {
     });
     h += '<th>Action</th></tr></thead><tbody>';
 
+    // Épaisseurs dont la surface totale est sous le seuil configuré
+    const _epSousSeuil = new Set();
+    _surfacesParEpaisseur().forEach((entry, ep) => {
+      if (entry.seuil > 0 && entry.surface < entry.seuil) _epSousSeuil.add(ep);
+    });
+
     if (!data.length) {
       h += `<tr><td colspan="${nbCols + 1}" class="vide">Aucune tôle ne correspond aux filtres.</td></tr>`;
     } else {
       data.forEach(t => {
-        const attente = t.statut === 'en_attente';
-        h += `<tr${attente ? ' class="ligne-attente"' : ''} data-id="${_e(t.id)}">`;
+        const attente    = t.statut === 'en_attente';
+        const stockBas   = !attente && _epSousSeuil.has(t.epaisseur_mm);
+        const rowClass   = attente ? 'ligne-attente' : stockBas ? 'ligne-stock-bas' : '';
+        h += `<tr${rowClass ? ` class="${rowClass}"` : ''} data-id="${_e(t.id)}">`;
         colsVis.forEach(c => {
           const editable = modif && COLS_EDITABLES_TOLE.has(c.key);
           const cls = `col-t-${c.key}${editable ? ' cell-editable' : ''}`;
