@@ -1635,7 +1635,26 @@ const Stock = (() => {
            </div>`
         : '';
 
-      return `
+      // Section "À réapprovisionner" — épaisseurs sous le seuil
+      const basStock = lignesEp.filter(([ep, d]) => (_seuils[ep] || 0) > 0 && d.surface < _seuils[ep]);
+      const reapproHtml = basStock.length ? `
+        <div class="syn-reappro">
+          <div class="syn-reappro-titre">⚠ À réapprovisionner — ${basStock.length} épaisseur${basStock.length > 1 ? 's' : ''} sous le seuil</div>
+          <table class="hist-table" style="margin:0">
+            <thead><tr><th>Épaisseur</th><th>Stock actuel</th><th>Seuil</th><th>Manquant</th></tr></thead>
+            <tbody>${basStock.map(([ep, d]) => {
+              const seuil = _seuils[ep];
+              return `<tr>
+                <td><strong>${_e(String(ep))} mm</strong></td>
+                <td>${fmt(d.surface)} m²</td>
+                <td>${fmt(seuil)} m²</td>
+                <td style="color:#c0392b;font-weight:600">−${fmt(seuil - d.surface)} m²</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>` : '';
+
+      return `${reapproHtml}
         <div class="syn-kpi k-vert syn-kpi-table" style="margin-bottom:16px">
           <table class="syn-kpi-inner">
             <thead><tr>
@@ -2609,6 +2628,7 @@ ${hasT ? `
     badge.style.display = nb > 0 ? 'inline-flex' : 'none';
     const span = badge.querySelector('.stock-bas-nb');
     if (span) span.textContent = nb;
+    badge.onclick = () => { _synTab = 'toles'; _basculerOnglet('synthese'); };
   }
 
   function _majAlerteAttente() { _majBanniereRecents(); } // alias rétro-compatibilité
