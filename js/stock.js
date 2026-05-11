@@ -5964,71 +5964,107 @@ ${hasT ? `
    */
   async function ouvrirHistoriqueBarre(id) {
     const barre = _parId(id);
-
-    // Construire le titre de la modale
     const titreEl = document.getElementById('hist-titre');
     if (titreEl) {
-      if (barre) {
-        const prefix = barre.statut === 'archivee' ? 'ARC' : 'BAR';
-        const code   = barre.code_barre ? `${prefix}-${barre.code_barre}` : barre.id;
-        titreEl.textContent = `Historique — ${code} · ${barre.section_type} ${barre.designation}`;
-      } else {
-        titreEl.textContent = `Historique — ${id}`;
-      }
+      titreEl.textContent = barre
+        ? `Historique — ${barre.id} · ${barre.section_type} ${barre.designation}`
+        : `Historique — ${id}`;
     }
 
-    // Portions issues de cette barre (BAR-XXXX-1, -2, ...)
-    const portionPrefix = id + '-';
-    const portions = (_data?.barres || []).filter(b => {
-      if (!b.id || !b.id.startsWith(portionPrefix)) return false;
-      return /^\d+$/.test(b.id.slice(portionPrefix.length));
-    }).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
-
-    // Barre parente si cet ID est lui-même une portion (ex: BAR-0042-1 → BAR-0042)
-    const parentMatch = id.match(/^(.+)-(\d+)$/);
-    const parentId = parentMatch ? parentMatch[1] : null;
-    const parentBarre = parentId ? _parId(parentId) : null;
-
-    // Afficher le loader et ouvrir la modale
     const contenu = document.getElementById('hist-contenu');
-    if (contenu) {
-      contenu.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Chargement de l\'historique…</div>';
-    }
+    if (contenu) contenu.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Chargement…</div>';
     _ouvrirModale('m-historique-barre');
 
-    // Charger l'historique depuis Supabase
     try {
-      const lignes = await window.SB.lireHistoriqueParBarre(id);
-      if (contenu) contenu.innerHTML = _htmlBlocPortions(id, portions, parentId, parentBarre) + _htmlTableauHistorique(lignes);
+      const racineId = _trouverRacineTole(id);
+      const racine   = _parId(racineId);
+      const arbre    = _construireArbreTole(racineId);
+      const lignes   = await window.SB.lireHistoriqueParBarre(id);
+      if (contenu) {
+        contenu.innerHTML =
+          _htmlFamilleBarre(racine || { id: racineId }, arbre, id) +
+          `<div class="tole-journal-section">
+            <div class="tole-journal-titre">Journal des opérations — ${_e(id)}</div>
+            ${_htmlTableauHistorique(lignes)}
+          </div>`;
+      }
     } catch(e) {
       console.error('[Stock] Erreur chargement historique :', e);
-      if (contenu) {
-        contenu.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rouge)">Impossible de charger l\'historique.</div>';
-      }
+      if (contenu) contenu.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rouge)">Impossible de charger l\'historique.</div>';
     }
   }
 
-  // Génère le bloc "Portions archivées" + lien vers barre parente (si applicable)
-  function _htmlBlocPortions(id, portions, parentId, parentBarre) {
-    let h = '';
-    if (parentId) {
-      const label = parentBarre ? `${parentId} · ${parentBarre.section_type} ${parentBarre.designation}` : parentId;
-      h += `<div style="margin:0 0 10px;padding:8px 12px;background:#f0f7ff;border-left:3px solid #5b9bd5;border-radius:4px;font-size:13px">
-        ↑ Portion issue de
-        <span class="syn-lien" style="font-weight:bold;cursor:pointer" data-hist-id="${_e(parentId)}">${_e(label)}</span>
+  function _htmlFamilleBarre(racine, arbre, currentId) {
+    const desig  = racine.section_type ? `${racine.section_type} ${racine.designation || ''}`.trim() : '';
+    const lng    = racine.longueur_m != null ? `${parseFloat(racine.longueur_m).toFixed(2)} m` : '—';
+    const nbPort = arbre.length;
+    const statsHtml = `<span class="tole-famille-stats">${nbPort} portion${nbPort !== 1 ? 's' : ''} · ${lng} restants</span>`;
+
+    let h = `<div class="tole-famille">
+      <div class="tole-famille-header">
+        <strong>${_e(racine.id)}</strong>
+        <span>${_e(desig)}</span>
+        ${statsHtml}
       </div>`;
+
+    if (!arbre.length) {
+      h += `<div style="padding:10px 14px;color:#aaa;font-size:12px;font-style:italic">Aucune portion consommée.</div>`;
+    } else {
+      h += `<table class="hist-table" style="margin-top:0">
+        <thead><tr>
+          <th>ID</th><th>Chantier</th><th>Longueur</th><th>Statut</th><th>Date</th>
+        </tr></thead>
+        <tbody>${_htmlNoeudsBarre(arbre, currentId, 0)}</tbody>
+      </table>`;
     }
-    if (portions.length) {
-      const badges = portions.map(p => {
-        const info = p.longueur_m != null ? ` ${parseFloat(p.longueur_m).toFixed(2)} m` : '';
-        const ch   = p.chantier_affectation ? ` · ${_e(_labelChantier(p.chantier_affectation) || p.chantier_affectation)}` : '';
-        return `<span class="syn-lien" style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;font-size:12px;cursor:pointer;white-space:nowrap" data-hist-id="${_e(p.id)}">${_e(p.id)}${_e(info)}${ch}</span>`;
-      }).join('');
-      h += `<div style="margin:0 0 12px;padding:8px 12px;background:#f9f9f9;border-left:3px solid var(--vert);border-radius:4px;font-size:13px">
-        <span style="color:#666;margin-right:6px">Portions archivées :</span>${badges}
-      </div>`;
-    }
-    return h;
+    return h + `</div>`;
+  }
+
+  function _htmlNoeudsBarre(noeuds, currentId, niveau) {
+    return noeuds.map(({ item, children }) => {
+      const rowCls = item.id === currentId ? ' class="tole-arbre-current"' : '';
+      const indent = niveau > 0
+        ? `<span class="tole-arbre-indent">${'&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(niveau - 1)}└─&nbsp;</span>`
+        : '';
+
+      const chantier = _e(_labelChantier(item.chantier_affectation) || item.chantier_affectation || '—');
+      const lng = item.longueur_m != null ? `${parseFloat(item.longueur_m).toFixed(2)} m` : '—';
+
+      // Longueur consommée = longueur de cette portion − somme des longueurs des enfants directs
+      let consHtml = '';
+      if (children.length && item.longueur_m) {
+        const lngEnfants = children.reduce((s, c) => s + (parseFloat(c.item.longueur_m) || 0), 0);
+        const lngCons = parseFloat(item.longueur_m) - lngEnfants;
+        if (lngCons > 0.001) {
+          consHtml = `<div class="tole-surf-cons">▸ ${lngCons.toFixed(2)} m consommé</div>`;
+        }
+      }
+
+      const hasPortions = children.length > 0;
+      let statutHtml;
+      if (item.statut === 'archivee' && hasPortions) {
+        statutHtml = `<span class="tole-statut-reste">● Consommé partiellement</span>`;
+      } else if (item.statut === 'archivee') {
+        statutHtml = `<span class="tole-statut-consomme">● Consommé</span>`;
+      } else if (item.statut === 'en_attente') {
+        statutHtml = `<span class="tole-statut-attente">● En attente</span>`;
+      } else {
+        statutHtml = `<span class="tole-statut-stock">● En stock</span>`;
+      }
+
+      const dateRaw = item.date_validation || item.date_ajout || '';
+      const dateAff = dateRaw ? new Date(dateRaw).toLocaleDateString('fr-FR') : '—';
+
+      let h = `<tr${rowCls}>
+        <td style="font-family:monospace;font-size:12px;white-space:nowrap">${indent}${_e(item.id)}</td>
+        <td>${chantier}</td>
+        <td style="white-space:nowrap;font-size:11px">${_e(lng)}${consHtml}</td>
+        <td>${statutHtml}</td>
+        <td style="white-space:nowrap;font-size:11px;color:#888">${_e(dateAff)}</td>
+      </tr>`;
+      if (children.length) h += _htmlNoeudsBarre(children, currentId, niveau + 1);
+      return h;
+    }).join('');
   }
 
   /**
