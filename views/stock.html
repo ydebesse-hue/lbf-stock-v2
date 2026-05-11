@@ -81,12 +81,7 @@
 
     #header-user { color: #aaa; font-size: 12px; }
 
-    #sync-indicateur { display: none; font-size: 11px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; font-family: Tahoma; }
-    #sync-indicateur.sync-ok      { display: inline; background: #d4edda; color: #155724; }
-    #sync-indicateur.sync-pending { display: inline; background: #fff3cd; color: #856404; cursor: pointer; }
-    #sync-indicateur.sync-offline { display: inline; background: #f8d7da; color: #721c24; }
-
-    .btn-deco {
+.btn-deco {
       background: none;
       border: 1px solid #555;
       color: #aaa;
@@ -1405,8 +1400,6 @@
       #header-badge { font-size: 9px; padding: 2px 5px; letter-spacing: 0.5px; }
       .btn-deco { font-size: 10px; padding: 3px 7px; }
       #header-user { display: none; }
-      #sync-indicateur.sync-ok { display: none; }
-      #sync-indicateur.sync-pending, #sync-indicateur.sync-offline { font-size: 10px; padding: 1px 5px; }
       .nav-principale { padding: 0 8px; }
       .nav-item { padding: 8px 10px; font-size: 12px; }
       .sous-onglets { padding: 0 8px; }
@@ -1611,7 +1604,6 @@
     <div class="header-droite">
       <span id="header-badge" class="badge-profil"></span>
       <span id="header-user"></span>
-      <span id="sync-indicateur"></span>
       <button class="btn-deco" onclick="Auth.logout()">Déconnexion</button>
     </div>
   </header>
