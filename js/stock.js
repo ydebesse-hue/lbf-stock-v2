@@ -1961,9 +1961,9 @@ const Stock = (() => {
     zone.innerHTML = `
     <div class="syn-page">
       <div class="syn-sous-nav">
-        <button class="syn-tab${estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="profils">Profilés</button>
-        <button class="syn-tab${_synTab === 'toles' ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="toles">Tôles</button>
-        ${adminSyn ? `<button class="syn-tab${estBilan ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="bilan">Bilan chantiers</button>` : ''}
+        <button class="sous-onglet-arc${estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="profils">Profilés</button>
+        <button class="sous-onglet-arc${_synTab === 'toles' ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="toles">Tôles</button>
+        ${adminSyn ? `<button class="sous-onglet-arc${estBilan ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="bilan">Bilan chantiers</button>` : ''}
       </div>
       ${estBilan ? _contenuBilan() : estProfils ? _contenuProfils() : _contenuToles()}
     </div>`;
