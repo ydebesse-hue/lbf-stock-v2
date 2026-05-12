@@ -371,6 +371,32 @@
       margin: 0;
     }
 
+    /* ── LIGNE DE FILTRES DANS LE THEAD ────────────────────────── */
+    #tableau-stock thead .tr-filtres th {
+      background: #252530;
+      padding: 3px 6px;
+      cursor: default;
+    }
+    #tableau-stock thead .tr-filtres th:hover { background: #252530; }
+    .table-profils thead .tr-filtres th.col-p-id { background: #252530; }
+
+    .th-filtre {
+      width: 100%;
+      font-size: 11px;
+      padding: 2px 4px;
+      border: 1px solid rgba(255,255,255,.2);
+      background: rgba(255,255,255,.08);
+      color: white;
+      border-radius: 2px;
+      cursor: pointer;
+      font-family: Tahoma, Geneva, sans-serif;
+      letter-spacing: normal;
+      text-transform: none;
+      display: block;
+    }
+    .th-filtre:focus { outline: 2px solid var(--rouge); outline-offset: 0; }
+    .th-filtre option { color: #111; background: white; }
+
     #tableau-stock table {
       width: 100%;
       border-collapse: collapse;
@@ -1698,27 +1724,6 @@
   <!-- ── TOOLBAR PROFILÉS ─────────────────────────────────────── -->
   <div class="toolbar" id="toolbar-profils" style="display:none">
     <button id="btn-ajout-profil" class="btn-action btn-rouge" data-require="can_add">+ Profilé</button>
-
-    <span class="toolbar-label" style="margin-left:4px">Filtrer :</span>
-
-    <select id="p-type"     class="sel-filtre" title="Type de section">
-      <option value="">Tous types</option>
-    </select>
-    <select id="p-desig"    class="sel-filtre" title="Désignation">
-      <option value="">Toutes désignations</option>
-    </select>
-    <select id="p-chantier" class="sel-filtre" title="Chantier affecté">
-      <option value="">Tous chantiers</option>
-    </select>
-    <select id="p-lieu"     class="sel-filtre" title="Lieu de stockage">
-      <option value="">Tous lieux</option>
-    </select>
-    <select id="p-dispo"    class="sel-filtre" title="Disponibilité">
-      <option value="">Disponibilité</option>
-      <option value="disponible">Disponible</option>
-      <option value="affecte">Affecté</option>
-    </select>
-
     <div id="badge-filtre-attente" class="badge-filtre-actif">
       ⚠ En attente
       <button onclick="window._clearFiltreAttente()" title="Effacer le filtre">✕</button>
@@ -1741,30 +1746,6 @@
   <!-- ── TOOLBAR TÔLES ────────────────────────────────────────── -->
   <div class="toolbar" id="toolbar-toles" style="display:none">
     <button id="btn-ajout-tole-tab" class="btn-action btn-rouge" data-require="can_add">+ Tôle</button>
-
-    <span class="toolbar-label" style="margin-left:4px">Filtrer :</span>
-
-    <select id="t-type"      class="sel-filtre" title="Type de tôle">
-      <option value="">Tous types</option>
-      <option value="noir">Noir</option>
-      <option value="inox">Inox</option>
-      <option value="larmee">Larmée</option>
-    </select>
-    <select id="t-epaisseur" class="sel-filtre" title="Épaisseur">
-      <option value="">Toutes épaisseurs</option>
-    </select>
-    <select id="t-chantier"  class="sel-filtre" title="Chantier d'origine">
-      <option value="">Tous chantiers</option>
-    </select>
-    <select id="t-lieu"      class="sel-filtre" title="Lieu de stockage">
-      <option value="">Tous lieux</option>
-    </select>
-    <select id="t-dispo"     class="sel-filtre" title="Disponibilité">
-      <option value="">Disponibilité</option>
-      <option value="disponible">Disponible</option>
-      <option value="affecte">Affecté</option>
-    </select>
-
     <div class="toolbar-sep"></div>
     <button id="btn-reset-toles" class="btn-action btn-gris" title="Réinitialiser">✕ Réinitialiser</button>
     <input id="t-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">

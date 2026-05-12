@@ -823,6 +823,18 @@ const Stock = (() => {
     const zone = document.getElementById('tableau-stock');
     if (!zone) return;
 
+    // Sauvegarder les valeurs des filtres avant de reconstruire le thead
+    const savedP = {};
+    ['p-type','p-desig','p-chantier','p-lieu','p-dispo','p-recherche'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) savedP[id] = el.value;
+    });
+    const savedT = {};
+    ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) savedT[id] = el.value;
+    });
+
     let html;
     if (_onglet === 'profils')            html = _htmlProfils(data);
     else if (_onglet === 'toles')         html = _htmlToles(data);
@@ -835,7 +847,57 @@ const Stock = (() => {
       th.addEventListener('click', () => _clicTri(th.dataset.col));
     });
 
+    // Repeupler et restaurer les filtres dans le thead reconstruit
+    if (_onglet === 'profils' && _data) _restaurerFiltresProfils(savedP);
+    if (_onglet === 'toles'   && _data) _restaurerFiltresToles(savedT);
+
     _majFloatThead();
+  }
+
+  function _restaurerFiltresProfils(savedVals) {
+    if (!_data) return;
+    const profils = _data.barres.filter(b => b.categorie === 'profil' && b.statut !== 'archivee');
+
+    _remplirSelect('p-type',
+      [...new Set(profils.map(b => b.section_type))].filter(Boolean).sort()
+    );
+    _remplirSelectChantiers('p-chantier',
+      [...new Set(profils.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))].sort()
+    );
+    _remplirSelect('p-lieu',
+      [...new Set(profils.filter(b => b.lieu_stockage).map(b => b.lieu_stockage))].sort()
+    );
+
+    ['p-type','p-chantier','p-lieu','p-dispo'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && savedVals[id]) el.value = savedVals[id];
+    });
+
+    // Cascade désignation : peupler pour le type sauvegardé puis restaurer la valeur
+    if (savedVals['p-type']) {
+      _peuplerDesignations(savedVals['p-type'], savedVals['p-desig'] || '');
+    }
+  }
+
+  function _restaurerFiltresToles(savedVals) {
+    if (!_data) return;
+    const toles = _data.barres.filter(b => b.categorie === 'tole' && b.statut !== 'archivee');
+
+    _remplirSelect('t-epaisseur',
+      [...new Set(toles.map(b => String(b.epaisseur_mm)))].sort((a, b) => +a - +b),
+      'mm'
+    );
+    _remplirSelectChantiers('t-chantier',
+      [...new Set(toles.filter(b => b.chantier_origine).map(b => b.chantier_origine))].sort()
+    );
+    _remplirSelect('t-lieu',
+      [...new Set(toles.filter(b => b.lieu_stockage).map(b => b.lieu_stockage))].sort()
+    );
+
+    ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && savedVals[id]) el.value = savedVals[id];
+    });
   }
 
   function _htmlProfils(data) {
@@ -844,7 +906,10 @@ const Stock = (() => {
     const vis   = _chargerColsVis();
     const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + (modif ? 3 : 2); // +check(si modif) +hist +actions
 
-    let h = `<table class="table-profils${modif ? '' : ' no-check'}"><thead><tr>`;
+    let h = `<table class="table-profils${modif ? '' : ' no-check'}"><thead>`;
+
+    // Ligne 1 : étiquettes de colonnes (avec tri)
+    h += '<tr class="tr-labels">';
     if (modif) {
       h += '<th class="col-p-check"><input type="checkbox" id="chk-select-all-profils" title="Tout sélectionner"></th>';
     }
@@ -859,7 +924,24 @@ const Stock = (() => {
         h += `<th class="${cls}">${c.label}</th>`;
       }
     });
-    h += '<th class="col-p-hist">Hist.</th><th class="col-p-actions">Actions</th></tr></thead><tbody>';
+    h += '<th class="col-p-hist">Hist.</th><th class="col-p-actions">Actions</th></tr>';
+
+    // Ligne 2 : filtres inline par colonne
+    h += '<tr class="tr-filtres">';
+    if (modif) h += '<th class="col-p-check"></th>';
+    COLS_PROFILS.forEach(c => {
+      if (!vis[c.key]) return;
+      let f = '';
+      if      (c.key === 'type')        f = '<select id="p-type"     class="th-filtre"><option value="">— type —</option></select>';
+      else if (c.key === 'designation') f = '<select id="p-desig"    class="th-filtre"><option value="">— désig. —</option></select>';
+      else if (c.key === 'dispo')       f = '<select id="p-dispo"    class="th-filtre"><option value="">— statut —</option><option value="disponible">Dispo.</option><option value="affecte">Affecté</option></select>';
+      else if (c.key === 'chantier')    f = '<select id="p-chantier" class="th-filtre"><option value="">— chantier —</option></select>';
+      else if (c.key === 'lieu')        f = '<select id="p-lieu"     class="th-filtre"><option value="">— lieu —</option></select>';
+      h += `<th class="col-p-${c.key}">${f}</th>`;
+    });
+    h += '<th class="col-p-hist"></th><th class="col-p-actions"></th></tr>';
+
+    h += '</thead><tbody>';
 
     if (!data.length) {
       h += `<tr><td colspan="${nbCols}" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
@@ -1127,7 +1209,10 @@ const Stock = (() => {
     const colsVis = COLS_TOLES.filter(c => vis[c.key]);
     const nbCols  = colsVis.length + 1; // +actions
 
-    let h = '<table class="table-toles"><thead><tr>';
+    let h = '<table class="table-toles"><thead>';
+
+    // Ligne 1 : étiquettes
+    h += '<tr class="tr-labels">';
     colsVis.forEach(c => {
       const actif = _tri.col === c.tri;
       const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : (c.tri ? '⇅' : '');
@@ -1136,7 +1221,22 @@ const Stock = (() => {
         ? `<th class="col-t-${c.key}${clsTri}" data-col="${c.tri}">${c.label} <span class="tri-ind">${ind}</span></th>`
         : `<th class="col-t-${c.key}">${c.label}</th>`;
     });
-    h += '<th>Action</th></tr></thead><tbody>';
+    h += '<th>Action</th></tr>';
+
+    // Ligne 2 : filtres inline
+    h += '<tr class="tr-filtres">';
+    colsVis.forEach(c => {
+      let f = '';
+      if      (c.key === 'type')      f = '<select id="t-type"      class="th-filtre"><option value="">— type —</option><option value="noir">Noir</option><option value="inox">Inox</option><option value="larmee">Larmée</option></select>';
+      else if (c.key === 'epaisseur') f = '<select id="t-epaisseur" class="th-filtre"><option value="">— ép. —</option></select>';
+      else if (c.key === 'dispo')     f = '<select id="t-dispo"     class="th-filtre"><option value="">— statut —</option><option value="disponible">Dispo.</option><option value="affecte">Affecté</option></select>';
+      else if (c.key === 'chantier')  f = '<select id="t-chantier"  class="th-filtre"><option value="">— chantier —</option></select>';
+      else if (c.key === 'lieu')      f = '<select id="t-lieu"      class="th-filtre"><option value="">— lieu —</option></select>';
+      h += `<th class="col-t-${c.key}">${f}</th>`;
+    });
+    h += '<th></th></tr>';
+
+    h += '</thead><tbody>';
 
     // Épaisseurs dont la surface totale est sous le seuil configuré
     const _epSousSeuil = new Set();
@@ -1321,10 +1421,10 @@ const Stock = (() => {
     );
   }
 
-  function _peuplerDesignations(type) {
+  function _peuplerDesignations(type, keepValue) {
     const sel = document.getElementById('p-desig');
     if (!sel) return;
-    const valAct = sel.value;
+    const valAct = keepValue !== undefined ? keepValue : sel.value;
     sel.innerHTML = '<option value="">Toutes désignations</option>';
     if (!type) return;
 
@@ -3010,19 +3110,19 @@ ${hasT ? `
       }
     });
 
-    // Filtres profilés
-    ['p-type','p-desig','p-chantier','p-lieu','p-dispo'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('change', _filtrer);
-    });
+    // Filtres dans le thead (recréés à chaque rendu) → délégation d'événement
+    const FILTER_IDS = new Set(['p-type','p-desig','p-chantier','p-lieu','p-dispo',
+                                 't-type','t-epaisseur','t-chantier','t-lieu','t-dispo']);
+    const zTab2 = document.getElementById('tableau-stock');
+    if (zTab2) {
+      zTab2.addEventListener('change', e => {
+        if (FILTER_IDS.has(e.target.id)) _filtrer();
+      });
+    }
+
+    // Champs recherche (restent dans la toolbar, listeners directs)
     const prech = document.getElementById('p-recherche');
     if (prech) prech.addEventListener('input', _filtrer);
-
-    // Filtres tôles
-    ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('change', _filtrer);
-    });
     const trech = document.getElementById('t-recherche');
     if (trech) trech.addEventListener('input', _filtrer);
 
@@ -3320,49 +3420,43 @@ ${hasT ? `
       ...document.querySelectorAll('.toolbar'),
     ].filter(Boolean).forEach(el => obs.observe(el));
 
-    // Scroll → montrer/cacher l'en-tête flottant + synchro défilement horizontal
+    // Synchro défilement horizontal uniquement (show/hide géré par IntersectionObserver dans _majFloatThead)
     const wrap = document.querySelector('.zone-tableau');
     if (wrap) {
-      const onScroll = () => {
+      wrap.addEventListener('scroll', () => {
         const outer = document.getElementById('float-thead-outer');
-        const tableau = document.getElementById('tableau-stock');
-        if (!outer || !tableau || tableau.style.display === 'none') return;
+        if (!outer || outer.style.display === 'none') return;
         const ft = outer.querySelector('table');
-
-        // Synchroniser le défilement horizontal
         if (ft) ft.style.marginLeft = -wrap.scrollLeft + 'px';
-
-        // Afficher seulement quand le vrai thead est hors du champ visible
-        const thead = tableau.querySelector('thead');
-        if (!thead) { outer.style.display = 'none'; return; }
-        const theadBottom = thead.getBoundingClientRect().bottom;
-        const stickyOffset = parseFloat(
-          getComputedStyle(document.documentElement).getPropertyValue('--sticky-thead')
-        ) || 164;
-        outer.style.display = theadBottom < stickyOffset ? 'block' : 'none';
-      };
-      wrap.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('scroll', onScroll, { passive: true });
+      }, { passive: true });
     }
   }
 
-  /** Crée ou recrée l'en-tête flottant à partir du tableau actuellement affiché. */
+  /** Crée ou recrée l'en-tête flottant (ligne labels seulement) avec IntersectionObserver. */
   function _majFloatThead() {
     const outer = document.getElementById('float-thead-outer');
     const tableau = document.getElementById('tableau-stock');
     const wrap = document.querySelector('.zone-tableau');
     if (!outer || !tableau || !wrap) return;
 
+    // Déconnecter l'observateur précédent
+    if (outer._observer) { outer._observer.disconnect(); outer._observer = null; }
+
     const table = tableau.querySelector('table');
     if (!table) { outer.style.display = 'none'; return; }
     const thead = table.querySelector('thead');
     if (!thead) { outer.style.display = 'none'; return; }
 
-    // Cloner le thead dans le conteneur flottant
+    // Cloner uniquement la ligne des étiquettes (pas la ligne de filtres)
+    const labelRow = thead.querySelector('.tr-labels') || thead.querySelector('tr');
+    if (!labelRow) { outer.style.display = 'none'; return; }
+
     outer.innerHTML = '';
     const floatTable = document.createElement('table');
     floatTable.className = table.className;
-    floatTable.appendChild(thead.cloneNode(true));
+    const floatThead = document.createElement('thead');
+    floatThead.appendChild(labelRow.cloneNode(true));
+    floatTable.appendChild(floatThead);
     outer.appendChild(floatTable);
 
     // Brancher les clics de tri sur le clone
@@ -3370,8 +3464,15 @@ ${hasT ? `
       th.addEventListener('click', () => _clicTri(th.dataset.col));
     });
 
-    // Synchroniser la largeur et les colonnes après le rendu
+    outer.style.display = 'none';
+
     requestAnimationFrame(() => {
+      _ajusterStickyTop(); // s'assurer que --sticky-thead est à jour
+      const stickyOffset = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--sticky-thead')
+      ) || 164;
+
+      // Positionner et dimensionner le flottant
       const wrapRect = wrap.getBoundingClientRect();
       outer.style.left  = wrapRect.left + 'px';
       outer.style.right = (window.innerWidth - wrapRect.right) + 'px';
@@ -3379,12 +3480,25 @@ ${hasT ? `
       floatTable.style.width = table.getBoundingClientRect().width + 'px';
       floatTable.style.marginLeft = -wrap.scrollLeft + 'px';
 
-      // Copier les largeurs cellule par cellule pour l'alignement exact
-      const realCells  = [...thead.querySelectorAll('th')];
+      // Synchroniser les largeurs colonne par colonne
+      const realCells  = [...labelRow.querySelectorAll('th')];
       const floatCells = [...floatTable.querySelectorAll('th')];
       realCells.forEach((th, i) => {
         if (floatCells[i]) floatCells[i].style.width = th.getBoundingClientRect().width + 'px';
       });
+
+      // IntersectionObserver : montrer le flottant quand la ligne labels sort du champ visible
+      outer._observer = new IntersectionObserver(([entry]) => {
+        outer.style.display = entry.isIntersecting ? 'none' : 'block';
+        if (!entry.isIntersecting) {
+          const ft = outer.querySelector('table');
+          if (ft) ft.style.marginLeft = -wrap.scrollLeft + 'px';
+        }
+      }, {
+        rootMargin: `-${Math.round(stickyOffset)}px 0px 0px 0px`,
+        threshold: 0,
+      });
+      outer._observer.observe(labelRow);
     });
   }
 
