@@ -1959,7 +1959,7 @@ const Stock = (() => {
     const estBilan   = _synTab === 'bilan';
     const estProfils = _synTab === 'profils';
     zone.innerHTML = `
-    <div class="toolbar syn-sous-nav">
+    <div class="toolbar">
       <button class="sous-onglet-arc${estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="profils">Profilés</button>
       <button class="sous-onglet-arc${_synTab === 'toles' ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="toles">Tôles</button>
       ${adminSyn ? `<button class="sous-onglet-arc${estBilan ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="bilan">Bilan chantiers</button>` : ''}
