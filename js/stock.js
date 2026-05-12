@@ -1412,6 +1412,10 @@ const Stock = (() => {
     const zone = document.getElementById('zone-synthese');
     if (!zone || !_data) return;
 
+    // S'assurer que le toolbar statique est visible (peut être caché au premier chargement)
+    const tsyn = document.getElementById('toolbar-synthese');
+    if (tsyn) tsyn.style.display = '';
+
     const barres = _data.barres || [];
 
     // Segmentation
