@@ -2888,16 +2888,15 @@ ${hasT ? `
       _filtrer();
     });
 
-    // Liens de navigation depuis la synthèse (event delegation)
+    // Liens de navigation depuis la synthèse (event delegation — toolbar + contenu)
     const zsyn = document.getElementById('zone-synthese');
-    if (zsyn) {
-      zsyn.addEventListener('click', e => {
-        const el = e.target.closest('[data-syn-action]');
-        if (!el) return;
-        const action  = el.dataset.synAction;
-        const onglet  = el.dataset.synOnglet || 'profils';
-        const type    = el.dataset.synType   || '';
-        const dispo   = el.dataset.synDispo  || '';
+    const _synHandler = e => {
+      const el = e.target.closest('[data-syn-action]');
+      if (!el) return;
+      const action = el.dataset.synAction;
+      const onglet = el.dataset.synOnglet || 'profils';
+      const type   = el.dataset.synType   || '';
+      const dispo  = el.dataset.synDispo  || '';
         if (action === 'changer-syn-tab') {
           if (el.dataset.synTab === 'bilan' && !Auth.hasRight('can_validate')) return;
           _synTab = el.dataset.synTab;
@@ -2974,33 +2973,30 @@ ${hasT ? `
           _bilanChantier = '';
           _rendreSynthese();
         }
-      });
+    };
+    if (zsyn) zsyn.addEventListener('click', _synHandler);
+    document.getElementById('toolbar-synthese')?.addEventListener('click', _synHandler);
 
-      // Seuils d'alerte tôles — sauvegarde au changement de la valeur
-      zsyn.addEventListener('change', e => {
-        // Seuils tôles
-        const inp = e.target.closest('.syn-seuil-input');
-        if (inp) {
-          const ep = parseFloat(inp.dataset.ep);
-          if (!isNaN(ep)) { _sauvegarderSeuil(ep, inp.value).then(() => { _majAlerteSeuil(); _rendreSynthese(); }); }
-          return;
-        }
-        // Case "Tout sélectionner" du bilan
-        if (e.target.id === 'bilan-check-all') {
-          const checked = e.target.checked;
-          zsyn.querySelectorAll('.bilan-ch-check').forEach(cb => { cb.checked = checked; });
-          return;
-        }
-        // Cases individuelles du bilan → mettre à jour l'état de la case "Tout"
-        if (e.target.classList.contains('bilan-ch-check')) {
-          const all  = zsyn.querySelectorAll('.bilan-ch-check');
-          const n    = [...all].filter(cb => cb.checked).length;
-          const ca   = zsyn.querySelector('#bilan-check-all');
-          if (ca) { ca.checked = n === all.length; ca.indeterminate = n > 0 && n < all.length; }
-          return;
-        }
-      });
-    }
+    // Seuils d'alerte tôles — sauvegarde au changement de la valeur
+    zsyn?.addEventListener('change', e => {
+      const inp = e.target.closest('.syn-seuil-input');
+      if (inp) {
+        const ep = parseFloat(inp.dataset.ep);
+        if (!isNaN(ep)) { _sauvegarderSeuil(ep, inp.value).then(() => { _majAlerteSeuil(); _rendreSynthese(); }); }
+        return;
+      }
+      if (e.target.id === 'bilan-check-all') {
+        const checked = e.target.checked;
+        zsyn.querySelectorAll('.bilan-ch-check').forEach(cb => { cb.checked = checked; });
+        return;
+      }
+      if (e.target.classList.contains('bilan-ch-check')) {
+        const all = zsyn.querySelectorAll('.bilan-ch-check');
+        const n   = [...all].filter(cb => cb.checked).length;
+        const ca  = zsyn.querySelector('#bilan-check-all');
+        if (ca) { ca.checked = n === all.length; ca.indeterminate = n > 0 && n < all.length; }
+      }
+    });
 
     // Filtres profilés
     ['p-type','p-desig','p-chantier','p-lieu','p-dispo'].forEach(id => {
