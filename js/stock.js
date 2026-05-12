@@ -1954,19 +1954,20 @@ const Stock = (() => {
     };
 
     // ── Rendu final ───────────────────────────────────────────────
-    const adminSyn   = Auth.hasRight('can_validate');
-    if (_synTab === 'bilan' && !adminSyn) _synTab = 'profils'; // reset si non-admin
-    const estBilan   = _synTab === 'bilan';
-    const estProfils = _synTab === 'profils';
-    zone.innerHTML = `
-    <div class="toolbar">
-      <button class="sous-onglet-arc${estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="profils">Profilés</button>
-      <button class="sous-onglet-arc${_synTab === 'toles' ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="toles">Tôles</button>
-      ${adminSyn ? `<button class="sous-onglet-arc${estBilan ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="bilan">Bilan chantiers</button>` : ''}
-    </div>
-    <div class="syn-page">
-      ${estBilan ? _contenuBilan() : estProfils ? _contenuProfils() : _contenuToles()}
-    </div>`;
+    const adminSyn = Auth.hasRight('can_validate');
+    if (_synTab === 'bilan' && !adminSyn) _synTab = 'profils';
+
+    // Mettre à jour les boutons statiques du toolbar-synthese
+    document.querySelectorAll('#toolbar-synthese .sous-onglet-arc').forEach(btn => {
+      btn.classList.toggle('actif', btn.dataset.synTab === _synTab);
+    });
+    const btnBilan = document.getElementById('syn-btn-bilan');
+    if (btnBilan) btnBilan.style.display = adminSyn ? '' : 'none';
+
+    zone.innerHTML = `<div class="syn-page">${
+      _synTab === 'bilan'   ? _contenuBilan()   :
+      _synTab === 'profils' ? _contenuProfils() : _contenuToles()
+    }</div>`;
   }
 
 
@@ -2572,9 +2573,11 @@ ${hasT ? `
     const tpro = document.getElementById('toolbar-profils');
     const ttol = document.getElementById('toolbar-toles');
     const tarc = document.getElementById('toolbar-archivees');
+    const tsyn = document.getElementById('toolbar-synthese');
     if (tpro) tpro.style.display = onglet === 'profils'   ? '' : 'none';
     if (ttol) ttol.style.display = onglet === 'toles'     ? '' : 'none';
     if (tarc) tarc.style.display = onglet === 'archivees' ? '' : 'none';
+    if (tsyn) tsyn.style.display = onglet === 'synthese'  ? '' : 'none';
 
     // Basculer entre tableau et zone synthèse
     const ztab  = document.getElementById('tableau-stock');
