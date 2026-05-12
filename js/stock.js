@@ -6567,9 +6567,9 @@ ${hasT ? `
   function _getDims(type, desig) {
     if (!_sections?.standard) return null;
     // Normaliser × (U+00D7 Supabase) et x (ASCII sections.json) pour comparaison fiable
-    const norm = s => s.replace(/×/g, 'x');
+    const norm = s => (s ?? '').replace(/×/g, 'x');
     const desigN         = norm(desig);
-    const desigCompleteN = norm(`${type} ${desig}`);
+    const desigCompleteN = norm(`${type ?? ''} ${desig ?? ''}`);
     for (const groupe of _sections.standard) {
       const sec = groupe.sections.find(s =>
         s.serie === type && (norm(s.desig) === desigCompleteN || norm(s.desig) === desigN)
