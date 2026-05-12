@@ -1691,6 +1691,7 @@
       </div>
     </div>
     <button id="btn-imprimer-profils" class="btn-action btn-gris" title="Imprimer / PDF">🖨</button>
+    <button id="btn-exporter-profils" class="btn-action btn-gris" title="Exporter en CSV (Excel)">⬇ CSV</button>
   </div>
 
   <!-- ── TOOLBAR TÔLES ────────────────────────────────────────── -->
@@ -1735,6 +1736,7 @@
       </div>
     </div>
     <button id="btn-imprimer-toles" class="btn-action btn-gris" title="Imprimer / PDF">🖨</button>
+    <button id="btn-exporter-toles" class="btn-action btn-gris" title="Exporter en CSV (Excel)">⬇ CSV</button>
   </div>
 
   <!-- ── TOOLBAR ARCHIVÉES ────────────────────────────────────── -->
@@ -1809,8 +1811,6 @@
       <button class="sous-onglet"       data-admin-onglet="chantiers">🏗 Chantiers</button>
       <button class="sous-onglet"       data-admin-onglet="fournisseurs">🏭 Fournisseurs</button>
       <button class="sous-onglet"       data-admin-onglet="demandeurs">📋 Demandeurs</button>
-      <button class="sous-onglet"       data-admin-onglet="export">⬇ Export</button>
-      <button class="sous-onglet"       data-admin-onglet="import">⬆ Import</button>
       <button class="sous-onglet"       data-admin-onglet="comptes">👤 Comptes</button>
       <button class="sous-onglet"       data-admin-onglet="recents">🕐 Récents</button>
       <button class="sous-onglet"       data-admin-onglet="sauvegarde">💾 Sauvegarde</button>
@@ -1931,20 +1931,6 @@
             <button id="admin-btn-demandeur" class="btn-modale btn-modale-vert">+ Ajouter</button>
           </div>
         </div>
-      </div>
-
-      <!-- Export -->
-      <div id="admin-panel-export" class="admin-panel" style="display:none">
-        <h3 class="admin-panel-titre">Exporter le stock</h3>
-        <p class="admin-panel-desc">Télécharge l'intégralité du stock au format CSV (compatible Excel).</p>
-        <button id="btn-exporter" class="btn-action btn-rouge">⬇ Télécharger le stock CSV</button>
-      </div>
-
-      <!-- Import -->
-      <div id="admin-panel-import" class="admin-panel" style="display:none">
-        <h3 class="admin-panel-titre">Importer un stock CSV</h3>
-        <p class="admin-panel-desc">Fusionner ou restaurer le stock depuis un fichier CSV exporté précédemment.</p>
-        <button id="btn-importer" class="btn-action btn-rouge">⬆ Ouvrir l'import CSV</button>
       </div>
 
       <!-- Comptes -->

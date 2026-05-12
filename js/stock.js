@@ -3054,11 +3054,9 @@ ${hasT ? `
       });
     });
 
-    // Export / Import CSV (admin)
-    const btnExp = document.getElementById('btn-exporter');
-    if (btnExp) btnExp.addEventListener('click', _exporterCSV);
-    const btnImp = document.getElementById('btn-importer');
-    if (btnImp) btnImp.addEventListener('click', _ouvrirImport);
+    // Export CSV (toolbar profilés / tôles)
+    document.getElementById('btn-exporter-profils')?.addEventListener('click', () => _exporterCSV('profil'));
+    document.getElementById('btn-exporter-toles')?.addEventListener('click', () => _exporterCSV('tole'));
 
     // Boutons impression PDF (toolbar de chaque onglet)
     ['btn-imprimer-profils', 'btn-imprimer-toles', 'btn-imprimer-archivees'].forEach(id => {
@@ -7208,8 +7206,8 @@ ${hasT ? `
    * Exporte tout le stock (hors archivées) en fichier CSV téléchargeable.
    * Séparateur ";" et BOM UTF-8 pour compatibilité Excel.
    */
-  function _exporterCSV() {
-    if (!Auth.hasRight('can_validate')) return;
+  function _exporterCSV(categorie) {
+    if (!_data) return;
 
     const SEP = ';';
     const esc = v => {
@@ -7220,18 +7218,33 @@ ${hasT ? `
         : s;
     };
 
-    const elements = _data.barres.filter(b => b.statut !== 'archivee');
-    const lignes   = [CSV_CHAMPS.join(SEP)];
+    const elements = _data.barres.filter(b =>
+      b.statut !== 'archivee' && b.categorie === categorie
+    );
+
+    const champs = categorie === 'profil'
+      ? ['id','section_type','designation','longueur_m','poids_ml','poids_barre_kg',
+         'classe_acier','ref_commande','fournisseur',
+         'chantier_origine','lieu_stockage','disponibilite','chantier_affectation',
+         'statut','date_ajout','ajoute_par','valide_par','date_validation','commentaire']
+      : ['id','epaisseur_mm','largeur_mm','longueur_mm','quantite',
+         'poids_unitaire_kg','poids_total_kg',
+         'chantier_origine','lieu_stockage','disponibilite','chantier_affectation',
+         'is_chute','statut','date_ajout','ajoute_par','valide_par','date_validation','commentaire'];
+
+    const lignes = [champs.join(SEP)];
     for (const b of elements) {
-      lignes.push(CSV_CHAMPS.map(c => esc(b[c])).join(SEP));
+      lignes.push(champs.map(c => esc(b[c])).join(SEP));
     }
 
     const dateStr = new Date().toISOString().slice(0, 10);
+    const nomFich = categorie === 'profil'
+      ? `stock-profils-${dateStr}.csv`
+      : `stock-toles-${dateStr}.csv`;
+
     const blob = new Blob(['\uFEFF' + lignes.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
-    const lien = Object.assign(document.createElement('a'), {
-      href: url, download: `stock-lbf-${dateStr}.csv`,
-    });
+    const lien = Object.assign(document.createElement('a'), { href: url, download: nomFich });
     document.body.appendChild(lien);
     lien.click();
     lien.remove();
