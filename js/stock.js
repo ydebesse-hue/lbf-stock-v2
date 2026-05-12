@@ -1747,6 +1747,12 @@ const Stock = (() => {
         const chTAff = tAff.filter(b => b.chantier_affectation === _bilanChantier);
         const chTArc = tArc.filter(b => b.chantier_affectation === _bilanChantier);
 
+        // Chutes issues de ce chantier encore disponibles en stock
+        const chutes = barres.filter(b =>
+          b.categorie === 'tole' && b.is_chute &&
+          b.statut !== 'archivee' && b.chantier_affectation === _bilanChantier
+        );
+
         const mlAff    = chPAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
         const mlArc    = chPArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
         const surfAff  = chTAff.reduce((s, b) => s + _surfTole(b), 0);
@@ -1865,6 +1871,20 @@ const Stock = (() => {
               <thead><tr><th>Épaisseur / Type</th><th class="r">Aff.</th><th class="r">m² aff.</th><th class="r">Arch.</th><th class="r">m² arch.</th><th class="r">Total m²</th><th class="r">Poids</th></tr></thead>
               <tbody>${toleRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
             </table>
+          </div>` : ''}
+          ${chutes.length ? `
+          <div class="syn-section-titre" style="margin-top:14px;color:#27ae60">Chutes réutilisables (${chutes.length})</div>
+          <div class="syn-card" style="padding:0;overflow:hidden">
+            <table class="syn-table">
+              <thead><tr><th>ID</th><th>Épaisseur / Type</th><th class="r">Dimensions</th><th class="r">Surface</th><th class="r">Lieu</th></tr></thead>
+              <tbody>${chutes.sort((a, b) => (a.epaisseur_mm - b.epaisseur_mm) || a.id.localeCompare(b.id)).map(c => `<tr>
+                <td style="font-family:monospace;font-size:12px">${_e(c.id)}</td>
+                <td>${_e(String(c.epaisseur_mm))} mm ${_badgeTypeTole(c.type_tole)}</td>
+                <td class="r" style="font-size:12px">${c.largeur_mm && c.longueur_mm ? `${c.largeur_mm}×${c.longueur_mm} mm` : '—'}</td>
+                <td class="r">${fmt(_surfaceTole(c))} m²</td>
+                <td style="font-size:12px">${_e(c.lieu_stockage || '—')}</td>
+              </tr>`).join('')}</tbody>
+            </table>
           </div>` : ''}`;
       }
 
@@ -1874,6 +1894,9 @@ const Stock = (() => {
         const chPr = pArc.filter(b => b.chantier_affectation === ch);
         const chTa = tAff.filter(b => b.chantier_affectation === ch);
         const chTr = tArc.filter(b => b.chantier_affectation === ch);
+        const nbChutes = barres.filter(b =>
+          b.categorie === 'tole' && b.is_chute && b.statut !== 'archivee' && b.chantier_affectation === ch
+        ).length;
         const mlTot   = [...chPa, ...chPr].reduce((s, b) => s + (b.longueur_m || 0), 0);
         const surfTot = [...chTa, ...chTr].reduce((s, b) => s + _surfTole(b), 0);
         const poids   = [...chPa, ...chPr].reduce((s, b) => s + _poidsEffectifProfil(b), 0)
@@ -1889,6 +1912,7 @@ const Stock = (() => {
           <td class="r">${mlTot   > 0 ? fmt(mlTot)   + ' m'  : '<span class=bilan-nil>—</span>'}</td>
           <td class="r">${surfTot > 0 ? fmt(surfTot) + ' m²' : '<span class=bilan-nil>—</span>'}</td>
           <td class="r bilan-poids">${fmtT(poids)}</td>
+          <td class="r">${nbChutes > 0 ? `<span style="color:#27ae60;font-weight:600">${nbChutes}</span>` : '<span class=bilan-nil>—</span>'}</td>
         </tr>`;
       }).join('');
 
@@ -1902,6 +1926,7 @@ const Stock = (() => {
         <td class="r">${fmt(totMl)} m</td>
         <td class="r">${fmt(totSurf)} m²</td>
         <td class="r bilan-poids">${fmtT(totPoids)}</td>
+        <td></td>
       </tr>` : '';
 
       return `
@@ -1923,10 +1948,11 @@ const Stock = (() => {
                 <th class="r">Profilés (ML)</th>
                 <th class="r">Tôles (m²)</th>
                 <th class="r">Poids</th>
+                <th class="r" style="color:#27ae60">Chutes dispo</th>
               </tr>
             </thead>
             <tbody>
-              ${rows || '<tr><td colspan="5" class="bilan-vide">Aucun profilé ou tôle affecté ou archivé</td></tr>'}
+              ${rows || '<tr><td colspan="6" class="bilan-vide">Aucun profilé ou tôle affecté ou archivé</td></tr>'}
               ${totalRow}
             </tbody>
           </table>
