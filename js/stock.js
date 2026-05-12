@@ -3339,7 +3339,7 @@ ${hasT ? `
         const stickyOffset = parseFloat(
           getComputedStyle(document.documentElement).getPropertyValue('--sticky-thead')
         ) || 164;
-        outer.style.display = theadBottom < stickyOffset ? '' : 'none';
+        outer.style.display = theadBottom < stickyOffset ? 'block' : 'none';
       };
       wrap.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('scroll', onScroll, { passive: true });
@@ -3364,6 +3364,11 @@ ${hasT ? `
     floatTable.className = table.className;
     floatTable.appendChild(thead.cloneNode(true));
     outer.appendChild(floatTable);
+
+    // Brancher les clics de tri sur le clone
+    outer.querySelectorAll('th[data-col]').forEach(th => {
+      th.addEventListener('click', () => _clicTri(th.dataset.col));
+    });
 
     // Synchroniser la largeur et les colonnes après le rendu
     requestAnimationFrame(() => {
