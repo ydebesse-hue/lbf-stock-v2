@@ -375,6 +375,7 @@ const Stock = (() => {
     _majDatalistChantiers();
     _attacherEvenements();
     _initialiserModales();
+    _initStickyTop();
 
     // Rafraîchissement automatique des demandes pour les admins
     if (Auth.hasRight('can_validate')) {
@@ -841,7 +842,7 @@ const Stock = (() => {
     const vis   = _chargerColsVis();
     const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + (modif ? 3 : 2); // +check(si modif) +hist +actions
 
-    let h = '<table class="table-profils"><thead><tr>';
+    let h = `<table class="table-profils${modif ? '' : ' no-check'}"><thead><tr>`;
     if (modif) {
       h += '<th class="col-p-check"><input type="checkbox" id="chk-select-all-profils" title="Tout sélectionner"></th>';
     }
@@ -2592,6 +2593,11 @@ ${hasT ? `
     if (zpied) zpied.style.display = estSyn ? 'none' : '';
     if (zsyn)  zsyn.style.display  = estSyn ? '' : 'none';
 
+    // Mobile : hauteur contrainte sur zone-tableau quand un tableau est affiché
+    const zt = document.querySelector('.zone-tableau');
+    if (zt) zt.classList.toggle('zone-tableau--table', !estSyn);
+    requestAnimationFrame(_ajusterStickyTop);
+
     // Titre dynamique selon l'onglet
     const titres = {
       profils: 'Stock Profilés — LBF', toles: 'Stock Tôles — LBF',
@@ -3277,6 +3283,41 @@ ${hasT ? `
     document.getElementById('ag-btn-confirmer')?.addEventListener('click', () => _appliquerActionGroupee());
   }
 
+
+  /* ──────────────────────────────────────────────────────────────
+     STICKY HEADERS (mobile)
+     ────────────────────────────────────────────────────────────── */
+
+  function _ajusterStickyTop() {
+    const h = el => (el ? el.getBoundingClientRect().height : 0);
+    const navTop = h(document.querySelector('header'));
+    const tabsTop = navTop
+      + h(document.querySelector('.nav-principale'))
+      + h(document.getElementById('stock-alerte-attente'))
+      + h(document.getElementById('stock-alerte-demandes'));
+    const toolbarTop = tabsTop + h(document.querySelector('#section-stock .sous-onglets'));
+    const activeToolbar = [...document.querySelectorAll('.toolbar')].find(el => el.offsetHeight > 0);
+    const theadTop = toolbarTop + (activeToolbar ? activeToolbar.offsetHeight : 0);
+
+    const s = document.documentElement.style;
+    s.setProperty('--sticky-nav',     navTop     + 'px');
+    s.setProperty('--sticky-tabs',    tabsTop    + 'px');
+    s.setProperty('--sticky-toolbar', toolbarTop + 'px');
+    s.setProperty('--sticky-thead',   theadTop   + 'px');
+  }
+
+  function _initStickyTop() {
+    _ajusterStickyTop();
+    const obs = new ResizeObserver(() => requestAnimationFrame(_ajusterStickyTop));
+    [
+      document.querySelector('header'),
+      document.querySelector('.nav-principale'),
+      document.getElementById('stock-alerte-attente'),
+      document.getElementById('stock-alerte-demandes'),
+      document.querySelector('#section-stock .sous-onglets'),
+      ...document.querySelectorAll('.toolbar'),
+    ].filter(Boolean).forEach(el => obs.observe(el));
+  }
 
   /* ──────────────────────────────────────────────────────────────
      INITIALISATION DES MODALES

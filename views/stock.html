@@ -997,25 +997,42 @@
                       border: 1px solid rgba(255,255,255,.25); }
     .btn-sel-cancel:hover { background: rgba(255,255,255,.1); color: white; }
 
-    /* Colonne ID collante lors du défilement horizontal */
-    .table-profils th.col-p-id,
+    /* Colonnes collantes lors du défilement horizontal */
     .table-profils th.col-p-id,
     .table-profils td.col-p-id {
       position: sticky;
-      left: 34px;
+      left: 34px; /* après la colonne check (34px) */
       z-index: 2;
       background: white;
       box-shadow: 2px 0 5px -2px rgba(0,0,0,.15);
     }
-    .table-profils thead th.col-p-id {
-      background: var(--noir);
-      z-index: 3;
+    .table-profils thead th.col-p-id { background: var(--noir); z-index: 3; }
+
+    .table-profils th.col-p-type,
+    .table-profils td.col-p-type {
+      position: sticky;
+      left: 109px; /* check(34) + id(75) */
+      z-index: 2;
+      background: white;
+      box-shadow: 2px 0 5px -2px rgba(0,0,0,.15);
     }
+    .table-profils thead th.col-p-type { background: var(--noir); z-index: 3; }
+
     /* Conserver les fonds de ligne sur les cellules collantes */
-    .table-profils tbody tr:hover       td.col-p-id { background: #fafafa; }
-    .table-profils tr.ligne-attente     td.col-p-id { background: #fffde7; }
-    .table-profils tr.ligne-focus       td.col-p-id { background: #fff0f0; }
-    .table-profils tr.ligne-selectee    td.col-p-id { background: #e8f5e9; }
+    .table-profils tbody tr:hover       td.col-p-id,
+    .table-profils tbody tr:hover       td.col-p-type { background: #fafafa; }
+    .table-profils tr.ligne-attente     td.col-p-id,
+    .table-profils tr.ligne-attente     td.col-p-type { background: #fffde7; }
+    .table-profils tr.ligne-focus       td.col-p-id,
+    .table-profils tr.ligne-focus       td.col-p-type { background: #fff0f0; }
+    .table-profils tr.ligne-selectee    td.col-p-id,
+    .table-profils tr.ligne-selectee    td.col-p-type { background: #e8f5e9; }
+
+    /* Sans colonne check (utilisateurs lecture seule) — décaler les offsets */
+    .table-profils.no-check th.col-p-id,
+    .table-profils.no-check td.col-p-id  { left: 0px; box-shadow: none; }
+    .table-profils.no-check th.col-p-type,
+    .table-profils.no-check td.col-p-type { left: 75px; }
 
     /* Colonnes fixes */
     .col-p-id          { width: 75px;  }
@@ -1416,8 +1433,49 @@
       .nav-item { padding: 8px 10px; font-size: 12px; }
       .sous-onglets { padding: 0 8px; }
       .admin-panel-zone { padding: 12px 12px; max-width: 100%; overflow-x: auto; }
-      #section-admin, #section-stock { max-width: 100vw; overflow-x: hidden; }
+      /* clip ne crée pas de scroll-container → laisse sticky fonctionner */
+      #section-admin, #section-stock { max-width: 100vw; overflow-x: clip; }
+
+      /* ─ Sticky : nav, sous-onglets, toolbar ─ */
+      .nav-principale {
+        position: sticky;
+        top: var(--sticky-nav, 54px);
+        z-index: 90;
+        box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      }
+      #section-stock .sous-onglets {
+        position: sticky;
+        top: var(--sticky-tabs, 88px);
+        z-index: 85;
+      }
+      .toolbar {
+        position: sticky;
+        top: var(--sticky-toolbar, 122px);
+        z-index: 80;
+        box-shadow: 0 2px 6px rgba(0,0,0,.07);
+      }
       .toolbar { padding: 8px 12px; gap: 6px; }
+
+      /* ─ Zone tableau à hauteur fixe : défilement interne ─ */
+      .zone-tableau--table {
+        max-height: calc(100vh  - var(--sticky-thead, 164px));
+        max-height: calc(100dvh - var(--sticky-thead, 164px));
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 0 !important;
+      }
+      /* En-têtes collants à l'intérieur de ce scroll-container */
+      .zone-tableau--table .table-profils thead th,
+      .zone-tableau--table #tableau-stock thead th {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+      /* Cellules d'angle (sticky vertical + horizontal) → z-index plus élevé */
+      .zone-tableau--table .table-profils thead th.col-p-check,
+      .zone-tableau--table .table-profils thead th.col-p-id,
+      .zone-tableau--table .table-profils thead th.col-p-type { z-index: 6; }
+
       .barre-selection { min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
       .barre-selection::-webkit-scrollbar { display: none; }
       .admin-ref-cols { grid-template-columns: 1fr; }
