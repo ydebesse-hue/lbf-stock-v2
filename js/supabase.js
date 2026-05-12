@@ -98,6 +98,25 @@ async function sbSupprimer(table, id) {
 }
 
 /**
+ * Supprime toutes les lignes d'une table.
+ * Utilise le filtre PostgREST "id=not.is.null" (PK texte ou uuid).
+ * Pour lbf_barres_historique qui peut avoir une PK différente, passer pkColonne.
+ * @param {string} table
+ * @param {string} [pkColonne='id']
+ * @returns {Promise<void>}
+ */
+async function sbViderTable(table, pkColonne = 'id') {
+  const rep = await fetch(
+    `${SUPABASE_URL}/rest/v1/${table}?${encodeURIComponent(pkColonne)}=not.is.null`,
+    { method: 'DELETE', headers: { ..._headers, Prefer: 'return=minimal' } }
+  );
+  if (!rep.ok) {
+    const err = await rep.text();
+    throw new Error(`Erreur vidage ${table} : ${err}`);
+  }
+}
+
+/**
  * Upsert — insère ou met à jour selon l'id.
  * @param {string} table
  * @param {Object} data
@@ -222,6 +241,7 @@ window.SB = {
   mettreAJour:            sbMettreAJour,
   supprimer:              sbSupprimer,
   upsert:                 sbUpsert,
+  viderTable:             sbViderTable,
   lireHistoriqueParBarre: sbLireHistoriqueParBarre,
   insererHistorique:      sbInsererHistorique,
   lireConfig:             sbLireConfig,

@@ -7639,14 +7639,34 @@ ${hasT ? `
      SAUVEGARDE & RESTAURATION JSON
      ────────────────────────────────────────────────────────────── */
 
-  const _BACKUP_TABLES = ['stock', 'lbf_barres_historique', 'demandes', 'users', 'racks', 'chantiers', 'fournisseurs', 'demandeurs', 'config'];
+  // Métadonnées de toutes les tables (ordre d'upsert intentionnel)
+  const _TABLES_META = [
+    { id: 'stock',                 label: 'Stock (profilés + tôles)', pk: 'id',  chkBkp: 'chk-bkp-stock',        chkRaz: 'chk-raz-stock' },
+    { id: 'lbf_barres_historique', label: 'Historique des barres',    pk: 'id',  chkBkp: 'chk-bkp-historique',   chkRaz: 'chk-raz-historique' },
+    { id: 'demandes',              label: 'Demandes',                 pk: 'id',  chkBkp: 'chk-bkp-demandes',     chkRaz: 'chk-raz-demandes' },
+    { id: 'users',                 label: 'Comptes utilisateurs',     pk: 'id',  chkBkp: 'chk-bkp-users',        chkRaz: 'chk-raz-users' },
+    { id: 'racks',                 label: 'Zones de stockage',        pk: 'id',  chkBkp: 'chk-bkp-racks',        chkRaz: 'chk-raz-racks' },
+    { id: 'chantiers',             label: 'Chantiers',                pk: 'id',  chkBkp: 'chk-bkp-chantiers',    chkRaz: 'chk-raz-chantiers' },
+    { id: 'fournisseurs',          label: 'Fournisseurs',             pk: 'id',  chkBkp: 'chk-bkp-fournisseurs', chkRaz: 'chk-raz-fournisseurs' },
+    { id: 'demandeurs',            label: 'Demandeurs',               pk: 'id',  chkBkp: 'chk-bkp-demandeurs',   chkRaz: 'chk-raz-demandeurs' },
+    { id: 'config',                label: 'Configuration',            pk: 'key', chkBkp: 'chk-bkp-config',       chkRaz: 'chk-raz-config' },
+  ];
+
+  function _tablesSelectionnees(chkProp) {
+    return _TABLES_META.filter(m => {
+      const el = document.getElementById(m[chkProp]);
+      return el ? el.checked : false;
+    });
+  }
 
   async function _exporterSauvegarde() {
+    const selection = _tablesSelectionnees('chkBkp');
+    if (!selection.length) { _notif('Sélectionnez au moins une table', 'alerte'); return; }
     const btn = document.getElementById('btn-backup-export');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Chargement…'; }
     try {
       const tables = {};
-      for (const t of _BACKUP_TABLES) {
+      for (const { id: t } of selection) {
         try { tables[t] = await window.SB.lire(t, { limit: 100000 }); }
         catch(e) { tables[t] = []; console.warn(`[Backup] table ${t} inaccessible`, e); }
       }
@@ -7675,10 +7695,20 @@ ${hasT ? `
       const backup = JSON.parse(await file.text());
       if (!backup.tables || !backup.version) { _notif('Fichier invalide — pas une sauvegarde LBF', 'alerte'); return; }
 
-      const date = backup.date ? new Date(backup.date).toLocaleString('fr-FR') : '—';
-      const rows = Object.entries(backup.tables)
-        .map(([t, arr]) => `<tr><td>${_e(t)}</td><td class="r"><strong>${arr.length}</strong></td></tr>`)
-        .join('');
+      const date   = backup.date ? new Date(backup.date).toLocaleString('fr-FR') : '—';
+      // Générer les cases à cocher pour les tables présentes dans le backup
+      const tablesDispo = Object.entries(backup.tables);
+      const lignesChk = tablesDispo.map(([t, arr]) => {
+        const meta  = _TABLES_META.find(m => m.id === t);
+        const label = meta ? meta.label : t;
+        return `<tr>
+          <td><label class="backup-chk-item" style="margin:0">
+            <input type="checkbox" class="chk-rst-table" data-table="${_e(t)}" checked>
+            <strong>${_e(label)}</strong>
+          </label></td>
+          <td class="r">${arr.length}</td>
+        </tr>`;
+      }).join('');
 
       const zone = document.getElementById('backup-restore-recap');
       if (!zone) return;
@@ -7686,33 +7716,34 @@ ${hasT ? `
         <div style="font-size:13px;color:#555;margin-bottom:10px">Sauvegarde du <strong>${_e(date)}</strong></div>
         <table class="hist-table" style="margin-bottom:14px">
           <thead><tr><th>Table</th><th class="r">Enregistrements</th></tr></thead>
-          <tbody>${rows}</tbody>
+          <tbody>${lignesChk}</tbody>
         </table>
         <p style="color:#c0392b;font-size:13px;margin-bottom:12px">
-          ⚠ Les enregistrements existants seront écrasés. Cette action est irréversible.
+          ⚠ Les enregistrements des tables cochées seront écrasés. Action irréversible.
         </p>
-        <button id="btn-backup-confirmer" class="btn-action btn-rouge">Restaurer cette sauvegarde</button>`;
-      document.getElementById('btn-backup-confirmer')?.addEventListener('click', () => {
-        if (confirm('Confirmer la restauration ?\n\nLes données actuelles seront remplacées par celles de la sauvegarde.')) {
-          _restaurerSauvegarde(backup);
-        }
-      });
+        <button id="btn-backup-confirmer" class="btn-action btn-rouge">Restaurer la sélection</button>`;
+      document.getElementById('btn-backup-confirmer').onclick = () => {
+        const tablesChoisies = [...zone.querySelectorAll('.chk-rst-table:checked')].map(c => c.dataset.table);
+        if (!tablesChoisies.length) { _notif('Sélectionnez au moins une table', 'alerte'); return; }
+        if (!confirm(`Restaurer ${tablesChoisies.length} table(s) ?\n\nLes données actuelles seront remplacées.`)) return;
+        _restaurerSauvegarde(backup, tablesChoisies);
+      };
     } catch(e) {
       _notif('Impossible de lire le fichier', 'alerte');
       console.error('[Restore] Erreur lecture :', e);
     }
   }
 
-  async function _restaurerSauvegarde(backup) {
+  async function _restaurerSauvegarde(backup, tablesChoisies) {
     const btn = document.getElementById('btn-backup-confirmer');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Restauration en cours…'; }
     let total = 0, erreurs = 0;
-    for (const table of _BACKUP_TABLES) {
-      const rows = backup.tables[table];
+    for (const tableId of tablesChoisies) {
+      const rows = backup.tables[tableId];
       if (!rows?.length) continue;
       for (const row of rows) {
-        try { await window.SB.upsert(table, row); total++; }
-        catch(e) { erreurs++; console.warn(`[Restore] ${table} :`, e); }
+        try { await window.SB.upsert(tableId, row); total++; }
+        catch(e) { erreurs++; console.warn(`[Restore] ${tableId} :`, e); }
       }
     }
     if (erreurs === 0) {
@@ -7721,6 +7752,37 @@ ${hasT ? `
     } else {
       _notif(`Restauration partielle — ${total} ok, ${erreurs} erreur(s)`, 'alerte');
       if (btn) { btn.disabled = false; btn.textContent = 'Réessayer'; }
+    }
+  }
+
+  async function _remiseAZero() {
+    const selection = _tablesSelectionnees('chkRaz');
+    if (!selection.length) { _notif('Sélectionnez au moins un élément à supprimer', 'alerte'); return; }
+    const btn = document.getElementById('btn-reset-stock');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Suppression en cours…'; }
+    let erreurs = 0;
+    const rapport = [];
+    for (const { id: table, label, pk } of selection) {
+      try {
+        await window.SB.viderTable(table, pk);
+        rapport.push(`✓ ${label} vidée`);
+      } catch(e) {
+        erreurs++;
+        rapport.push(`✗ ${label} — ${e.message}`);
+        console.error(`[Reset] ${table} :`, e);
+      }
+    }
+    const zone = document.getElementById('reset-resultat');
+    if (zone) {
+      zone.innerHTML = rapport.map(r => `<div style="font-size:13px;margin:3px 0">${_e(r)}</div>`).join('');
+      zone.style.display = 'block';
+    }
+    if (erreurs === 0) {
+      _notif('Remise à zéro effectuée — rechargement…', 'succes');
+      setTimeout(() => window.location.reload(), 2000);
+    } else {
+      _notif(`Remise à zéro partielle — ${erreurs} erreur(s)`, 'alerte');
+      if (btn) { btn.disabled = false; btn.textContent = '⚠ Supprimer la sélection'; }
     }
   }
 
@@ -7771,6 +7833,17 @@ ${hasT ? `
       if (btnExp) btnExp.onclick = _exporterSauvegarde;
       const inputFile = document.getElementById('input-backup-file');
       if (inputFile) inputFile.onchange = _lireFichierBackup;
+      const btnReset = document.getElementById('btn-reset-stock');
+      if (btnReset) btnReset.onclick = () => {
+        const sel = _tablesSelectionnees('chkRaz');
+        if (!sel.length) { _notif('Cochez au moins un élément à supprimer', 'alerte'); return; }
+        const noms = sel.map(m => m.label).join(', ');
+        if (!confirm(`Supprimer définitivement : ${noms} ?\n\nCette action est IRRÉVERSIBLE.`)) return;
+        if (!confirm('Dernière confirmation — procéder à la suppression ?')) return;
+        _remiseAZero();
+      };
+      const zone = document.getElementById('reset-resultat');
+      if (zone) zone.style.display = 'none';
     }
     if (onglet === 'recents')      _rendreRecents();
   }
