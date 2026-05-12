@@ -7623,6 +7623,95 @@ ${hasT ? `
 
 
   /* ──────────────────────────────────────────────────────────────
+     SAUVEGARDE & RESTAURATION JSON
+     ────────────────────────────────────────────────────────────── */
+
+  const _BACKUP_TABLES = ['stock', 'lbf_barres_historique', 'demandes', 'users', 'racks', 'chantiers', 'fournisseurs', 'demandeurs', 'config'];
+
+  async function _exporterSauvegarde() {
+    const btn = document.getElementById('btn-backup-export');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Chargement…'; }
+    try {
+      const tables = {};
+      for (const t of _BACKUP_TABLES) {
+        try { tables[t] = await window.SB.lire(t, { limit: 100000 }); }
+        catch(e) { tables[t] = []; console.warn(`[Backup] table ${t} inaccessible`, e); }
+      }
+      const backup = { version: '2', date: new Date().toISOString(), app: 'LBF Stock Métallerie', tables };
+      const blob   = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url    = URL.createObjectURL(blob);
+      const a      = document.createElement('a');
+      a.href = url; a.download = `lbf-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      const total = Object.values(tables).reduce((s, t) => s + t.length, 0);
+      _notif(`Sauvegarde téléchargée — ${total} enregistrement(s)`, 'succes');
+    } catch(e) {
+      _notif('Erreur lors de la sauvegarde', 'alerte');
+      console.error('[Backup] Erreur :', e);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '⬇ Télécharger la sauvegarde'; }
+    }
+  }
+
+  async function _lireFichierBackup(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const backup = JSON.parse(await file.text());
+      if (!backup.tables || !backup.version) { _notif('Fichier invalide — pas une sauvegarde LBF', 'alerte'); return; }
+
+      const date = backup.date ? new Date(backup.date).toLocaleString('fr-FR') : '—';
+      const rows = Object.entries(backup.tables)
+        .map(([t, arr]) => `<tr><td>${_e(t)}</td><td class="r"><strong>${arr.length}</strong></td></tr>`)
+        .join('');
+
+      const zone = document.getElementById('backup-restore-recap');
+      if (!zone) return;
+      zone.innerHTML = `
+        <div style="font-size:13px;color:#555;margin-bottom:10px">Sauvegarde du <strong>${_e(date)}</strong></div>
+        <table class="hist-table" style="margin-bottom:14px">
+          <thead><tr><th>Table</th><th class="r">Enregistrements</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="color:#c0392b;font-size:13px;margin-bottom:12px">
+          ⚠ Les enregistrements existants seront écrasés. Cette action est irréversible.
+        </p>
+        <button id="btn-backup-confirmer" class="btn-action btn-rouge">Restaurer cette sauvegarde</button>`;
+      document.getElementById('btn-backup-confirmer')?.addEventListener('click', () => {
+        if (confirm('Confirmer la restauration ?\n\nLes données actuelles seront remplacées par celles de la sauvegarde.')) {
+          _restaurerSauvegarde(backup);
+        }
+      });
+    } catch(e) {
+      _notif('Impossible de lire le fichier', 'alerte');
+      console.error('[Restore] Erreur lecture :', e);
+    }
+  }
+
+  async function _restaurerSauvegarde(backup) {
+    const btn = document.getElementById('btn-backup-confirmer');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Restauration en cours…'; }
+    let total = 0, erreurs = 0;
+    for (const table of _BACKUP_TABLES) {
+      const rows = backup.tables[table];
+      if (!rows?.length) continue;
+      for (const row of rows) {
+        try { await window.SB.upsert(table, row); total++; }
+        catch(e) { erreurs++; console.warn(`[Restore] ${table} :`, e); }
+      }
+    }
+    if (erreurs === 0) {
+      _notif(`Restauration terminée — ${total} enregistrement(s) restauré(s)`, 'succes');
+      setTimeout(() => window.location.reload(), 2000);
+    } else {
+      _notif(`Restauration partielle — ${total} ok, ${erreurs} erreur(s)`, 'alerte');
+      if (btn) { btn.disabled = false; btn.textContent = 'Réessayer'; }
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────────
      NAVIGATION STOCK ↔ ADMINISTRATION
      ────────────────────────────────────────────────────────────── */
 
@@ -7664,6 +7753,12 @@ ${hasT ? `
     if (onglet === 'fournisseurs') _rendreFournisseurs();
     if (onglet === 'demandeurs')   _rendreDemandeurs();
     if (onglet === 'comptes' && typeof chargerUsers === 'function') chargerUsers();
+    if (onglet === 'sauvegarde') {
+      const btnExp = document.getElementById('btn-backup-export');
+      if (btnExp) btnExp.onclick = _exporterSauvegarde;
+      const inputFile = document.getElementById('input-backup-file');
+      if (inputFile) inputFile.onchange = _lireFichierBackup;
+    }
     if (onglet === 'recents')      _rendreRecents();
   }
 

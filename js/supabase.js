@@ -33,6 +33,7 @@ const _headers = {
 async function sbLire(table, opts = {}) {
   let url = `${SUPABASE_URL}/rest/v1/${table}?select=*`;
   if (opts.order) url += `&order=${encodeURIComponent(opts.order)}`;
+  if (opts.limit) url += `&limit=${opts.limit}`;
   const rep = await fetch(url, { headers: _headers });
   if (!rep.ok) throw new Error(`Erreur lecture ${table} : ${rep.status}`);
   return rep.json();
