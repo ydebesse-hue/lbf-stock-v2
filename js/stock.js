@@ -844,7 +844,9 @@ const Stock = (() => {
     zone.innerHTML = html;
 
     zone.querySelectorAll('thead th[data-col]').forEach(th => {
-      th.addEventListener('click', () => _clicTri(th.dataset.col));
+      th.addEventListener('click', e => {
+        if (!e.target.closest('.th-filtre')) _clicTri(th.dataset.col);
+      });
     });
 
     // Repeupler et restaurer les filtres dans le thead reconstruit
@@ -906,42 +908,27 @@ const Stock = (() => {
     const vis   = _chargerColsVis();
     const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + (modif ? 3 : 2); // +check(si modif) +hist +actions
 
-    let h = `<table class="table-profils${modif ? '' : ' no-check'}"><thead>`;
-
-    // Ligne 1 : étiquettes de colonnes (avec tri)
-    h += '<tr class="tr-labels">';
+    let h = `<table class="table-profils${modif ? '' : ' no-check'}"><thead><tr>`;
     if (modif) {
       h += '<th class="col-p-check"><input type="checkbox" id="chk-select-all-profils" title="Tout sélectionner"></th>';
     }
     COLS_PROFILS.forEach(c => {
       if (!vis[c.key]) return;
       const cls   = `col-p-${c.key}`;
-      if (c.tri) {
-        const actif = _tri.col === c.tri;
-        const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
-        h += `<th class="${cls}${actif ? ' tri-actif' : ''}" data-col="${c.tri}">${c.label} <span class="tri-ind">${ind}</span></th>`;
-      } else {
-        h += `<th class="${cls}">${c.label}</th>`;
-      }
+      const actif = c.tri && _tri.col === c.tri;
+      const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
+      const label = c.tri
+        ? `<span class="th-label">${c.label} <span class="tri-ind">${ind}</span></span>`
+        : `<span class="th-label">${c.label}</span>`;
+      let filtre = '';
+      if      (c.key === 'type')        filtre = '<select id="p-type"     class="th-filtre"><option value="">— type —</option></select>';
+      else if (c.key === 'designation') filtre = '<select id="p-desig"    class="th-filtre"><option value="">— désig. —</option></select>';
+      else if (c.key === 'dispo')       filtre = '<select id="p-dispo"    class="th-filtre"><option value="">— statut —</option><option value="disponible">Dispo.</option><option value="affecte">Affecté</option></select>';
+      else if (c.key === 'chantier')    filtre = '<select id="p-chantier" class="th-filtre"><option value="">— chantier —</option></select>';
+      else if (c.key === 'lieu')        filtre = '<select id="p-lieu"     class="th-filtre"><option value="">— lieu —</option></select>';
+      h += `<th class="${cls}${actif ? ' tri-actif' : ''}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
-    h += '<th class="col-p-hist">Hist.</th><th class="col-p-actions">Actions</th></tr>';
-
-    // Ligne 2 : filtres inline par colonne
-    h += '<tr class="tr-filtres">';
-    if (modif) h += '<th class="col-p-check"></th>';
-    COLS_PROFILS.forEach(c => {
-      if (!vis[c.key]) return;
-      let f = '';
-      if      (c.key === 'type')        f = '<select id="p-type"     class="th-filtre"><option value="">— type —</option></select>';
-      else if (c.key === 'designation') f = '<select id="p-desig"    class="th-filtre"><option value="">— désig. —</option></select>';
-      else if (c.key === 'dispo')       f = '<select id="p-dispo"    class="th-filtre"><option value="">— statut —</option><option value="disponible">Dispo.</option><option value="affecte">Affecté</option></select>';
-      else if (c.key === 'chantier')    f = '<select id="p-chantier" class="th-filtre"><option value="">— chantier —</option></select>';
-      else if (c.key === 'lieu')        f = '<select id="p-lieu"     class="th-filtre"><option value="">— lieu —</option></select>';
-      h += `<th class="col-p-${c.key}">${f}</th>`;
-    });
-    h += '<th class="col-p-hist"></th><th class="col-p-actions"></th></tr>';
-
-    h += '</thead><tbody>';
+    h += '<th class="col-p-hist">Hist.</th><th class="col-p-actions">Actions</th></tr></thead><tbody>';
 
     if (!data.length) {
       h += `<tr><td colspan="${nbCols}" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
@@ -1209,34 +1196,23 @@ const Stock = (() => {
     const colsVis = COLS_TOLES.filter(c => vis[c.key]);
     const nbCols  = colsVis.length + 1; // +actions
 
-    let h = '<table class="table-toles"><thead>';
-
-    // Ligne 1 : étiquettes
-    h += '<tr class="tr-labels">';
+    let h = '<table class="table-toles"><thead><tr>';
     colsVis.forEach(c => {
-      const actif = _tri.col === c.tri;
-      const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : (c.tri ? '⇅' : '');
+      const actif  = _tri.col === c.tri;
+      const ind    = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : (c.tri ? '⇅' : '');
       const clsTri = actif ? ' tri-actif' : '';
-      h += c.tri
-        ? `<th class="col-t-${c.key}${clsTri}" data-col="${c.tri}">${c.label} <span class="tri-ind">${ind}</span></th>`
-        : `<th class="col-t-${c.key}">${c.label}</th>`;
+      const label  = c.tri
+        ? `<span class="th-label">${c.label} <span class="tri-ind">${ind}</span></span>`
+        : `<span class="th-label">${c.label}</span>`;
+      let filtre = '';
+      if      (c.key === 'type')      filtre = '<select id="t-type"      class="th-filtre"><option value="">— type —</option><option value="noir">Noir</option><option value="inox">Inox</option><option value="larmee">Larmée</option></select>';
+      else if (c.key === 'epaisseur') filtre = '<select id="t-epaisseur" class="th-filtre"><option value="">— ép. —</option></select>';
+      else if (c.key === 'dispo')     filtre = '<select id="t-dispo"     class="th-filtre"><option value="">— statut —</option><option value="disponible">Dispo.</option><option value="affecte">Affecté</option></select>';
+      else if (c.key === 'chantier')  filtre = '<select id="t-chantier"  class="th-filtre"><option value="">— chantier —</option></select>';
+      else if (c.key === 'lieu')      filtre = '<select id="t-lieu"      class="th-filtre"><option value="">— lieu —</option></select>';
+      h += `<th class="col-t-${c.key}${clsTri}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
-    h += '<th>Action</th></tr>';
-
-    // Ligne 2 : filtres inline
-    h += '<tr class="tr-filtres">';
-    colsVis.forEach(c => {
-      let f = '';
-      if      (c.key === 'type')      f = '<select id="t-type"      class="th-filtre"><option value="">— type —</option><option value="noir">Noir</option><option value="inox">Inox</option><option value="larmee">Larmée</option></select>';
-      else if (c.key === 'epaisseur') f = '<select id="t-epaisseur" class="th-filtre"><option value="">— ép. —</option></select>';
-      else if (c.key === 'dispo')     f = '<select id="t-dispo"     class="th-filtre"><option value="">— statut —</option><option value="disponible">Dispo.</option><option value="affecte">Affecté</option></select>';
-      else if (c.key === 'chantier')  f = '<select id="t-chantier"  class="th-filtre"><option value="">— chantier —</option></select>';
-      else if (c.key === 'lieu')      f = '<select id="t-lieu"      class="th-filtre"><option value="">— lieu —</option></select>';
-      h += `<th class="col-t-${c.key}">${f}</th>`;
-    });
-    h += '<th></th></tr>';
-
-    h += '</thead><tbody>';
+    h += '<th>Action</th></tr></thead><tbody>';
 
     // Épaisseurs dont la surface totale est sous le seuil configuré
     const _epSousSeuil = new Set();
@@ -3447,21 +3423,23 @@ ${hasT ? `
     const thead = table.querySelector('thead');
     if (!thead) { outer.style.display = 'none'; return; }
 
-    // Cloner uniquement la ligne des étiquettes (pas la ligne de filtres)
-    const labelRow = thead.querySelector('.tr-labels') || thead.querySelector('tr');
-    if (!labelRow) { outer.style.display = 'none'; return; }
+    // Cloner le thead (les selects .th-filtre seront masqués par CSS dans le flottant)
+    const theadRow = thead.querySelector('tr');
+    if (!theadRow) { outer.style.display = 'none'; return; }
 
     outer.innerHTML = '';
     const floatTable = document.createElement('table');
     floatTable.className = table.className;
     const floatThead = document.createElement('thead');
-    floatThead.appendChild(labelRow.cloneNode(true));
+    floatThead.appendChild(theadRow.cloneNode(true));
     floatTable.appendChild(floatThead);
     outer.appendChild(floatTable);
 
-    // Brancher les clics de tri sur le clone
+    // Brancher les clics de tri sur le clone (ignorer les clics sur les selects)
     outer.querySelectorAll('th[data-col]').forEach(th => {
-      th.addEventListener('click', () => _clicTri(th.dataset.col));
+      th.addEventListener('click', e => {
+        if (!e.target.closest('.th-filtre')) _clicTri(th.dataset.col);
+      });
     });
 
     outer.style.display = 'none';
@@ -3481,13 +3459,13 @@ ${hasT ? `
       floatTable.style.marginLeft = -wrap.scrollLeft + 'px';
 
       // Synchroniser les largeurs colonne par colonne
-      const realCells  = [...labelRow.querySelectorAll('th')];
+      const realCells  = [...theadRow.querySelectorAll('th')];
       const floatCells = [...floatTable.querySelectorAll('th')];
       realCells.forEach((th, i) => {
         if (floatCells[i]) floatCells[i].style.width = th.getBoundingClientRect().width + 'px';
       });
 
-      // IntersectionObserver : montrer le flottant quand la ligne labels sort du champ visible
+      // IntersectionObserver : montrer le flottant quand le thead sort du champ visible
       outer._observer = new IntersectionObserver(([entry]) => {
         outer.style.display = entry.isIntersecting ? 'none' : 'block';
         if (!entry.isIntersecting) {
@@ -3498,7 +3476,7 @@ ${hasT ? `
         rootMargin: `-${Math.round(stickyOffset)}px 0px 0px 0px`,
         threshold: 0,
       });
-      outer._observer.observe(labelRow);
+      outer._observer.observe(theadRow);
     });
   }
 

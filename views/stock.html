@@ -371,31 +371,33 @@
       margin: 0;
     }
 
-    /* ── LIGNE DE FILTRES DANS LE THEAD ────────────────────────── */
-    #tableau-stock thead .tr-filtres th {
-      background: #252530;
-      padding: 3px 6px;
-      cursor: default;
+    /* ── FILTRES DANS LES EN-TÊTES DE COLONNES ─────────────────── */
+    .th-label {
+      display: block;
+      white-space: nowrap;
     }
-    #tableau-stock thead .tr-filtres th:hover { background: #252530; }
-    .table-profils thead .tr-filtres th.col-p-id { background: #252530; }
 
     .th-filtre {
+      display: block;
       width: 100%;
+      margin-top: 4px;
       font-size: 11px;
-      padding: 2px 4px;
-      border: 1px solid rgba(255,255,255,.2);
-      background: rgba(255,255,255,.08);
+      padding: 2px 3px;
+      border: 1px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.1);
       color: white;
       border-radius: 2px;
       cursor: pointer;
       font-family: Tahoma, Geneva, sans-serif;
       letter-spacing: normal;
       text-transform: none;
-      display: block;
     }
     .th-filtre:focus { outline: 2px solid var(--rouge); outline-offset: 0; }
     .th-filtre option { color: #111; background: white; }
+
+    /* Dans l'en-tête flottant : masquer les selects (labels seulement) */
+    #float-thead-outer .th-filtre { display: none; }
+    #float-thead-outer thead th { padding-bottom: 9px; }
 
     #tableau-stock table {
       width: 100%;
@@ -416,10 +418,12 @@
       text-align: left;
       white-space: nowrap;
       user-select: none;
-      cursor: pointer;
+      cursor: default;
       transition: background .15s;
+      vertical-align: top;
     }
-    #tableau-stock thead th:hover    { background: #3a3a42; }
+    #tableau-stock thead th[data-col] { cursor: pointer; }
+    #tableau-stock thead th[data-col]:hover { background: #3a3a42; }
     #tableau-stock thead th.tri-actif { background: #111116; }
 
     .tri-ind { font-size: 10px; color: rgba(255,255,255,.5); margin-left: 3px; }
