@@ -130,18 +130,12 @@ const Stock = (() => {
   const CLE_VUE_TOLES  = 'lbf-stock-vue-toles';
   const CLE_COLS_TOLES = 'lbf-stock-cols-toles';
 
-  /** Clé localStorage pour l'image du plan de stockage (base64) */
-  const CLE_PLAN_IMG = 'lbf_plan_image';
-
   // ── Configuration email (EmailJS) ───────────────────────────────
   // Renseigner ces valeurs après création d'un compte sur emailjs.com
   const EMAILJS_PUBLIC_KEY       = '';  // clé publique EmailJS
   const EMAILJS_SERVICE_ID       = '';  // ID du service (ex. 'service_abc123')
   const EMAILJS_TPL_ACCEPTATION  = '';  // ID template acceptation
   const EMAILJS_TPL_REFUS        = '';  // ID template refus
-
-  /** Clé localStorage pour les positions des racks sur le plan { rackId: {x,y} } */
-  const CLE_PLAN_POS = 'lbf_plan_positions';
 
   /** Plan provisoire embarqué en data URL — indépendant du serveur de fichiers */
   const PLAN_PROVISOIRE_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Tahoma,Geneva,sans-serif">
@@ -6777,8 +6771,7 @@ ${hasT ? `
 
   function _sauvegarderPlanPos(positions) {
     _planPos = { ...positions };
-    localStorage.setItem(CLE_PLAN_POS, JSON.stringify(positions));
-    // Sauvegarder pos_x/pos_y sur chaque rack dans Supabase (fire-and-forget)
+    // Persister pos_x/pos_y dans Supabase sur chaque rack (fire-and-forget — légères)
     if (window.SB) {
       _racks.forEach(r => {
         const pos  = positions[r.id];
@@ -6791,37 +6784,25 @@ ${hasT ? `
   }
 
   /**
-   * Charge au démarrage les positions et l'image du plan depuis Supabase,
-   * avec fallback sur localStorage si Supabase est indisponible.
+   * Charge au démarrage les positions et l'image du plan depuis Supabase.
    * Doit être appelée APRÈS le chargement de _racks.
    */
   async function _chargerDonnesPlan() {
-    // Positions : lire pos_x/pos_y depuis les racks déjà en mémoire
-    const posSupabase = {};
+    // Positions : lire pos_x/pos_y depuis les racks déjà chargés de Supabase
     _racks.forEach(r => {
-      if (r.pos_x != null && r.pos_y != null) posSupabase[r.id] = { x: r.pos_x, y: r.pos_y };
+      if (r.pos_x != null && r.pos_y != null) _planPos[r.id] = { x: r.pos_x, y: r.pos_y };
     });
-    if (Object.keys(posSupabase).length) {
-      _planPos = posSupabase;
-      localStorage.setItem(CLE_PLAN_POS, JSON.stringify(_planPos));
-    } else {
-      try { _planPos = JSON.parse(localStorage.getItem(CLE_PLAN_POS) || '{}'); } catch { _planPos = {}; }
-    }
 
     // Image : lire depuis la table config
     try {
       if (window.SB) {
         const img = await window.SB.lireConfig('plan_image');
-        if (img) {
-          _planImg = img;
-          localStorage.setItem(CLE_PLAN_IMG, img);
-          return;
-        }
+        if (img) { _planImg = img; return; }
       }
     } catch(e) {
-      console.warn('[Plan] Supabase config indisponible, fallback localStorage :', e);
+      console.warn('[Plan] Impossible de charger l\'image :', e);
     }
-    _planImg = localStorage.getItem(CLE_PLAN_IMG) || null;
+    _planImg = null;
   }
 
   /** Génère les marqueurs SVG à superposer sur l'image du plan.
@@ -6943,44 +6924,73 @@ ${hasT ? `
   }
 
   function _attacherAdminPlan() {
-    const input = document.getElementById('admin-plan-input');
-    const wrap  = document.getElementById('admin-plan-canvas-wrap');
+    const input  = document.getElementById('admin-plan-input');
+    const wrap   = document.getElementById('admin-plan-canvas-wrap');
+    const status = document.getElementById('admin-plan-status');
+
+    const _setStatus = (msg) => { if (status) status.textContent = msg; };
 
     input?.addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;
+      input.value = '';
+      _setStatus('⏳ Compression…');
+
       const reader = new FileReader();
       reader.onload = ev => {
-        const imgData = ev.target.result;
-        _planImg = imgData;
-        localStorage.setItem(CLE_PLAN_IMG, imgData);
-        // Sauvegarder dans Supabase (fire-and-forget)
-        if (window.SB) {
-          window.SB.sauvegarderConfig('plan_image', imgData).catch(e =>
-            console.warn('[Plan] Erreur sauvegarde image :', e)
-          );
-        }
-        _rendreAdminPlan();
-        _notif('Plan chargé et synchronisé', 'succes');
+        const raw = new Image();
+        raw.onload = async () => {
+          // Redimensionner à max 1 500 px en conservant le ratio
+          const MAX   = 1500;
+          const ratio = Math.min(MAX / raw.width, MAX / raw.height, 1);
+          const w = Math.round(raw.width  * ratio);
+          const h = Math.round(raw.height * ratio);
+          const canvas = document.createElement('canvas');
+          canvas.width  = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(raw, 0, 0, w, h);
+          const imgData  = canvas.toDataURL('image/jpeg', 0.82);
+          const kbAvant  = Math.round(ev.target.result.length * 0.75 / 1024);
+          const kbApres  = Math.round(imgData.length         * 0.75 / 1024);
+
+          _planImg = imgData;
+          _setStatus('⏳ Enregistrement…');
+
+          try {
+            await window.SB.sauvegarderConfig('plan_image', imgData);
+            _rendreAdminPlan();
+            const gain = kbAvant > kbApres ? ` (${kbAvant} → ${kbApres} Ko)` : ` (${kbApres} Ko)`;
+            _setStatus('');
+            _notif(`Plan enregistré${gain}`, 'succes');
+          } catch(err) {
+            console.error('[Plan] Erreur sauvegarde image :', err);
+            _rendreAdminPlan(); // afficher quand même en mémoire
+            _setStatus('⚠ Non sauvegardé en base');
+            _notif('Erreur — plan visible mais non persisté', 'alerte');
+          }
+        };
+        raw.src = ev.target.result;
       };
       reader.readAsDataURL(file);
-      input.value = '';
     });
 
-    document.getElementById('admin-plan-clear')?.addEventListener('click', () => {
+    document.getElementById('admin-plan-clear')?.addEventListener('click', async () => {
       _planImg = null;
       _planPos = {};
-      localStorage.removeItem(CLE_PLAN_IMG);
-      localStorage.removeItem(CLE_PLAN_POS);
-      // Effacer dans Supabase (fire-and-forget)
-      if (window.SB) {
-        window.SB.sauvegarderConfig('plan_image', null).catch(() => {});
-        _racks.forEach(r =>
-          window.SB.mettreAJour('racks', r.id, { pos_x: null, pos_y: null }).catch(() => {})
-        );
+      _setStatus('⏳ Suppression…');
+      try {
+        await window.SB.sauvegarderConfig('plan_image', null);
+        await Promise.all(_racks.map(r =>
+          window.SB.mettreAJour('racks', r.id, { pos_x: null, pos_y: null })
+        ));
+        _rendreAdminPlan();
+        _setStatus('');
+        _notif('Plan supprimé', 'info');
+      } catch(err) {
+        console.error('[Plan] Erreur suppression :', err);
+        _setStatus('⚠ Erreur lors de la suppression');
+        _notif('Erreur lors de la suppression du plan', 'alerte');
       }
-      _rendreAdminPlan();
-      _notif('Plan supprimé', 'info');
     });
 
     wrap?.addEventListener('click', e => {
