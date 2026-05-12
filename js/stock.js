@@ -8154,13 +8154,27 @@ ${hasT ? `
     const ne  = parseInt(editRow.querySelector('[data-rack-field="nb_etages"]')?.value) || 0;
     if (!nom) { _notif('Le nom est requis', 'alerte'); return; }
     if (na > 0 && ne < 1) { _notif('Étages : minimum 1', 'alerte'); return; }
+    const ancienRack = _racks.find(r => r.id === id);
     try {
       await window.SB.mettreAJour('racks', id, { nom, nb_allees: na, nb_etages: na === 0 ? 0 : ne });
+      // Cascade : renommer les lieux dans le stock
+      if (ancienRack && ancienRack.nom !== nom) {
+        const ancienLieux = _lieuxDuRack(ancienRack);
+        const nouveauRack = { ...ancienRack, nom, nb_allees: na, nb_etages: na === 0 ? 0 : ne };
+        const nouveauxLieux = _lieuxDuRack(nouveauRack);
+        await Promise.all(ancienLieux.map((ancienLieu, i) => {
+          const nouveauLieu = nouveauxLieux[i] ?? nouveauxLieux[0];
+          return window.SB.mettreAJourFiltre('stock', 'lieu_stockage', ancienLieu, { lieu_stockage: nouveauLieu });
+        }));
+        const mapLieux = Object.fromEntries(ancienLieux.map((l, i) => [l, nouveauxLieux[i] ?? nouveauxLieux[0]]));
+        _data.barres.forEach(b => { if (mapLieux[b.lieu_stockage]) b.lieu_stockage = mapLieux[b.lieu_stockage]; });
+        _filtrer();
+      }
       const rows = await window.SB.lire('racks', { order: 'created_at' });
       _racks = rows.filter(r => r.actif);
       _lieux = _majLieux();
       _rendreRacks();
-      _notif('Zone modifiée', 'succes');
+      _notif('Zone modifiée' + (ancienRack && ancienRack.nom !== nom ? ' et propagée dans le stock' : ''), 'succes');
     } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 
@@ -8309,13 +8323,26 @@ ${hasT ? `
     const affaire = editRow.querySelector('[data-ch-field="numero_affaire"]')?.value?.trim();
     const ville   = editRow.querySelector('[data-ch-field="ville"]')?.value?.trim();
     if (!nom) { _notif('Le nom est requis', 'alerte'); return; }
+    const ancienNom = _chantiers.find(c => c.id === id)?.nom;
     try {
       await window.SB.mettreAJour('chantiers', id, { nom, numero_affaire: affaire || null, ville: ville || null });
+      // Cascade : propager le renommage dans tout le stock
+      if (ancienNom && ancienNom !== nom) {
+        await Promise.all([
+          window.SB.mettreAJourFiltre('stock', 'chantier_origine',     ancienNom, { chantier_origine:     nom }),
+          window.SB.mettreAJourFiltre('stock', 'chantier_affectation', ancienNom, { chantier_affectation: nom }),
+        ]);
+        _data.barres.forEach(b => {
+          if (b.chantier_origine     === ancienNom) b.chantier_origine     = nom;
+          if (b.chantier_affectation === ancienNom) b.chantier_affectation = nom;
+        });
+        _filtrer();
+      }
       const rows = await window.SB.lire('chantiers', { order: 'nom' });
       _chantiers = rows.filter(c => c.actif);
       _rendreChantiers();
       _majDatalistChantiers();
-      _notif('Chantier modifié', 'succes');
+      _notif('Chantier modifié' + (ancienNom && ancienNom !== nom ? ' et propagé dans le stock' : ''), 'succes');
     } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 
@@ -8424,12 +8451,18 @@ ${hasT ? `
     if (!editRow) return;
     const nom = editRow.querySelector('[data-fv-field="nom"]')?.value?.trim();
     if (!nom) { _notif('Le nom est requis', 'alerte'); return; }
+    const ancienNom = _fournisseurs.find(f => f.id === id)?.nom;
     try {
       await window.SB.mettreAJour('fournisseurs', id, { nom });
+      if (ancienNom && ancienNom !== nom) {
+        await window.SB.mettreAJourFiltre('stock', 'fournisseur', ancienNom, { fournisseur: nom });
+        _data.barres.forEach(b => { if (b.fournisseur === ancienNom) b.fournisseur = nom; });
+        _filtrer();
+      }
       const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
       _fournisseurs = rows.filter(f => f.actif);
       _rendreFournisseurs();
-      _notif('Fournisseur modifié', 'succes');
+      _notif('Fournisseur modifié' + (ancienNom && ancienNom !== nom ? ' et propagé dans le stock' : ''), 'succes');
     } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
   }
 

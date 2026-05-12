@@ -81,6 +81,26 @@ async function sbMettreAJour(table, id, data) {
 }
 
 /**
+ * Met à jour toutes les lignes où colonne = valeur.
+ * Utile pour propager un renommage (chantier, fournisseur, lieu).
+ * @param {string} table
+ * @param {string} colonne
+ * @param {string} valeur   — valeur actuelle à cibler
+ * @param {Object} data     — champs à écraser
+ * @returns {Promise<void>}
+ */
+async function sbMettreAJourFiltre(table, colonne, valeur, data) {
+  const rep = await fetch(
+    `${SUPABASE_URL}/rest/v1/${table}?${encodeURIComponent(colonne)}=eq.${encodeURIComponent(valeur)}`,
+    { method: 'PATCH', headers: { ..._headers, Prefer: 'return=minimal' }, body: JSON.stringify(data) }
+  );
+  if (!rep.ok) {
+    const err = await rep.text();
+    throw new Error(`Erreur mise à jour filtrée ${table}.${colonne} : ${err}`);
+  }
+}
+
+/**
  * Supprime un enregistrement identifié par son id.
  * @param {string} table
  * @param {string} id
@@ -239,6 +259,7 @@ window.SB = {
   lire:                   sbLire,
   inserer:                sbInserer,
   mettreAJour:            sbMettreAJour,
+  mettreAJourFiltre:      sbMettreAJourFiltre,
   supprimer:              sbSupprimer,
   upsert:                 sbUpsert,
   viderTable:             sbViderTable,
