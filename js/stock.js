@@ -834,6 +834,8 @@ const Stock = (() => {
     zone.querySelectorAll('thead th[data-col]').forEach(th => {
       th.addEventListener('click', () => _clicTri(th.dataset.col));
     });
+
+    _majFloatThead();
   }
 
   function _htmlProfils(data) {
@@ -2593,9 +2595,9 @@ ${hasT ? `
     if (zpied) zpied.style.display = estSyn ? 'none' : '';
     if (zsyn)  zsyn.style.display  = estSyn ? '' : 'none';
 
-    // Mobile : hauteur contrainte sur zone-tableau quand un tableau est affiché
-    const zt = document.querySelector('.zone-tableau');
-    if (zt) zt.classList.toggle('zone-tableau--table', !estSyn);
+    // Masquer l'en-tête flottant au changement d'onglet
+    const fth = document.getElementById('float-thead-outer');
+    if (fth) fth.style.display = 'none';
     requestAnimationFrame(_ajusterStickyTop);
 
     // Titre dynamique selon l'onglet
@@ -3317,6 +3319,68 @@ ${hasT ? `
       document.querySelector('#section-stock .sous-onglets'),
       ...document.querySelectorAll('.toolbar'),
     ].filter(Boolean).forEach(el => obs.observe(el));
+
+    // Scroll → montrer/cacher l'en-tête flottant + synchro défilement horizontal
+    const wrap = document.querySelector('.zone-tableau');
+    if (wrap) {
+      const onScroll = () => {
+        const outer = document.getElementById('float-thead-outer');
+        const tableau = document.getElementById('tableau-stock');
+        if (!outer || !tableau || tableau.style.display === 'none') return;
+        const ft = outer.querySelector('table');
+
+        // Synchroniser le défilement horizontal
+        if (ft) ft.style.marginLeft = -wrap.scrollLeft + 'px';
+
+        // Afficher seulement quand le vrai thead est hors du champ visible
+        const thead = tableau.querySelector('thead');
+        if (!thead) { outer.style.display = 'none'; return; }
+        const theadBottom = thead.getBoundingClientRect().bottom;
+        const stickyOffset = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--sticky-thead')
+        ) || 164;
+        outer.style.display = theadBottom < stickyOffset ? '' : 'none';
+      };
+      wrap.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('scroll', onScroll, { passive: true });
+    }
+  }
+
+  /** Crée ou recrée l'en-tête flottant à partir du tableau actuellement affiché. */
+  function _majFloatThead() {
+    const outer = document.getElementById('float-thead-outer');
+    const tableau = document.getElementById('tableau-stock');
+    const wrap = document.querySelector('.zone-tableau');
+    if (!outer || !tableau || !wrap) return;
+
+    const table = tableau.querySelector('table');
+    if (!table) { outer.style.display = 'none'; return; }
+    const thead = table.querySelector('thead');
+    if (!thead) { outer.style.display = 'none'; return; }
+
+    // Cloner le thead dans le conteneur flottant
+    outer.innerHTML = '';
+    const floatTable = document.createElement('table');
+    floatTable.className = table.className;
+    floatTable.appendChild(thead.cloneNode(true));
+    outer.appendChild(floatTable);
+
+    // Synchroniser la largeur et les colonnes après le rendu
+    requestAnimationFrame(() => {
+      const wrapRect = wrap.getBoundingClientRect();
+      outer.style.left  = wrapRect.left + 'px';
+      outer.style.right = (window.innerWidth - wrapRect.right) + 'px';
+      outer.style.width = '';
+      floatTable.style.width = table.getBoundingClientRect().width + 'px';
+      floatTable.style.marginLeft = -wrap.scrollLeft + 'px';
+
+      // Copier les largeurs cellule par cellule pour l'alignement exact
+      const realCells  = [...thead.querySelectorAll('th')];
+      const floatCells = [...floatTable.querySelectorAll('th')];
+      realCells.forEach((th, i) => {
+        if (floatCells[i]) floatCells[i].style.width = th.getBoundingClientRect().width + 'px';
+      });
+    });
   }
 
   /* ──────────────────────────────────────────────────────────────

@@ -356,6 +356,22 @@
     /* ── TABLEAU ──────────────────────────────────────────────── */
     .zone-tableau { padding: 14px 20px; overflow-x: auto; }
 
+    /* ── EN-TÊTE FLOTTANT (sticky thead via clone JS) ─────────── */
+    #float-thead-outer {
+      position: fixed;
+      top: var(--sticky-thead, 164px);
+      left: 0; right: 0;
+      z-index: 50;
+      overflow: hidden;
+      display: none;
+      pointer-events: none; /* laisse les événements passer au tableau dessous */
+    }
+    #float-thead-outer table {
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin: 0;
+    }
+
     #tableau-stock table {
       width: 100%;
       border-collapse: collapse;
@@ -1456,26 +1472,6 @@
       }
       .toolbar { padding: 8px 12px; gap: 6px; }
 
-      /* ─ Zone tableau à hauteur fixe : défilement interne ─ */
-      .zone-tableau--table {
-        max-height: calc(100vh  - var(--sticky-thead, 164px));
-        max-height: calc(100dvh - var(--sticky-thead, 164px));
-        overflow: auto;
-        -webkit-overflow-scrolling: touch;
-        padding: 0 !important;
-      }
-      /* En-têtes collants à l'intérieur de ce scroll-container */
-      .zone-tableau--table .table-profils thead th,
-      .zone-tableau--table #tableau-stock thead th {
-        position: sticky;
-        top: 0;
-        z-index: 5;
-      }
-      /* Cellules d'angle (sticky vertical + horizontal) → z-index plus élevé */
-      .zone-tableau--table .table-profils thead th.col-p-check,
-      .zone-tableau--table .table-profils thead th.col-p-id,
-      .zone-tableau--table .table-profils thead th.col-p-type { z-index: 6; }
-
       .barre-selection { min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
       .barre-selection::-webkit-scrollbar { display: none; }
       .admin-ref-cols { grid-template-columns: 1fr; }
@@ -1850,6 +1846,9 @@
   </div>
 
   <!-- ── TABLEAU PRINCIPAL ─────────────────────────────────────── -->
+  <!-- En-tête de tableau flottant (rempli par JS, apparaît en position:fixed sous la toolbar) -->
+  <div id="float-thead-outer"></div>
+
   <div class="zone-tableau">
     <!-- ── BARRE SÉLECTION GROUPÉE ──────────────────────────────── -->
     <div id="barre-selection" class="barre-selection">
