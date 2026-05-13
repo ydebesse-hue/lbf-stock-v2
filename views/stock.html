@@ -314,6 +314,7 @@
     }
 
     .toolbar-sep { flex: 1; min-width: 8px; }
+    .tb-break { display: none; }
 
     .btn-action {
       padding: 7px 13px;
@@ -1534,6 +1535,18 @@
       /* Bannières admin sur 2 lignes si nécessaire */
       .alerte-attente { font-size: 12px; padding: 6px 12px; gap: 6px; flex-wrap: wrap; }
       .alerte-nb { width: 18px; height: 18px; font-size: 10px; }
+
+      /* ─ Toolbar profilés : 2 lignes sur mobile ─ */
+      #toolbar-profils .toolbar-sep { display: none; }
+      #toolbar-profils .tb-break { display: block; flex-basis: 100%; height: 0; order: 10; }
+      #btn-ajout-profil           { order: 1; }
+      #toolbar-profils #p-recherche { order: 2; flex: 1; min-width: 0; width: auto; }
+      #btn-imprimer-profils       { order: 3; }
+      #btn-exporter-profils       { order: 4; }
+      #btn-reset-profils          { order: 11; }
+      #badge-filtre-attente       { order: 12; }
+      #toolbar-profils .vue-selector { order: 13; margin-left: auto; }
+      .csv-txt { display: none; }
     }
 
     /* ── SYNTHÈSE ──────────────────────────────────────────────── */
@@ -1765,16 +1778,17 @@
     <div class="toolbar-sep"></div>
     <button id="btn-reset-profils" class="btn-action btn-gris" title="Réinitialiser les filtres">✕ Réinitialiser</button>
     <input id="p-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
+    <div class="tb-break" aria-hidden="true"></div>
     <div class="vue-selector" style="margin-left:auto">
       <button id="btn-vue-essentiel"   class="btn-vue" title="Colonnes essentielles">Essentiel</button>
       <button id="btn-vue-complet"     class="btn-vue" title="Toutes les colonnes">Complet</button>
       <div style="position:relative">
-        <button id="btn-vue-personnalise" class="btn-vue" title="Colonnes personnalisées">Personnalisé ⚙</button>
+        <button id="btn-vue-personnalise" class="btn-vue" title="Colonnes personnalisées">⚙</button>
         <div id="panel-cols-profils"></div>
       </div>
     </div>
     <button id="btn-imprimer-profils" class="btn-action btn-gris" title="Imprimer / PDF">🖨</button>
-    <button id="btn-exporter-profils" class="btn-action btn-gris" title="Exporter en CSV (Excel)">⬇ CSV</button>
+    <button id="btn-exporter-profils" class="btn-action btn-gris" title="Exporter en CSV (Excel)">⬇<span class="csv-txt"> CSV</span></button>
   </div>
 
   <!-- ── TOOLBAR TÔLES ────────────────────────────────────────── -->
