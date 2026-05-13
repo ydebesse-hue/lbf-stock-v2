@@ -1583,9 +1583,6 @@ const Stock = (() => {
             <thead>
               <tr class="syn-table-title-row">
                 <th colspan="4">
-                  Par type
-                  <span class="syn-scope-btn" data-syn-action="print-syn-profils"
-                        title="Imprimer la synthèse profilés" style="margin-right:4px">📄 PDF</span>
                   <span class="syn-scope-btn" data-syn-action="toggle-all-types"
                         id="syn-btn-expand-all" title="Déployer ou réduire tous les types"
                         style="margin-right:4px">▼ Déployer</span>
@@ -1593,6 +1590,8 @@ const Stock = (() => {
                         title="Basculer le périmètre">
                     ${scopeLabel} ▾
                   </span>
+                  <span class="syn-scope-btn" data-syn-action="print-syn-profils"
+                        title="Imprimer la synthèse profilés" style="margin-left:4px">📄 PDF</span>
                 </th>
               </tr>
               <tr>
