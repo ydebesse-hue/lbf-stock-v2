@@ -242,6 +242,9 @@ const Stock = (() => {
   let _planImg   = null;        // image plan (base64), chargée au démarrage depuis Supabase
   let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
   let _filtreEnAttente = false; // true quand l'admin clique l'alerte pour voir les en_attente
+  const _filtresP = { type: new Set(), desig: new Set(), chantier: new Set(), lieu: new Set(), dispo: new Set() };
+  const _filtresT = { type: new Set(), epaisseur: new Set(), chantier: new Set(), lieu: new Set(), dispo: new Set() };
+  let _filtreActif = null; // { fid, btn } — panneau filtre multi-valeurs actuellement ouvert
   let _seuils = {};             // { [epaisseur_mm]: seuil_m2 } — persistés dans Supabase config
 
   const _SEUILS_CONFIG_KEY   = 'lbf_seuils_toles';
@@ -675,28 +678,22 @@ const Stock = (() => {
     _majCompteur(resultats.length, source.length);
     _majAlerteSeuil();
 
-    if (_onglet === 'profils')   _peuplerDesignations(_val('p-type'));
     if (_onglet === 'archivees') _peuplerDesignationsArchivees(_val('a-type'));
   }
 
   function _filtrerProfils(source) {
-    const type     = _val('p-type');
-    const desig    = _val('p-desig');
-    const chantier = _val('p-chantier');
-    const lieu     = _val('p-lieu');
-    const dispo    = _val('p-dispo');
-    const texte    = _val('p-recherche').toLowerCase().trim();
-
+    const { type, desig, chantier, lieu, dispo } = _filtresP;
+    const texte = _val('p-recherche').toLowerCase().trim();
     return source.filter(b => {
       if (_filtreEnAttente) {
         const aDemande = _demandes.some(d => d.id_barre === b.id);
         if (b.statut !== 'en_attente' && !aDemande) return false;
       }
-      if (type     && b.section_type     !== type)     return false;
-      if (desig    && b.designation      !== desig)    return false;
-      if (chantier && b.chantier_affectation !== chantier) return false;
-      if (lieu     && b.lieu_stockage    !== lieu)     return false;
-      if (dispo    && b.disponibilite    !== dispo)    return false;
+      if (type.size     && !type.has(b.section_type))              return false;
+      if (desig.size    && !desig.has(b.designation))              return false;
+      if (chantier.size && !chantier.has(b.chantier_affectation))  return false;
+      if (lieu.size     && !lieu.has(b.lieu_stockage))             return false;
+      if (dispo.size    && !dispo.has(b.disponibilite))            return false;
       if (texte) {
         const h = [b.section_type, b.designation, b.chantier_origine,
           b.lieu_stockage, b.commentaire, b.id].join(' ').toLowerCase();
@@ -707,23 +704,18 @@ const Stock = (() => {
   }
 
   function _filtrerToles(source) {
-    const type     = _val('t-type');
-    const epais    = _val('t-epaisseur');
-    const chantier = _val('t-chantier');
-    const lieu     = _val('t-lieu');
-    const dispo    = _val('t-dispo');
-    const texte    = _val('t-recherche').toLowerCase().trim();
-
+    const { type, epaisseur, chantier, lieu, dispo } = _filtresT;
+    const texte = _val('t-recherche').toLowerCase().trim();
     return source.filter(b => {
       if (_filtreEnAttente) {
         const aDemande = _demandes.some(d => d.id_barre === b.id);
         if (b.statut !== 'en_attente' && !aDemande) return false;
       }
-      if (type     && b.type_tole            !== type)     return false;
-      if (epais    && String(b.epaisseur_mm) !== epais)    return false;
-      if (chantier && b.chantier_origine     !== chantier) return false;
-      if (lieu     && b.lieu_stockage        !== lieu)     return false;
-      if (dispo    && b.disponibilite        !== dispo)    return false;
+      if (type.size      && !type.has(b.type_tole))                return false;
+      if (epaisseur.size && !epaisseur.has(String(b.epaisseur_mm))) return false;
+      if (chantier.size  && !chantier.has(b.chantier_origine))     return false;
+      if (lieu.size      && !lieu.has(b.lieu_stockage))            return false;
+      if (dispo.size     && !dispo.has(b.disponibilite))           return false;
       if (texte) {
         const h = [b.epaisseur_mm, b.largeur_mm, b.longueur_mm,
           b.type_tole, b.ref_commande,
@@ -823,18 +815,6 @@ const Stock = (() => {
     const zone = document.getElementById('tableau-stock');
     if (!zone) return;
 
-    // Sauvegarder les valeurs des filtres avant de reconstruire le thead
-    const savedP = {};
-    ['p-type','p-desig','p-chantier','p-lieu','p-dispo','p-recherche'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) savedP[id] = el.value;
-    });
-    const savedT = {};
-    ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) savedT[id] = el.value;
-    });
-
     let html;
     if (_onglet === 'profils')            html = _htmlProfils(data);
     else if (_onglet === 'toles')         html = _htmlToles(data);
@@ -845,73 +825,18 @@ const Stock = (() => {
 
     zone.querySelectorAll('thead th[data-col]').forEach(th => {
       th.addEventListener('click', e => {
-        if (!e.target.closest('.th-filtre')) _clicTri(th.dataset.col);
+        if (!e.target.closest('.th-filtre-btn')) _clicTri(th.dataset.col);
       });
     });
 
-    // Repeupler et restaurer les filtres dans le thead reconstruit
-    if (_onglet === 'profils' && _data) {
-      _restaurerFiltresProfils(savedP);
-      ['p-type','p-desig','p-chantier','p-lieu','p-dispo'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('change', _filtrer);
+    zone.querySelectorAll('.th-filtre-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        _ouvrirFiltrePanel(btn.dataset.filtre, btn);
       });
-    }
-    if (_onglet === 'toles' && _data) {
-      _restaurerFiltresToles(savedT);
-      ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('change', _filtrer);
-      });
-    }
+    });
 
     _majFloatThead();
-  }
-
-  function _restaurerFiltresProfils(savedVals) {
-    if (!_data) return;
-    const profils = _data.barres.filter(b => b.categorie === 'profil' && b.statut !== 'archivee');
-
-    _remplirSelect('p-type',
-      [...new Set(profils.map(b => b.section_type))].filter(Boolean).sort()
-    );
-    _remplirSelectChantiers('p-chantier',
-      [...new Set(profils.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))].sort()
-    );
-    _remplirSelect('p-lieu',
-      [...new Set(profils.filter(b => b.lieu_stockage).map(b => b.lieu_stockage))].sort()
-    );
-
-    ['p-type','p-chantier','p-lieu','p-dispo'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el && savedVals[id]) el.value = savedVals[id];
-    });
-
-    // Cascade désignation : peupler pour le type sauvegardé puis restaurer la valeur
-    if (savedVals['p-type']) {
-      _peuplerDesignations(savedVals['p-type'], savedVals['p-desig'] || '');
-    }
-  }
-
-  function _restaurerFiltresToles(savedVals) {
-    if (!_data) return;
-    const toles = _data.barres.filter(b => b.categorie === 'tole' && b.statut !== 'archivee');
-
-    _remplirSelect('t-epaisseur',
-      [...new Set(toles.map(b => String(b.epaisseur_mm)))].sort((a, b) => +a - +b),
-      'mm'
-    );
-    _remplirSelectChantiers('t-chantier',
-      [...new Set(toles.filter(b => b.chantier_origine).map(b => b.chantier_origine))].sort()
-    );
-    _remplirSelect('t-lieu',
-      [...new Set(toles.filter(b => b.lieu_stockage).map(b => b.lieu_stockage))].sort()
-    );
-
-    ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el && savedVals[id]) el.value = savedVals[id];
-    });
   }
 
   function _htmlProfils(data) {
@@ -933,11 +858,27 @@ const Stock = (() => {
         ? `<span class="th-label">${c.label} <span class="tri-ind">${ind}</span></span>`
         : `<span class="th-label">${c.label}</span>`;
       let filtre = '';
-      if      (c.key === 'type')        filtre = '<select id="p-type"     class="th-filtre"><option value="">— type —</option></select>';
-      else if (c.key === 'designation') filtre = '<select id="p-desig"    class="th-filtre"><option value="">— désig. —</option></select>';
-      else if (c.key === 'dispo')       filtre = '<select id="p-dispo"    class="th-filtre"><option value="">— statut —</option><option value="disponible">Dispo.</option><option value="affecte">Affecté</option></select>';
-      else if (c.key === 'chantier')    filtre = '<select id="p-chantier" class="th-filtre"><option value="">— chantier —</option></select>';
-      else if (c.key === 'lieu')        filtre = '<select id="p-lieu"     class="th-filtre"><option value="">— lieu —</option></select>';
+      if (c.key === 'type') {
+        const set = _filtresP.type; const n = set.size;
+        const lbl = n === 0 ? '— type —' : n === 1 ? [...set][0] : `${n} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${n ? ' th-filtre-actif' : ''}" data-filtre="p-type">${_e(lbl)}</button>`;
+      } else if (c.key === 'designation') {
+        const setD = _filtresP.desig; const nD = setD.size;
+        const lblD = nD === 0 ? '— désig. —' : nD === 1 ? [...setD][0] : `${nD} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nD ? ' th-filtre-actif' : ''}" data-filtre="p-desig">${_e(lblD)}</button>`;
+      } else if (c.key === 'dispo') {
+        const setDp = _filtresP.dispo; const nDp = setDp.size;
+        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nDp ? ' th-filtre-actif' : ''}" data-filtre="p-dispo">${_e(lblDp)}</button>`;
+      } else if (c.key === 'chantier') {
+        const setCh = _filtresP.chantier; const nCh = setCh.size;
+        const lblCh = nCh === 0 ? '— chantier —' : nCh === 1 ? _labelChantier([...setCh][0]) : `${nCh} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nCh ? ' th-filtre-actif' : ''}" data-filtre="p-chantier">${_e(lblCh)}</button>`;
+      } else if (c.key === 'lieu') {
+        const setL = _filtresP.lieu; const nL = setL.size;
+        const lblL = nL === 0 ? '— lieu —' : nL === 1 ? [...setL][0] : `${nL} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nL ? ' th-filtre-actif' : ''}" data-filtre="p-lieu">${_e(lblL)}</button>`;
+      }
       h += `<th class="${cls}${actif ? ' tri-actif' : ''}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
     h += '<th class="col-p-hist">Hist.</th><th class="col-p-actions">Actions</th></tr></thead><tbody>';
@@ -1217,11 +1158,27 @@ const Stock = (() => {
         ? `<span class="th-label">${c.label} <span class="tri-ind">${ind}</span></span>`
         : `<span class="th-label">${c.label}</span>`;
       let filtre = '';
-      if      (c.key === 'type')      filtre = '<select id="t-type"      class="th-filtre"><option value="">— type —</option><option value="noir">Noir</option><option value="inox">Inox</option><option value="larmee">Larmée</option></select>';
-      else if (c.key === 'epaisseur') filtre = '<select id="t-epaisseur" class="th-filtre"><option value="">— ép. —</option></select>';
-      else if (c.key === 'dispo')     filtre = '<select id="t-dispo"     class="th-filtre"><option value="">— statut —</option><option value="disponible">Dispo.</option><option value="affecte">Affecté</option></select>';
-      else if (c.key === 'chantier')  filtre = '<select id="t-chantier"  class="th-filtre"><option value="">— chantier —</option></select>';
-      else if (c.key === 'lieu')      filtre = '<select id="t-lieu"      class="th-filtre"><option value="">— lieu —</option></select>';
+      if (c.key === 'type') {
+        const set = _filtresT.type; const n = set.size;
+        const lbl = n === 0 ? '— type —' : n === 1 ? ({ noir: 'Noir', inox: 'Inox', larmee: 'Larmée' }[[...set][0]] || [...set][0]) : `${n} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${n ? ' th-filtre-actif' : ''}" data-filtre="t-type">${_e(lbl)}</button>`;
+      } else if (c.key === 'epaisseur') {
+        const setE = _filtresT.epaisseur; const nE = setE.size;
+        const lblE = nE === 0 ? '— ép. —' : nE === 1 ? `${[...setE][0]} mm` : `${nE} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nE ? ' th-filtre-actif' : ''}" data-filtre="t-epaisseur">${_e(lblE)}</button>`;
+      } else if (c.key === 'dispo') {
+        const setDp = _filtresT.dispo; const nDp = setDp.size;
+        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nDp ? ' th-filtre-actif' : ''}" data-filtre="t-dispo">${_e(lblDp)}</button>`;
+      } else if (c.key === 'chantier') {
+        const setCh = _filtresT.chantier; const nCh = setCh.size;
+        const lblCh = nCh === 0 ? '— chantier —' : nCh === 1 ? _labelChantier([...setCh][0]) : `${nCh} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nCh ? ' th-filtre-actif' : ''}" data-filtre="t-chantier">${_e(lblCh)}</button>`;
+      } else if (c.key === 'lieu') {
+        const setL = _filtresT.lieu; const nL = setL.size;
+        const lblL = nL === 0 ? '— lieu —' : nL === 1 ? [...setL][0] : `${nL} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nL ? ' th-filtre-actif' : ''}" data-filtre="t-lieu">${_e(lblL)}</button>`;
+      }
       h += `<th class="col-t-${c.key}${clsTri}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
     h += '<th>Action</th></tr></thead><tbody>';
@@ -1369,32 +1326,7 @@ const Stock = (() => {
      ────────────────────────────────────────────────────────────── */
 
   function _peuplerFiltres() {
-    // Exclure les archivées des onglets actifs
-    const profils   = _data.barres.filter(b => b.categorie === 'profil' && b.statut !== 'archivee');
-    const toles     = _data.barres.filter(b => b.categorie === 'tole'   && b.statut !== 'archivee');
-    const archivees = _data.barres.filter(b => b.statut === 'archivee');
-
-    _remplirSelect('p-type',
-      [...new Set(profils.map(b => b.section_type))].sort()
-    );
-    _remplirSelectChantiers('p-chantier',
-      [...new Set(profils.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))].sort()
-    );
-    _remplirSelect('p-lieu',
-      [...new Set(profils.map(b => b.lieu_stockage))].sort()
-    );
-    // t-type : ne remplacer que les valeurs dynamiques (les options fixes sont dans le HTML)
-    _remplirSelect('t-epaisseur',
-      [...new Set(toles.map(b => String(b.epaisseur_mm)))].sort((a,b) => +a - +b),
-      'mm'
-    );
-    _remplirSelectChantiers('t-chantier',
-      [...new Set(toles.map(b => b.chantier_origine))].sort()
-    );
-    _remplirSelect('t-lieu',
-      [...new Set(toles.map(b => b.lieu_stockage))].sort()
-    );
-    // Filtres onglet archivées
+    const archivees  = _data.barres.filter(b => b.statut === 'archivee');
     const arcProfils = archivees.filter(b => b.categorie === 'profil');
     const arcToles   = archivees.filter(b => b.categorie === 'tole');
     _remplirSelect('a-type',
@@ -2708,15 +2640,22 @@ ${hasT ? `
   }
 
   function _resetFiltres(onglet) {
-    const map = {
-      profils:   ['p-type','p-desig','p-chantier','p-lieu','p-dispo','p-recherche'],
-      toles:     ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo','t-recherche'],
-      archivees: ['a-type','a-desig','a-epaisseur','a-type-tole','a-chantier','a-recherche'],
-    };
-    (map[onglet] || []).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    if (onglet === 'profils' || onglet === 'toles') {
+    if (onglet === 'profils') {
+      Object.values(_filtresP).forEach(s => s.clear());
+      const el = document.getElementById('p-recherche');
+      if (el) el.value = '';
       _filtreEnAttente = false;
       _majBadgeAttente();
+    } else if (onglet === 'toles') {
+      Object.values(_filtresT).forEach(s => s.clear());
+      const el = document.getElementById('t-recherche');
+      if (el) el.value = '';
+      _filtreEnAttente = false;
+      _majBadgeAttente();
+    } else if (onglet === 'archivees') {
+      ['a-type','a-desig','a-epaisseur','a-type-tole','a-chantier','a-recherche'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
     }
   }
 
@@ -2730,6 +2669,110 @@ ${hasT ? `
     _majBadgeAttente();
     _filtrer();
   };
+
+  /* ──────────────────────────────────────────────────────────────
+     PANNEAU FILTRE MULTI-VALEURS (checkbox dropdown)
+     ────────────────────────────────────────────────────────────── */
+
+  function _optionsFiltre(fid) {
+    if (!_data) return [];
+    const profils = _data.barres.filter(b => b.categorie === 'profil' && b.statut !== 'archivee');
+    const toles   = _data.barres.filter(b => b.categorie === 'tole'   && b.statut !== 'archivee');
+    const uniq  = arr => [...new Set(arr.filter(Boolean))].sort();
+    const uniqN = arr => [...new Set(arr.filter(v => v != null))].sort((a, b) => +a - +b);
+    switch (fid) {
+      case 'p-type':
+        return uniq(profils.map(b => b.section_type)).map(v => ({ value: v, label: v }));
+      case 'p-desig': {
+        const src = _filtresP.type.size
+          ? profils.filter(b => _filtresP.type.has(b.section_type))
+          : profils;
+        return [...new Set(src.map(b => b.designation).filter(Boolean))]
+          .sort((a, b) => { const na = parseFloat(a), nb = parseFloat(b); return isNaN(na) || isNaN(nb) ? a.localeCompare(b, 'fr') : na - nb; })
+          .map(v => ({ value: v, label: v }));
+      }
+      case 'p-dispo': case 't-dispo':
+        return [{ value: 'disponible', label: 'Disponible' }, { value: 'affecte', label: 'Affecté' }];
+      case 'p-chantier':
+        return uniq(profils.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))
+          .map(v => ({ value: v, label: _labelChantier(v) }));
+      case 'p-lieu':
+        return uniq(profils.filter(b => b.lieu_stockage).map(b => b.lieu_stockage))
+          .map(v => ({ value: v, label: v }));
+      case 't-type':
+        return [{ value: 'noir', label: 'Noir' }, { value: 'inox', label: 'Inox' }, { value: 'larmee', label: 'Larmée' }];
+      case 't-epaisseur':
+        return uniqN(toles.map(b => b.epaisseur_mm)).map(v => ({ value: String(v), label: `${v} mm` }));
+      case 't-chantier':
+        return uniq(toles.filter(b => b.chantier_origine).map(b => b.chantier_origine))
+          .map(v => ({ value: v, label: _labelChantier(v) }));
+      case 't-lieu':
+        return uniq(toles.filter(b => b.lieu_stockage).map(b => b.lieu_stockage))
+          .map(v => ({ value: v, label: v }));
+      default: return [];
+    }
+  }
+
+  function _getSet(fid) {
+    const sets = fid.startsWith('p-') ? _filtresP : _filtresT;
+    return sets[fid.slice(2)] || new Set();
+  }
+
+  function _ouvrirFiltrePanel(fid, btn) {
+    const panel = document.getElementById('filtre-panel');
+    if (!panel) return;
+    // Toggle closed if same button clicked again
+    if (_filtreActif && _filtreActif.fid === fid) { _fermerFiltrePanel(); return; }
+    _filtreActif = { fid, btn };
+
+    const options = _optionsFiltre(fid);
+    const sel = _getSet(fid);
+    const allSelected = sel.size === 0;
+    const someSelected = sel.size > 0 && sel.size < options.length;
+
+    let html = `<div class="fp-item fp-tout"><label><input type="checkbox" id="fp-tout"${allSelected ? ' checked' : ''}> Tous</label></div>`;
+    options.forEach(o => {
+      const chk = sel.has(o.value) ? ' checked' : '';
+      html += `<div class="fp-item"><label><input type="checkbox" value="${_e(o.value)}"${chk}> ${_e(o.label)}</label></div>`;
+    });
+    panel.innerHTML = html;
+
+    const toutEl = panel.querySelector('#fp-tout');
+    if (toutEl && someSelected) { toutEl.indeterminate = true; toutEl.checked = false; }
+
+    // Position
+    const rect = btn.getBoundingClientRect();
+    panel.style.top  = Math.min(rect.bottom + 4, window.innerHeight - 270) + 'px';
+    panel.style.left = Math.min(rect.left, window.innerWidth - 180) + 'px';
+    panel.style.display = 'block';
+
+    toutEl?.addEventListener('change', () => {
+      if (toutEl.checked) _getSet(fid).clear();
+      else options.forEach(o => _getSet(fid).add(o.value));
+      _filtrer();
+      // Refresh panel with updated state
+      requestAnimationFrame(() => _ouvrirFiltrePanel(fid, document.querySelector(`.th-filtre-btn[data-filtre="${fid}"]`) || btn));
+    });
+
+    panel.querySelectorAll('.fp-item:not(.fp-tout) input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) _getSet(fid).add(cb.value);
+        else            _getSet(fid).delete(cb.value);
+        const s = _getSet(fid);
+        if (toutEl) {
+          toutEl.checked = s.size === 0;
+          toutEl.indeterminate = s.size > 0 && s.size < options.length;
+        }
+        _filtrer();
+      });
+    });
+  }
+
+  function _fermerFiltrePanel() {
+    const p = document.getElementById('filtre-panel');
+    if (p) p.style.display = 'none';
+    _filtreActif = null;
+  }
 
 
   /* ──────────────────────────────────────────────────────────────
@@ -3042,28 +3085,25 @@ ${hasT ? `
         } else if (action === 'voir-desig') {
           const desig = el.dataset.synDesig || '';
           _basculerOnglet('profils');
-          const selType  = document.getElementById('p-type');
-          const selDesig = document.getElementById('p-desig');
-          if (selType && type) { selType.value = type; _peuplerDesignations(type); }
-          if (selDesig && desig) selDesig.value = desig;
+          if (type)  { _filtresP.type.clear();  _filtresP.type.add(type); }
+          if (desig) { _filtresP.desig.clear(); _filtresP.desig.add(desig); }
           _filtrer();
         } else if (action === 'voir-type') {
           _basculerOnglet(onglet);
-          const selType = document.getElementById('p-type');
-          if (selType && type) { selType.value = type; _peuplerDesignations(type); }
+          if (onglet === 'profils' && type) { _filtresP.type.clear(); _filtresP.type.add(type); }
+          else if (onglet === 'toles' && type) { _filtresT.type.clear(); _filtresT.type.add(type); }
           _filtrer();
         } else if (action === 'voir-dispo') {
           _basculerOnglet(onglet);
           if (dispo) {
-            const selDispo = document.getElementById(onglet === 'profils' ? 'p-dispo' : 't-dispo');
-            if (selDispo) selDispo.value = dispo;
+            const sets = onglet === 'profils' ? _filtresP : _filtresT;
+            sets.dispo.clear(); sets.dispo.add(dispo);
           }
           _filtrer();
         } else if (action === 'voir-epaisseur') {
           _basculerOnglet('toles');
           const ep = el.dataset.synEp;
-          const selEp = document.getElementById('t-epaisseur');
-          if (selEp && ep) selEp.value = ep;
+          if (ep) { _filtresT.epaisseur.clear(); _filtresT.epaisseur.add(ep); }
           _filtrer();
         } else if (action === 'voir-bilan-chantier') {
           if (!Auth.hasRight('can_validate')) return;
@@ -3427,7 +3467,7 @@ ${hasT ? `
     const thead = table.querySelector('thead');
     if (!thead) { outer.style.display = 'none'; return; }
 
-    // Cloner le thead (les selects .th-filtre seront masqués par CSS dans le flottant)
+    // Cloner le thead (les boutons .th-filtre-btn seront supprimés dans le flottant)
     const theadRow = thead.querySelector('tr');
     if (!theadRow) { outer.style.display = 'none'; return; }
 
@@ -3438,16 +3478,16 @@ ${hasT ? `
     const clonedRow = theadRow.cloneNode(true);
     // Supprimer les id dupliqués pour que getElementById() trouve toujours le vrai élément
     clonedRow.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-    // Retirer physiquement les selects filtres (labels uniquement dans le flottant)
-    clonedRow.querySelectorAll('.th-filtre').forEach(el => el.remove());
+    // Retirer physiquement les boutons filtres (labels uniquement dans le flottant)
+    clonedRow.querySelectorAll('.th-filtre-btn').forEach(el => el.remove());
     floatThead.appendChild(clonedRow);
     floatTable.appendChild(floatThead);
     outer.appendChild(floatTable);
 
-    // Brancher les clics de tri sur le clone (ignorer les clics sur les selects)
+    // Brancher les clics de tri sur le clone (ignorer les clics sur les boutons filtres)
     outer.querySelectorAll('th[data-col]').forEach(th => {
       th.addEventListener('click', e => {
-        if (!e.target.closest('.th-filtre')) _clicTri(th.dataset.col);
+        if (!e.target.closest('.th-filtre-btn')) _clicTri(th.dataset.col);
       });
     });
 
@@ -3502,6 +3542,14 @@ ${hasT ? `
       bg.addEventListener('click', e => {
         if (e.target === bg) _fermerModale(bg.id);
       });
+    });
+
+    // Fermer le panneau filtre multi-valeurs en cliquant en dehors
+    document.addEventListener('click', e => {
+      if (!_filtreActif) return;
+      const panel = document.getElementById('filtre-panel');
+      if (!panel || panel.style.display === 'none') return;
+      if (!panel.contains(e.target) && !e.target.closest('.th-filtre-btn')) _fermerFiltrePanel();
     });
 
     // ── Modale ajout profilé ──────────────────────────────────
@@ -4223,8 +4271,8 @@ ${hasT ? `
         btnFiltrer.onclick = () => {
           _fermerModale('m-reception-resume');
           _basculerOnglet('profils');
-          const sel = document.getElementById('p-chantier');
-          if (sel) { sel.value = chantier; _filtrer(); }
+          _filtresP.chantier.clear(); _filtresP.chantier.add(chantier);
+          _filtrer();
         };
       } else {
         btnFiltrer.style.display = 'none';
@@ -7506,19 +7554,19 @@ ${hasT ? `
     // Collecter les filtres actifs pour l'en-tête
     const filtresActifs = [];
     if (_onglet === 'profils') {
-      if (_val('p-type'))     filtresActifs.push(`Type : ${_val('p-type')}`);
-      if (_val('p-desig'))    filtresActifs.push(`Désignation : ${_val('p-desig')}`);
-      if (_val('p-chantier')) filtresActifs.push(`Chantier : ${_val('p-chantier')}`);
-      if (_val('p-lieu'))     filtresActifs.push(`Lieu : ${_val('p-lieu')}`);
-      if (_val('p-dispo'))    filtresActifs.push(`Dispo : ${_val('p-dispo')}`);
-      if (_val('p-recherche')) filtresActifs.push(`Recherche : "${_val('p-recherche')}"`);
+      if (_filtresP.type.size)     filtresActifs.push(`Type : ${[..._filtresP.type].join(', ')}`);
+      if (_filtresP.desig.size)    filtresActifs.push(`Désignation : ${[..._filtresP.desig].join(', ')}`);
+      if (_filtresP.chantier.size) filtresActifs.push(`Chantier : ${[..._filtresP.chantier].map(_labelChantier).join(', ')}`);
+      if (_filtresP.lieu.size)     filtresActifs.push(`Lieu : ${[..._filtresP.lieu].join(', ')}`);
+      if (_filtresP.dispo.size)    filtresActifs.push(`Dispo : ${[..._filtresP.dispo].join(', ')}`);
+      if (_val('p-recherche'))     filtresActifs.push(`Recherche : "${_val('p-recherche')}"`);
     } else if (_onglet === 'toles') {
-      if (_val('t-type'))      filtresActifs.push(`Type : ${_LABEL_TYPE_TOLE[_val('t-type')] || _val('t-type')}`);
-      if (_val('t-epaisseur')) filtresActifs.push(`Épaisseur : ${_val('t-epaisseur')} mm`);
-      if (_val('t-chantier'))  filtresActifs.push(`Chantier : ${_val('t-chantier')}`);
-      if (_val('t-lieu'))      filtresActifs.push(`Lieu : ${_val('t-lieu')}`);
-      if (_val('t-dispo'))     filtresActifs.push(`Dispo : ${_val('t-dispo')}`);
-      if (_val('t-recherche')) filtresActifs.push(`Recherche : "${_val('t-recherche')}"`);
+      if (_filtresT.type.size)      filtresActifs.push(`Type : ${[..._filtresT.type].map(v => _LABEL_TYPE_TOLE[v] || v).join(', ')}`);
+      if (_filtresT.epaisseur.size) filtresActifs.push(`Épaisseur : ${[..._filtresT.epaisseur].join(', ')} mm`);
+      if (_filtresT.chantier.size)  filtresActifs.push(`Chantier : ${[..._filtresT.chantier].map(_labelChantier).join(', ')}`);
+      if (_filtresT.lieu.size)      filtresActifs.push(`Lieu : ${[..._filtresT.lieu].join(', ')}`);
+      if (_filtresT.dispo.size)     filtresActifs.push(`Dispo : ${[..._filtresT.dispo].join(', ')}`);
+      if (_val('t-recherche'))      filtresActifs.push(`Recherche : "${_val('t-recherche')}"`);
     } else {
       if (_val('a-type'))      filtresActifs.push(`Type : ${_val('a-type')}`);
       if (_val('a-desig'))     filtresActifs.push(`Désignation : ${_val('a-desig')}`);
