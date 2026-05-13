@@ -850,8 +850,20 @@ const Stock = (() => {
     });
 
     // Repeupler et restaurer les filtres dans le thead reconstruit
-    if (_onglet === 'profils' && _data) _restaurerFiltresProfils(savedP);
-    if (_onglet === 'toles'   && _data) _restaurerFiltresToles(savedT);
+    if (_onglet === 'profils' && _data) {
+      _restaurerFiltresProfils(savedP);
+      ['p-type','p-desig','p-chantier','p-lieu','p-dispo'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', _filtrer);
+      });
+    }
+    if (_onglet === 'toles' && _data) {
+      _restaurerFiltresToles(savedT);
+      ['t-type','t-epaisseur','t-chantier','t-lieu','t-dispo'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', _filtrer);
+      });
+    }
 
     _majFloatThead();
   }
@@ -3086,15 +3098,7 @@ ${hasT ? `
       }
     });
 
-    // Filtres dans le thead (recréés à chaque rendu) → délégation d'événement
-    const FILTER_IDS = new Set(['p-type','p-desig','p-chantier','p-lieu','p-dispo',
-                                 't-type','t-epaisseur','t-chantier','t-lieu','t-dispo']);
-    const zTab2 = document.getElementById('tableau-stock');
-    if (zTab2) {
-      zTab2.addEventListener('change', e => {
-        if (FILTER_IDS.has(e.target.id)) _filtrer();
-      });
-    }
+    // Les filtres dans le thead sont gérés par des listeners directs attachés dans _rendrTableau()
 
     // Champs recherche (restent dans la toolbar, listeners directs)
     const prech = document.getElementById('p-recherche');
@@ -3431,7 +3435,10 @@ ${hasT ? `
     const floatTable = document.createElement('table');
     floatTable.className = table.className;
     const floatThead = document.createElement('thead');
-    floatThead.appendChild(theadRow.cloneNode(true));
+    const clonedRow = theadRow.cloneNode(true);
+    // Supprimer les id dupliqués pour que getElementById() trouve toujours le vrai élément
+    clonedRow.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    floatThead.appendChild(clonedRow);
     floatTable.appendChild(floatThead);
     outer.appendChild(floatTable);
 
