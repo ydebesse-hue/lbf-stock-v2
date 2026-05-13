@@ -1539,13 +1539,25 @@
       /* ─ Toolbar profilés : 2 lignes sur mobile ─ */
       #toolbar-profils .toolbar-sep { display: none; }
       #toolbar-profils .tb-break { display: block; flex-basis: 100%; height: 0; order: 10; }
-      #btn-ajout-profil           { order: 1; }
+      #btn-ajout-profil             { order: 1; }
       #toolbar-profils #p-recherche { order: 2; flex: 1; min-width: 0; width: auto; }
-      #btn-imprimer-profils       { order: 3; }
-      #btn-exporter-profils       { order: 4; }
-      #btn-reset-profils          { order: 11; }
-      #badge-filtre-attente       { order: 12; }
+      #btn-imprimer-profils         { order: 3; }
+      #btn-exporter-profils         { order: 4; }
+      #btn-reset-profils            { order: 11; }
+      #badge-filtre-attente         { order: 12; }
       #toolbar-profils .vue-selector { order: 13; margin-left: auto; }
+
+      /* ─ Toolbar tôles : 2 lignes sur mobile ─ */
+      #toolbar-toles .toolbar-sep { display: none; }
+      #toolbar-toles .tb-break { display: block; flex-basis: 100%; height: 0; order: 10; }
+      #btn-ajout-tole-tab           { order: 1; }
+      #toolbar-toles #t-recherche   { order: 2; flex: 1; min-width: 0; width: auto; }
+      #btn-imprimer-toles           { order: 3; }
+      #btn-exporter-toles           { order: 4; }
+      #btn-reset-toles              { order: 11; }
+      #badge-stock-bas              { order: 12; }
+      #toolbar-toles .vue-selector  { order: 13; margin-left: auto; }
+
       .csv-txt { display: none; }
     }
 
@@ -1797,6 +1809,7 @@
     <div class="toolbar-sep"></div>
     <button id="btn-reset-toles" class="btn-action btn-gris" title="Réinitialiser">✕ Réinitialiser</button>
     <input id="t-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
+    <div class="tb-break" aria-hidden="true"></div>
     <div id="badge-stock-bas" class="badge-stock-bas" style="display:none">
       ⚠ <span class="stock-bas-nb">0</span> épaisseur(s) sous le seuil surface
     </div>
@@ -1804,12 +1817,12 @@
       <button id="btn-t-vue-essentiel"   class="btn-vue" title="Colonnes essentielles">Essentiel</button>
       <button id="btn-t-vue-complet"     class="btn-vue" title="Toutes les colonnes">Complet</button>
       <div style="position:relative">
-        <button id="btn-t-vue-personnalise" class="btn-vue" title="Colonnes personnalisées">Personnalisé ⚙</button>
+        <button id="btn-t-vue-personnalise" class="btn-vue" title="Colonnes personnalisées">⚙</button>
         <div id="panel-cols-toles"></div>
       </div>
     </div>
     <button id="btn-imprimer-toles" class="btn-action btn-gris" title="Imprimer / PDF">🖨</button>
-    <button id="btn-exporter-toles" class="btn-action btn-gris" title="Exporter en CSV (Excel)">⬇ CSV</button>
+    <button id="btn-exporter-toles" class="btn-action btn-gris" title="Exporter en CSV (Excel)">⬇<span class="csv-txt"> CSV</span></button>
   </div>
 
   <!-- ── TOOLBAR SYNTHÈSE ─────────────────────────────────────── -->
