@@ -395,9 +395,19 @@
     .th-filtre:focus { outline: 2px solid var(--rouge); outline-offset: 0; }
     .th-filtre option { color: #111; background: white; }
 
-    /* Dans l'en-tête flottant : masquer les selects (labels seulement) */
-    #float-thead-outer .th-filtre { display: none; }
-    #float-thead-outer thead th { padding-bottom: 9px; }
+    /* Dans l'en-tête flottant : fond opaque obligatoire (sinon données visibles en transparence) */
+    #float-thead-outer thead th {
+      background: var(--noir);
+      color: white;
+      font-family: Impact, sans-serif;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 9px 10px;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    /* Les selects filtres ne sont pas dans le clone (supprimés par JS) */
 
     #tableau-stock table {
       width: 100%;

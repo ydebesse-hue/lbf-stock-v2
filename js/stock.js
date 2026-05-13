@@ -3438,6 +3438,8 @@ ${hasT ? `
     const clonedRow = theadRow.cloneNode(true);
     // Supprimer les id dupliqués pour que getElementById() trouve toujours le vrai élément
     clonedRow.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    // Retirer physiquement les selects filtres (labels uniquement dans le flottant)
+    clonedRow.querySelectorAll('.th-filtre').forEach(el => el.remove());
     floatThead.appendChild(clonedRow);
     floatTable.appendChild(floatThead);
     outer.appendChild(floatTable);
