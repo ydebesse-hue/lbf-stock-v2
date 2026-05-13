@@ -836,7 +836,6 @@ const Stock = (() => {
       });
     });
 
-    _majFloatThead();
   }
 
   function _htmlProfils(data) {
@@ -2615,9 +2614,6 @@ ${hasT ? `
     if (zpied) zpied.style.display = estSyn ? 'none' : '';
     if (zsyn)  zsyn.style.display  = estSyn ? '' : 'none';
 
-    // Masquer l'en-tête flottant au changement d'onglet
-    const fth = document.getElementById('float-thead-outer');
-    if (fth) fth.style.display = 'none';
     requestAnimationFrame(_ajusterStickyTop);
 
     // Titre dynamique selon l'onglet
@@ -3439,94 +3435,6 @@ ${hasT ? `
       document.querySelector('#section-stock .sous-onglets'),
       ...document.querySelectorAll('.toolbar'),
     ].filter(Boolean).forEach(el => obs.observe(el));
-
-    // Synchro défilement horizontal uniquement (show/hide géré par IntersectionObserver dans _majFloatThead)
-    const wrap = document.querySelector('.zone-tableau');
-    if (wrap) {
-      wrap.addEventListener('scroll', () => {
-        const outer = document.getElementById('float-thead-outer');
-        if (!outer || outer.style.display === 'none') return;
-        const ft = outer.querySelector('table');
-        if (ft) ft.style.marginLeft = -wrap.scrollLeft + 'px';
-      }, { passive: true });
-    }
-  }
-
-  /** Crée ou recrée l'en-tête flottant (ligne labels seulement) avec IntersectionObserver. */
-  function _majFloatThead() {
-    const outer = document.getElementById('float-thead-outer');
-    const tableau = document.getElementById('tableau-stock');
-    const wrap = document.querySelector('.zone-tableau');
-    if (!outer || !tableau || !wrap) return;
-
-    // Déconnecter l'observateur précédent
-    if (outer._observer) { outer._observer.disconnect(); outer._observer = null; }
-
-    const table = tableau.querySelector('table');
-    if (!table) { outer.style.display = 'none'; return; }
-    const thead = table.querySelector('thead');
-    if (!thead) { outer.style.display = 'none'; return; }
-
-    // Cloner le thead (les boutons .th-filtre-btn seront supprimés dans le flottant)
-    const theadRow = thead.querySelector('tr');
-    if (!theadRow) { outer.style.display = 'none'; return; }
-
-    outer.innerHTML = '';
-    const floatTable = document.createElement('table');
-    floatTable.className = table.className;
-    const floatThead = document.createElement('thead');
-    const clonedRow = theadRow.cloneNode(true);
-    // Supprimer les id dupliqués pour que getElementById() trouve toujours le vrai élément
-    clonedRow.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-    // Retirer physiquement les boutons filtres (labels uniquement dans le flottant)
-    clonedRow.querySelectorAll('.th-filtre-btn').forEach(el => el.remove());
-    floatThead.appendChild(clonedRow);
-    floatTable.appendChild(floatThead);
-    outer.appendChild(floatTable);
-
-    // Brancher les clics de tri sur le clone (ignorer les clics sur les boutons filtres)
-    outer.querySelectorAll('th[data-col]').forEach(th => {
-      th.addEventListener('click', e => {
-        if (!e.target.closest('.th-filtre-btn')) _clicTri(th.dataset.col);
-      });
-    });
-
-    outer.style.display = 'none';
-
-    requestAnimationFrame(() => {
-      _ajusterStickyTop(); // s'assurer que --sticky-thead est à jour
-      const stickyOffset = parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue('--sticky-thead')
-      ) || 164;
-
-      // Positionner et dimensionner le flottant
-      const wrapRect = wrap.getBoundingClientRect();
-      outer.style.left  = wrapRect.left + 'px';
-      outer.style.right = (window.innerWidth - wrapRect.right) + 'px';
-      outer.style.width = '';
-      floatTable.style.width = table.getBoundingClientRect().width + 'px';
-      floatTable.style.marginLeft = -wrap.scrollLeft + 'px';
-
-      // Synchroniser les largeurs colonne par colonne
-      const realCells  = [...theadRow.querySelectorAll('th')];
-      const floatCells = [...floatTable.querySelectorAll('th')];
-      realCells.forEach((th, i) => {
-        if (floatCells[i]) floatCells[i].style.width = th.getBoundingClientRect().width + 'px';
-      });
-
-      // IntersectionObserver : montrer le flottant quand le thead sort du champ visible
-      outer._observer = new IntersectionObserver(([entry]) => {
-        outer.style.display = entry.isIntersecting ? 'none' : 'block';
-        if (!entry.isIntersecting) {
-          const ft = outer.querySelector('table');
-          if (ft) ft.style.marginLeft = -wrap.scrollLeft + 'px';
-        }
-      }, {
-        rootMargin: `-${Math.round(stickyOffset)}px 0px 0px 0px`,
-        threshold: 0,
-      });
-      outer._observer.observe(theadRow);
-    });
   }
 
   /* ──────────────────────────────────────────────────────────────

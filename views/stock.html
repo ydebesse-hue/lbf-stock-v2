@@ -354,21 +354,11 @@
     .input-recherche:focus { outline: none; border-color: var(--rouge); }
 
     /* ── TABLEAU ──────────────────────────────────────────────── */
-    .zone-tableau { padding: 14px 20px; overflow-x: auto; }
-
-    /* ── EN-TÊTE FLOTTANT (sticky thead via clone JS) ─────────── */
-    #float-thead-outer {
-      position: fixed;
-      top: var(--sticky-thead, 164px);
-      left: 0; right: 0;
-      z-index: 50;
-      overflow: hidden;
-      display: none;
-    }
-    #float-thead-outer table {
-      border-collapse: collapse;
-      table-layout: fixed;
-      margin: 0;
+    .zone-tableau {
+      padding: 14px 20px;
+      overflow: auto;
+      height: calc(100vh - var(--sticky-thead, 164px));
+      box-sizing: border-box;
     }
 
     /* ── FILTRES DANS LES EN-TÊTES DE COLONNES ─────────────────── */
@@ -436,20 +426,6 @@
     .fp-tout label { font-weight: 600; color: #555; font-size: 12px; }
     .fp-tout { border-bottom: 1px solid #eee; margin-bottom: 2px; }
 
-    /* Dans l'en-tête flottant : fond opaque obligatoire (sinon données visibles en transparence) */
-    #float-thead-outer thead th {
-      background: var(--noir);
-      color: white;
-      font-family: Impact, sans-serif;
-      font-size: 12px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      padding: 9px 10px;
-      white-space: nowrap;
-      vertical-align: top;
-    }
-    /* Les boutons filtres ne sont pas dans le clone (supprimés par JS) */
-
     #tableau-stock table {
       width: 100%;
       border-collapse: collapse;
@@ -472,6 +448,9 @@
       cursor: default;
       transition: background .15s;
       vertical-align: top;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
     #tableau-stock thead th[data-col] { cursor: pointer; }
     #tableau-stock thead th[data-col]:hover { background: #3a3a42; }
@@ -1064,7 +1043,7 @@
     .table-profils td.col-p-check {
       position: sticky; left: 0; z-index: 2; background: white;
     }
-    .table-profils thead th.col-p-check { background: var(--noir); z-index: 3; }
+    .table-profils thead th.col-p-check { background: var(--noir); z-index: 20; }
     .table-profils tbody tr:hover    td.col-p-check { background: #fafafa; }
     .table-profils tr.ligne-attente  td.col-p-check { background: #fffde7; }
     .table-profils tr.ligne-focus    td.col-p-check { background: #fff0f0; }
@@ -1102,7 +1081,7 @@
       background: white;
       box-shadow: 2px 0 5px -2px rgba(0,0,0,.15);
     }
-    .table-profils thead th.col-p-id { background: var(--noir); z-index: 3; }
+    .table-profils thead th.col-p-id { background: var(--noir); z-index: 20; }
 
     /* Conserver les fonds de ligne sur la cellule collante */
     .table-profils tbody tr:hover       td.col-p-id { background: #fafafa; }
@@ -1865,8 +1844,6 @@
   </div>
 
   <!-- ── TABLEAU PRINCIPAL ─────────────────────────────────────── -->
-  <!-- En-tête de tableau flottant (rempli par JS, apparaît en position:fixed sous la toolbar) -->
-  <div id="float-thead-outer"></div>
   <div id="filtre-panel"></div>
 
   <div class="zone-tableau">
