@@ -242,7 +242,7 @@ const Stock = (() => {
   let _planImg   = null;        // image plan (base64), chargée au démarrage depuis Supabase
   let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
   let _filtreEnAttente = false; // true quand l'admin clique l'alerte pour voir les en_attente
-  const _filtresP = { type: new Set(), desig: new Set(), chantier: new Set(), lieu: new Set(), dispo: new Set() };
+  const _filtresP = { type: new Set(), desig: new Set(), chantier: new Set(), lieu: new Set(), dispo: new Set(), classe: new Set(), origine: new Set(), fournisseur: new Set() };
   const _filtresT = { type: new Set(), epaisseur: new Set(), chantier: new Set(), lieu: new Set(), dispo: new Set() };
   let _filtreActif = null; // { fid, btn } — panneau filtre multi-valeurs actuellement ouvert
   let _seuils = {};             // { [epaisseur_mm]: seuil_m2 } — persistés dans Supabase config
@@ -682,18 +682,21 @@ const Stock = (() => {
   }
 
   function _filtrerProfils(source) {
-    const { type, desig, chantier, lieu, dispo } = _filtresP;
+    const { type, desig, chantier, lieu, dispo, classe, origine, fournisseur } = _filtresP;
     const texte = _val('p-recherche').toLowerCase().trim();
     return source.filter(b => {
       if (_filtreEnAttente) {
         const aDemande = _demandes.some(d => d.id_barre === b.id);
         if (b.statut !== 'en_attente' && !aDemande) return false;
       }
-      if (type.size     && !type.has(b.section_type))              return false;
-      if (desig.size    && !desig.has(b.designation))              return false;
-      if (chantier.size && !chantier.has(b.chantier_affectation))  return false;
-      if (lieu.size     && !lieu.has(b.lieu_stockage))             return false;
-      if (dispo.size    && !dispo.has(b.disponibilite))            return false;
+      if (type.size       && !type.has(b.section_type))             return false;
+      if (desig.size      && !desig.has(b.designation))             return false;
+      if (chantier.size   && !chantier.has(b.chantier_affectation)) return false;
+      if (lieu.size       && !lieu.has(b.lieu_stockage))            return false;
+      if (dispo.size      && !dispo.has(b.disponibilite))           return false;
+      if (classe.size     && !classe.has(b.classe_acier))           return false;
+      if (origine.size    && !origine.has(b.chantier_origine))      return false;
+      if (fournisseur.size && !fournisseur.has(b.fournisseur))      return false;
       if (texte) {
         const h = [b.section_type, b.designation, b.chantier_origine,
           b.lieu_stockage, b.commentaire, b.id].join(' ').toLowerCase();
@@ -877,6 +880,18 @@ const Stock = (() => {
         const setL = _filtresP.lieu; const nL = setL.size;
         const lblL = nL === 0 ? '— lieu —' : nL === 1 ? [...setL][0] : `${nL} ✓`;
         filtre = `<button type="button" class="th-filtre-btn${nL ? ' th-filtre-actif' : ''}" data-filtre="p-lieu">${_e(lblL)}</button>`;
+      } else if (c.key === 'classe') {
+        const setCl = _filtresP.classe; const nCl = setCl.size;
+        const lblCl = nCl === 0 ? '— classe —' : nCl === 1 ? [...setCl][0] : `${nCl} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nCl ? ' th-filtre-actif' : ''}" data-filtre="p-classe">${_e(lblCl)}</button>`;
+      } else if (c.key === 'origine') {
+        const setOr = _filtresP.origine; const nOr = setOr.size;
+        const lblOr = nOr === 0 ? '— origine —' : nOr === 1 ? _labelChantier([...setOr][0]) : `${nOr} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nOr ? ' th-filtre-actif' : ''}" data-filtre="p-origine">${_e(lblOr)}</button>`;
+      } else if (c.key === 'fournisseur') {
+        const setFo = _filtresP.fournisseur; const nFo = setFo.size;
+        const lblFo = nFo === 0 ? '— fournisseur —' : nFo === 1 ? [...setFo][0] : `${nFo} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nFo ? ' th-filtre-actif' : ''}" data-filtre="p-fournisseur">${_e(lblFo)}</button>`;
       }
       h += `<th class="${cls}${actif ? ' tri-actif' : ''}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
@@ -2694,6 +2709,15 @@ ${hasT ? `
           .map(v => ({ value: v, label: _labelChantier(v) }));
       case 'p-lieu':
         return uniq(profils.filter(b => b.lieu_stockage).map(b => b.lieu_stockage))
+          .map(v => ({ value: v, label: v }));
+      case 'p-classe':
+        return uniq(profils.filter(b => b.classe_acier).map(b => b.classe_acier))
+          .map(v => ({ value: v, label: v }));
+      case 'p-origine':
+        return uniq(profils.filter(b => b.chantier_origine).map(b => b.chantier_origine))
+          .map(v => ({ value: v, label: _labelChantier(v) }));
+      case 'p-fournisseur':
+        return uniq(profils.filter(b => b.fournisseur).map(b => b.fournisseur))
           .map(v => ({ value: v, label: v }));
       case 't-type':
         return [{ value: 'noir', label: 'Noir' }, { value: 'inox', label: 'Inox' }, { value: 'larmee', label: 'Larmée' }];
@@ -7466,8 +7490,11 @@ ${hasT ? `
       if (_filtresP.desig.size)    filtresActifs.push(`Désignation : ${[..._filtresP.desig].join(', ')}`);
       if (_filtresP.chantier.size) filtresActifs.push(`Chantier : ${[..._filtresP.chantier].map(_labelChantier).join(', ')}`);
       if (_filtresP.lieu.size)     filtresActifs.push(`Lieu : ${[..._filtresP.lieu].join(', ')}`);
-      if (_filtresP.dispo.size)    filtresActifs.push(`Dispo : ${[..._filtresP.dispo].join(', ')}`);
-      if (_val('p-recherche'))     filtresActifs.push(`Recherche : "${_val('p-recherche')}"`);
+      if (_filtresP.dispo.size)        filtresActifs.push(`Dispo : ${[..._filtresP.dispo].join(', ')}`);
+      if (_filtresP.classe.size)       filtresActifs.push(`Classe : ${[..._filtresP.classe].join(', ')}`);
+      if (_filtresP.origine.size)      filtresActifs.push(`Origine : ${[..._filtresP.origine].map(_labelChantier).join(', ')}`);
+      if (_filtresP.fournisseur.size)  filtresActifs.push(`Fournisseur : ${[..._filtresP.fournisseur].join(', ')}`);
+      if (_val('p-recherche'))         filtresActifs.push(`Recherche : "${_val('p-recherche')}"`);
     } else if (_onglet === 'toles') {
       if (_filtresT.type.size)      filtresActifs.push(`Type : ${[..._filtresT.type].map(v => _LABEL_TYPE_TOLE[v] || v).join(', ')}`);
       if (_filtresT.epaisseur.size) filtresActifs.push(`Épaisseur : ${[..._filtresT.epaisseur].join(', ')} mm`);
