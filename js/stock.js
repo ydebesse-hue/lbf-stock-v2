@@ -226,7 +226,7 @@ const Stock = (() => {
   let _synProfilsTous  = false;
   let _bilanChantier   = '';
   let _bilanSort       = { col: 'chantier', dir: 'asc' };
-  let _bilanFiltre     = '';
+  let _bilanFiltreSet  = new Set(); // empty = tous visibles
   let _bilanNiveau     = 'desig'; // 'type' | 'desig' | 'barre'
   let _archivesTab    = 'profils';  // sous-onglet de l'onglet Archivées
   let _selectionIds   = new Set();  // IDs sélectionnés pour actions groupées
@@ -2204,17 +2204,9 @@ const Stock = (() => {
                   <div style="display:flex;align-items:center;gap:4px">
                     Chantier${si('chantier')}
                   </div>
-                  <div onclick="event.stopPropagation()">
-                    <input type="text" id="bilan-filtre-ch" class="bilan-filtre-inp"
-                           list="bilan-filtre-ch-list" placeholder="Filtrer…" value="${_e(_bilanFiltre)}"
-                           autocomplete="off">
-                    <datalist id="bilan-filtre-ch-list">
-                      ${tousChantiers.map(ch => {
-                        const chObj = _chantiers.find(c => c.nom === ch);
-                        const label = chObj ? [chObj.numero_affaire, chObj.ville, ch].filter(Boolean).join(' — ') : ch;
-                        return `<option value="${_e(ch)}">${_e(label)}</option>`;
-                      }).join('')}
-                    </datalist>
+                  <div onclick="event.stopPropagation()" style="margin-top:4px">
+                    <button class="bilan-filtre-toggle${_bilanFiltreSet.size > 0 ? ' active' : ''}"
+                            data-syn-action="toggle-bilan-filtre">▼ ${_bilanFiltreSet.size > 0 ? `${_bilanFiltreSet.size} chantier${_bilanFiltreSet.size > 1 ? 's' : ''}` : 'Tous'}</button>
                   </div>
                 </th>
                 <th colspan="2" class="r bilan-grp-sep">Profilés utilisés</th>
@@ -2261,20 +2253,107 @@ const Stock = (() => {
       _synTab === 'profils' ? _contenuProfils() : _contenuToles()
     }</div>`;
 
-    if (_bilanFiltre && _synTab === 'bilan' && !_bilanChantier) _appliquerFiltreChBilan(zone);
+    if (_bilanFiltreSet.size > 0 && _synTab === 'bilan' && !_bilanChantier) _appliquerFiltreChBilan(zone);
+  }
+
+  function _ouvrirFiltreChBilan(zone, btnEl) {
+    document.getElementById('bilan-filtre-panel')?.remove();
+
+    const allRows = [...zone.querySelectorAll('tr[data-bilan-ch]')];
+    const chantiers = allRows.map(tr => tr.dataset.bilanCh);
+
+    const allChecked = _bilanFiltreSet.size === 0;
+    const items = chantiers.map(ch => {
+      const chObj   = _chantiers.find(c => c.nom === ch);
+      const label   = chObj ? [chObj.numero_affaire, chObj.ville, ch].filter(Boolean).join(' — ') : ch;
+      const checked = allChecked || _bilanFiltreSet.has(ch);
+      return `<label class="bilan-fp-item">
+        <input type="checkbox" class="bilan-fp-ch" data-ch="${_e(ch)}"${checked ? ' checked' : ''}>
+        <span>${_e(label)}</span>
+      </label>`;
+    }).join('');
+
+    const panel = document.createElement('div');
+    panel.id    = 'bilan-filtre-panel';
+    panel.className = 'bilan-fp';
+    panel.innerHTML = `
+      <div class="bilan-fp-head">
+        <label class="bilan-fp-item">
+          <input type="checkbox" id="bilan-fp-all"${allChecked ? ' checked' : ''}>
+          <strong>Tous les chantiers</strong>
+        </label>
+        <input type="text" class="bilan-fp-search" placeholder="Rechercher dans la liste…">
+      </div>
+      <div class="bilan-fp-list">${items}</div>
+      <div class="bilan-fp-footer">
+        <button class="bilan-fp-ok">Appliquer</button>
+      </div>`;
+    document.body.appendChild(panel);
+
+    const rect = btnEl.getBoundingClientRect();
+    panel.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+    panel.style.left = (rect.left  + window.scrollX)      + 'px';
+
+    const allCb  = panel.querySelector('#bilan-fp-all');
+    const search = panel.querySelector('.bilan-fp-search');
+    const chCbs  = () => [...panel.querySelectorAll('.bilan-fp-ch')];
+
+    const syncAll = () => {
+      const cbs = chCbs();
+      const n   = cbs.filter(c => c.checked).length;
+      allCb.checked       = n === cbs.length;
+      allCb.indeterminate = n > 0 && n < cbs.length;
+    };
+
+    allCb.addEventListener('change', () => {
+      chCbs().forEach(cb => { cb.checked = allCb.checked; });
+    });
+
+    panel.querySelector('.bilan-fp-list').addEventListener('change', syncAll);
+
+    search.addEventListener('input', () => {
+      const q = search.value.toLowerCase();
+      panel.querySelectorAll('.bilan-fp-item').forEach(item => {
+        if (item.querySelector('#bilan-fp-all')) return;
+        item.style.display = (!q || item.textContent.toLowerCase().includes(q)) ? '' : 'none';
+      });
+    });
+
+    panel.querySelector('.bilan-fp-ok').addEventListener('click', () => {
+      const checked = chCbs().filter(c => c.checked).map(c => c.dataset.ch);
+      _bilanFiltreSet = checked.length === chantiers.length ? new Set() : new Set(checked);
+      panel.remove();
+      _appliquerFiltreChBilan(zone);
+      const btn = zone.querySelector('.bilan-filtre-toggle');
+      if (btn) {
+        const n = _bilanFiltreSet.size;
+        btn.textContent = n > 0 ? `▼ ${n} chantier${n > 1 ? 's' : ''}` : '▼ Tous';
+        btn.classList.toggle('active', n > 0);
+      }
+    });
+
+    search.focus();
+
+    setTimeout(() => {
+      const close = e => {
+        if (!panel.contains(e.target) && e.target !== btnEl) {
+          panel.remove();
+          document.removeEventListener('click', close);
+        }
+      };
+      document.addEventListener('click', close);
+    }, 0);
   }
 
   function _appliquerFiltreChBilan(zone) {
-    const q = _bilanFiltre.toLowerCase().trim();
     const allRows = [...zone.querySelectorAll('tr[data-bilan-ch]')];
     const fmt  = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
     const fmtT = v => !v ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + ' t';
 
     let n = 0, totals = [0, 0, 0, 0, 0, 0, 0, 0];
     allRows.forEach(tr => {
-      const ch   = (tr.dataset.bilanCh || '').toLowerCase();
-      const meta = (tr.querySelector('.bilan-meta')?.textContent || '').toLowerCase();
-      const vis  = !q || ch.includes(q) || meta.includes(q);
+      const ch  = tr.dataset.bilanCh || '';
+      const vis = _bilanFiltreSet.size === 0 || _bilanFiltreSet.has(ch);
       tr.style.display = vis ? '' : 'none';
       if (vis && tr.dataset.v) {
         n++;
@@ -3471,7 +3550,7 @@ ${hasT ? `
           _rendreSynthese();
         } else if (action === 'retour-bilan') {
           _bilanChantier = '';
-          _bilanFiltre   = '';
+          _bilanFiltreSet = new Set();
           _rendreSynthese();
         } else if (action === 'bilan-niveau') {
           const niv = el.dataset.niveau;
@@ -3491,6 +3570,8 @@ ${hasT ? `
             }
             _rendreSynthese();
           }
+        } else if (action === 'toggle-bilan-filtre') {
+          _ouvrirFiltreChBilan(zsyn, el);
         }
     };
     if (zsyn) zsyn.addEventListener('click', _synHandler);
@@ -3517,12 +3598,7 @@ ${hasT ? `
       }
     });
 
-    zsyn?.addEventListener('input', e => {
-      if (e.target.id === 'bilan-filtre-ch') {
-        _bilanFiltre = e.target.value;
-        _appliquerFiltreChBilan(zsyn);
-      }
-    });
+    zsyn?.addEventListener('input', e => { /* reserved */ });
 
     // Les filtres dans le thead sont gérés par des listeners directs attachés dans _rendrTableau()
 
