@@ -2204,7 +2204,15 @@ const Stock = (() => {
                   </div>
                   <div onclick="event.stopPropagation()">
                     <input type="text" id="bilan-filtre-ch" class="bilan-filtre-inp"
-                           placeholder="Filtrer…" value="${_e(_bilanFiltre)}">
+                           list="bilan-filtre-ch-list" placeholder="Filtrer…" value="${_e(_bilanFiltre)}"
+                           autocomplete="off">
+                    <datalist id="bilan-filtre-ch-list">
+                      ${tousChantiers.map(ch => {
+                        const chObj = _chantiers.find(c => c.nom === ch);
+                        const label = chObj ? [chObj.numero_affaire, chObj.ville, ch].filter(Boolean).join(' — ') : ch;
+                        return `<option value="${_e(ch)}">${_e(label)}</option>`;
+                      }).join('')}
+                    </datalist>
                   </div>
                 </th>
                 <th colspan="2" class="r bilan-grp-sep">Profilés utilisés</th>
