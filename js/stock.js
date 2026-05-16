@@ -1767,8 +1767,15 @@ const Stock = (() => {
       const reapproHtml = basStock.length ? `
         <div class="syn-reappro">
           <div class="syn-reappro-titre">⚠ À réapprovisionner — ${basStock.length} référence${basStock.length > 1 ? 's' : ''} sous le seuil</div>
-          <table class="hist-table" style="margin:0">
-            <thead><tr><th>Type</th><th>Épaisseur</th><th>Stock actuel</th><th>Seuil</th><th>Manquant</th></tr></thead>
+          <table class="hist-table" style="margin:0;width:100%;table-layout:fixed">
+            <colgroup>
+              <col style="width:60px">
+              <col style="width:50px">
+              <col style="width:auto">
+              <col style="width:auto">
+              <col style="width:auto">
+            </colgroup>
+            <thead><tr><th>Type</th><th>Ép.</th><th>Stock</th><th>Seuil</th><th>Manque</th></tr></thead>
             <tbody>${basStock.map(({ type, ep, surface, seuil }) => `<tr>
                 <td>${_badgeTypeTole(type)}</td>
                 <td><strong>${_e(String(ep))} mm</strong></td>
