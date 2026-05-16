@@ -1960,47 +1960,66 @@ const Stock = (() => {
           </tr>${desigRows}`;
         }).join('');
 
-        // ── Tableau tôles (épaisseur → type_tole → tôles individuelles) ─
-        const parEp = {};
+        // ── Tableau tôles (type_tole → épaisseur → tôles individuelles) ─
+        const parToleTy = {};
         const accT = (list, sfx) => list.forEach(b => {
-          const ep = b.epaisseur_mm ?? '?', ty = b.type_tole || '?';
-          const k  = `${ep}__${ty}`;
-          if (!parEp[k]) parEp[k] = { ep, ty, surfAff:0, poidsAff:0, surfArc:0, poidsArc:0, barsAff:[], barsArc:[] };
-          parEp[k][`surf${sfx}`]  += _surfTole(b);
-          parEp[k][`poids${sfx}`] += _poidsTole(b);
-          parEp[k][`bars${sfx}`].push(b);
+          const ty = b.type_tole || '?';
+          const ep = b.epaisseur_mm ?? '?';
+          if (!parToleTy[ty]) parToleTy[ty] = {};
+          if (!parToleTy[ty][ep]) parToleTy[ty][ep] = { surfAff:0, poidsAff:0, surfArc:0, poidsArc:0, barsAff:[], barsArc:[] };
+          parToleTy[ty][ep][`surf${sfx}`]  += _surfTole(b);
+          parToleTy[ty][ep][`poids${sfx}`] += _poidsTole(b);
+          parToleTy[ty][ep][`bars${sfx}`].push(b);
         });
         accT(chTAff, 'Aff'); accT(chTArc, 'Arc');
 
-        const toleRows = Object.values(parEp)
-          .sort((a, b) => (a.ep - b.ep) || a.ty.localeCompare(b.ty, 'fr'))
-          .map(d => {
-            const barRows = [...d.barsArc, ...d.barsAff]
-              .sort((a, b) => a.id.localeCompare(b.id, 'fr', { numeric: true }))
-              .map(b => {
-                const isAff = b.statut !== 'archivee';
-                const su = _surfTole(b);
-                const po = _poidsTole(b);
-                const dims = b.largeur_mm && b.longueur_mm ? `${b.largeur_mm}×${b.longueur_mm} mm` : '';
-                return `<tr class="bilan-bar-row${isAff ? ' bilan-bar-aff' : ''}">
-                  <td class="bilan-bar-cell"><span class="bilan-bar-id">${_e(b.id)}</span>${dims ? ` <span style="color:#aaa;font-size:10px">${dims}</span>` : ''}</td>
-                  <td class="r">${!isAff ? fmt(su)+' m²' : nilD}</td>
-                  <td class="r">${!isAff ? fmtT(po) : nilD}</td>
-                  <td class="r bilan-aff-cell">${isAff ? fmt(su)+' m²' : nilD}</td>
-                  <td class="r bilan-aff-cell">${isAff ? fmtT(po) : nilD}</td>
-                  <td class="r">${fmt(su)} m²</td>
-                  <td class="r bilan-poids">${fmtT(po)}</td>
-                </tr>`;
-              }).join('');
-            return `<tr class="bilan-desig-row">
-              <td><strong>${_e(String(d.ep))} mm</strong> &nbsp;${_badgeTypeTole(d.ty)}</td>
-              <td class="r">${d.surfArc > 0 ? fmt(d.surfArc)+' m²' : nilD}</td>
-              <td class="r">${d.poidsArc > 0 ? fmtT(d.poidsArc) : nilD}</td>
-              <td class="r bilan-aff-cell">${d.surfAff > 0 ? fmt(d.surfAff)+' m²' : nilD}</td>
-              <td class="r bilan-aff-cell">${d.poidsAff > 0 ? fmtT(d.poidsAff) : nilD}</td>
-              <td class="r"><strong>${fmt(d.surfAff + d.surfArc)} m²</strong></td>
-              <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
-            </tr>${barRows}`;
+        const toleRows = Object.entries(parToleTy)
+          .sort((a, b) => a[0].localeCompare(b[0], 'fr'))
+          .map(([ty, epMap]) => {
+            const epEntries = Object.entries(epMap).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+            const totTy = epEntries.reduce((acc, [, d]) => {
+              acc.surfArc += d.surfArc; acc.poidsArc += d.poidsArc;
+              acc.surfAff += d.surfAff; acc.poidsAff += d.poidsAff; return acc;
+            }, { surfArc:0, poidsArc:0, surfAff:0, poidsAff:0 });
+
+            const epRows = epEntries.map(([ep, d]) => {
+              const barRows = [...d.barsArc, ...d.barsAff]
+                .sort((a, b) => a.id.localeCompare(b.id, 'fr', { numeric: true }))
+                .map(b => {
+                  const isAff = b.statut !== 'archivee';
+                  const su = _surfTole(b);
+                  const po = _poidsTole(b);
+                  const dims = b.largeur_mm && b.longueur_mm ? `${b.largeur_mm}×${b.longueur_mm} mm` : '';
+                  return `<tr class="bilan-bar-row${isAff ? ' bilan-bar-aff' : ''}">
+                    <td class="bilan-bar-cell"><span class="bilan-bar-id">${_e(b.id)}</span>${dims ? ` <span style="color:#aaa;font-size:10px">${dims}</span>` : ''}</td>
+                    <td class="r">${!isAff ? fmt(su)+' m²' : nilD}</td>
+                    <td class="r">${!isAff ? fmtT(po) : nilD}</td>
+                    <td class="r bilan-aff-cell">${isAff ? fmt(su)+' m²' : nilD}</td>
+                    <td class="r bilan-aff-cell">${isAff ? fmtT(po) : nilD}</td>
+                    <td class="r">${fmt(su)} m²</td>
+                    <td class="r bilan-poids">${fmtT(po)}</td>
+                  </tr>`;
+                }).join('');
+              return `<tr class="bilan-desig-row">
+                <td class="bilan-desig-cell"><span class="bilan-indent">└</span>${_e(String(ep))} mm</td>
+                <td class="r">${d.surfArc > 0 ? fmt(d.surfArc)+' m²' : nilD}</td>
+                <td class="r">${d.poidsArc > 0 ? fmtT(d.poidsArc) : nilD}</td>
+                <td class="r bilan-aff-cell">${d.surfAff > 0 ? fmt(d.surfAff)+' m²' : nilD}</td>
+                <td class="r bilan-aff-cell">${d.poidsAff > 0 ? fmtT(d.poidsAff) : nilD}</td>
+                <td class="r"><strong>${fmt(d.surfAff + d.surfArc)} m²</strong></td>
+                <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
+              </tr>${barRows}`;
+            }).join('');
+
+            return `<tr class="bilan-type-row">
+              <td>${_badgeTypeTole(ty)}</td>
+              <td class="r">${totTy.surfArc > 0 ? fmt(totTy.surfArc)+' m²' : nilD}</td>
+              <td class="r">${totTy.poidsArc > 0 ? fmtT(totTy.poidsArc) : nilD}</td>
+              <td class="r bilan-aff-cell">${totTy.surfAff > 0 ? fmt(totTy.surfAff)+' m²' : nilD}</td>
+              <td class="r bilan-aff-cell">${totTy.poidsAff > 0 ? fmtT(totTy.poidsAff) : nilD}</td>
+              <td class="r"><strong>${fmt(totTy.surfAff + totTy.surfArc)} m²</strong></td>
+              <td class="r bilan-poids">${fmtT(totTy.poidsAff + totTy.poidsArc)}</td>
+            </tr>${epRows}`;
           }).join('');
 
         const hasP = chPAff.length + chPArc.length > 0;
