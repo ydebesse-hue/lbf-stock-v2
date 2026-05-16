@@ -1537,7 +1537,6 @@
       .alerte-nb { width: 18px; height: 18px; font-size: 10px; }
 
       /* ─ Synthèse bilan : tables scrollables horizontalement ─ */
-      .syn-card-tbl { overflow-x: auto; overflow-y: hidden; }
       .syn-card-tbl .syn-table { min-width: 500px; }
       .syn-page { padding: 10px 12px; }
 
@@ -1756,6 +1755,10 @@
     .syn-kpi-inner tbody tr:first-child td { border-top: none; }
     .syn-kpi-inner-total td {
       border-top: 1px solid #ddd; font-weight: bold; color: #222; padding-top: 6px;
+    }
+    @media (max-width: 768px) {
+      .syn-card-tbl { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+      .syn-card-tbl .syn-table { min-width: 600px; }
     }
   </style>
 </head>
