@@ -1572,7 +1572,7 @@ const Stock = (() => {
       const scopeLabel = _synProfilsTous ? 'Tous' : 'Disponibles';
       return `
         ${cartes}
-        <div class="syn-card" style="padding:0;overflow:hidden">
+        <div class="syn-card syn-card-tbl">
           <table class="syn-table">
             <colgroup>
               <col style="width:auto">
@@ -1730,7 +1730,7 @@ const Stock = (() => {
           <span class="syn-scope-btn" data-syn-action="print-syn-toles"
                 title="Imprimer la synthèse tôles">📄 PDF</span>
         </div>
-        <div class="syn-card" style="padding:0;overflow:hidden">
+        <div class="syn-card syn-card-tbl">
           <table class="syn-table">
             <thead><tr>
               <th>Épaisseur / Type</th>
@@ -1892,7 +1892,7 @@ const Stock = (() => {
           </div>
           ${hasP ? `
           <div class="syn-section-titre">Profilés</div>
-          <div class="syn-card" style="padding:0;overflow:hidden;margin-bottom:12px">
+          <div class="syn-card syn-card-tbl" style="margin-bottom:12px">
             <table class="syn-table">
               <thead><tr><th>Désignation</th><th class="r">Aff.</th><th class="r">ML aff.</th><th class="r">Arch.</th><th class="r">ML arch.</th><th class="r">Total ML</th><th class="r">Poids</th></tr></thead>
               <tbody>${profilRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
@@ -1900,7 +1900,7 @@ const Stock = (() => {
           </div>` : ''}
           ${hasT ? `
           <div class="syn-section-titre">Tôles</div>
-          <div class="syn-card" style="padding:0;overflow:hidden">
+          <div class="syn-card syn-card-tbl">
             <table class="syn-table">
               <thead><tr><th>Épaisseur / Type</th><th class="r">Aff.</th><th class="r">m² aff.</th><th class="r">Arch.</th><th class="r">m² arch.</th><th class="r">Total m²</th><th class="r">Poids</th></tr></thead>
               <tbody>${toleRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
@@ -1908,7 +1908,7 @@ const Stock = (() => {
           </div>` : ''}
           ${chutes.length ? `
           <div class="syn-section-titre" style="margin-top:14px;color:#27ae60">Chutes réutilisables (${chutes.length})</div>
-          <div class="syn-card" style="padding:0;overflow:hidden">
+          <div class="syn-card syn-card-tbl">
             <table class="syn-table">
               <thead><tr><th>ID</th><th>Épaisseur / Type</th><th class="r">Dimensions</th><th class="r">Surface</th><th class="r">Lieu</th></tr></thead>
               <tbody>${chutes.sort((a, b) => (a.epaisseur_mm - b.epaisseur_mm) || a.id.localeCompare(b.id)).map(c => `<tr>
@@ -1964,7 +1964,7 @@ const Stock = (() => {
       </tr>` : '';
 
       return `
-        <div class="syn-card" style="padding:0;overflow:hidden">
+        <div class="syn-card syn-card-tbl">
           <table class="syn-table">
             <thead>
               <tr class="syn-table-title-row">

@@ -1536,6 +1536,11 @@
       .alerte-attente { font-size: 12px; padding: 6px 12px; gap: 6px; flex-wrap: wrap; }
       .alerte-nb { width: 18px; height: 18px; font-size: 10px; }
 
+      /* ─ Synthèse bilan : tables scrollables horizontalement ─ */
+      .syn-card-tbl { overflow-x: auto; overflow-y: hidden; }
+      .syn-card-tbl .syn-table { min-width: 500px; }
+      .syn-page { padding: 10px 12px; }
+
       /* ─ Toolbar profilés : 2 lignes sur mobile ─ */
       #toolbar-profils .toolbar-sep { display: none; }
       #toolbar-profils .tb-break { display: block; flex-basis: 100%; height: 0; order: 10; }
@@ -1633,6 +1638,7 @@
     .syn-sous-ligne:hover td { background: #eef3ee; }
 
     /* ── Bilan chantiers ─────────────────────────────────────────── */
+    .syn-card-tbl { padding: 0; overflow: hidden; }
     .bilan-ch-row { cursor: pointer; }
     .bilan-ch-row:hover td { background: #f0f6ff; }
     .bilan-ch-row td { transition: background .1s; }
