@@ -1654,10 +1654,15 @@
     .bilan-retour { margin-bottom: 12px; font-size: 12px; }
     .bilan-titre-ch { font-weight: bold; font-size: 13px; margin-bottom: 8px; }
     .bilan-aff-row td { color: #2471a3; }
-    .bilan-th-aff { color: #2471a3 !important; }
-    .bilan-aff-cell { color: #2471a3; }
+    .bilan-th-aff { background: #ddeaf8 !important; color: #2471a3 !important; }
+    .bilan-aff-cell { background: #eef4fc; color: #2471a3; }
     .bilan-group-hdr th { background: #f0f0f0; border-bottom: 1px solid #ddd; }
     .bilan-grp-sep { border-right: 2px solid #ddd; }
+    .bilan-sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
+    .bilan-sort-th:hover { background: #e6e6e6; }
+    .bilan-th-aff.bilan-sort-th:hover { background: #c8dcf0 !important; }
+    .bilan-sort-icon { font-size: 10px; color: #999; margin-left: 2px; }
+    .bilan-sort-th[data-bilan-col] .bilan-sort-icon { color: inherit; }
     .syn-sous-cell { padding-left: 12px !important; font-size: 12px; color: #555; }
     .syn-sous-indent { color: #ccc; margin-right: 6px; }
     .syn-sous-val { font-size: 12px; color: #888; }

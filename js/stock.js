@@ -225,6 +225,7 @@ const Stock = (() => {
   let _synTab        = 'profils';
   let _synProfilsTous = false;
   let _bilanChantier  = '';
+  let _bilanSort      = { col: 'chantier', dir: 'asc' };
   let _archivesTab    = 'profils';  // sous-onglet de l'onglet Archivées
   let _selectionIds   = new Set();  // IDs sélectionnés pour actions groupées
   let _recentsVuLe    = (() => {    // timestamp de dernière consultation des Récents
@@ -2002,51 +2003,79 @@ const Stock = (() => {
 
       // ── Vue d'ensemble tous chantiers ─────────────────────────────
       const nil = '<span class=bilan-nil>—</span>';
-      const rows = tousChantiers.map(ch => {
+      const adminBilan = Auth.hasRight('can_validate');
+
+      // Calcul des stats par chantier (nécessaire avant le tri)
+      const chData = tousChantiers.map(ch => {
         const chPa = pAff.filter(b => b.chantier_affectation === ch);
         const chPr = pArc.filter(b => b.chantier_affectation === ch);
         const chTa = tAff.filter(b => b.chantier_affectation === ch);
         const chTr = tArc.filter(b => b.chantier_affectation === ch);
-        const mlUtil  = chPr.reduce((s, b) => s + (b.longueur_m || 0), 0);
-        const mlAff   = chPa.reduce((s, b) => s + (b.longueur_m || 0), 0);
-        const pProf   = chPr.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
-        const pProfAff= chPa.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const mlUtil   = chPr.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const mlAff    = chPa.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const pProf    = chPr.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const pProfAff = chPa.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
         const surfUtil = chTr.reduce((s, b) => s + _surfTole(b), 0);
         const surfAff  = chTa.reduce((s, b) => s + _surfTole(b), 0);
         const pTole    = chTr.reduce((s, b) => s + _poidsTole(b), 0);
         const pToleAff = chTa.reduce((s, b) => s + _poidsTole(b), 0);
-        const poidsUtil  = pProf  + pTole;
+        const poidsUtil  = pProf + pTole;
         const poidsStock = pProfAff + pToleAff;
         const chObj = _chantiers.find(c => c.nom === ch);
-        const meta  = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
-        const adminBilan = Auth.hasRight('can_validate');
-        return `<tr class="${adminBilan ? 'bilan-ch-row' : ''}" ${adminBilan ? `data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail"` : ''}>
+        const meta = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
+        return { ch, mlUtil, mlAff, pProf, pProfAff, surfUtil, surfAff, pTole, pToleAff, poidsUtil, poidsStock, meta };
+      });
+
+      // Tri
+      const { col: sCol, dir: sDir } = _bilanSort;
+      chData.sort((a, b) => {
+        let cmp = 0;
+        if      (sCol === 'chantier')        cmp = a.ch.localeCompare(b.ch, 'fr', { numeric: true });
+        else if (sCol === 'ml-util')         cmp = a.mlUtil - b.mlUtil;
+        else if (sCol === 'poids-prof-util') cmp = a.pProf - b.pProf;
+        else if (sCol === 'ml-aff')          cmp = a.mlAff - b.mlAff;
+        else if (sCol === 'poids-prof-aff')  cmp = a.pProfAff - b.pProfAff;
+        else if (sCol === 'surf-util')       cmp = a.surfUtil - b.surfUtil;
+        else if (sCol === 'poids-tole-util') cmp = a.pTole - b.pTole;
+        else if (sCol === 'surf-aff')        cmp = a.surfAff - b.surfAff;
+        else if (sCol === 'poids-tole-aff')  cmp = a.pToleAff - b.pToleAff;
+        else if (sCol === 'poids-util')      cmp = a.poidsUtil - b.poidsUtil;
+        else if (sCol === 'poids-stock')     cmp = a.poidsStock - b.poidsStock;
+        else if (sCol === 'poids-tot')       cmp = (a.poidsUtil + a.poidsStock) - (b.poidsUtil + b.poidsStock);
+        return sDir === 'asc' ? cmp : -cmp;
+      });
+
+      const si = c => ` <span class="bilan-sort-icon">${c === sCol ? (sDir === 'asc' ? '▲' : '▼') : '⇅'}</span>`;
+
+      const rows = chData.map(({ ch, mlUtil, mlAff, pProf, pProfAff, surfUtil, surfAff, pTole, pToleAff, poidsUtil, poidsStock, meta }) =>
+        `<tr class="${adminBilan ? 'bilan-ch-row' : ''}" ${adminBilan ? `data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail"` : ''}>
           <td onclick="event.stopPropagation()" style="width:30px;text-align:center;padding:4px 6px">
             <input type="checkbox" class="bilan-ch-check" data-ch="${_e(ch)}">
           </td>
           <td>${meta ? `<span class="bilan-meta">${_e(meta)}</span><br>` : ''}<strong>${_e(ch)}</strong></td>
           <td class="r">${mlUtil  > 0 ? fmt(mlUtil)  + ' m'  : nil}</td>
-          <td class="r bilan-poids">${pProf   > 0 ? fmtT(pProf)   : nil}</td>
+          <td class="r bilan-poids">${pProf    > 0 ? fmtT(pProf)    : nil}</td>
           <td class="r bilan-aff-cell">${mlAff   > 0 ? fmt(mlAff)   + ' m'  : nil}</td>
           <td class="r bilan-aff-cell">${pProfAff> 0 ? fmtT(pProfAff) : nil}</td>
           <td class="r">${surfUtil > 0 ? fmt(surfUtil) + ' m²' : nil}</td>
-          <td class="r bilan-poids">${pTole   > 0 ? fmtT(pTole)   : nil}</td>
+          <td class="r bilan-poids">${pTole    > 0 ? fmtT(pTole)    : nil}</td>
           <td class="r bilan-aff-cell">${surfAff > 0 ? fmt(surfAff) + ' m²' : nil}</td>
           <td class="r bilan-aff-cell">${pToleAff> 0 ? fmtT(pToleAff) : nil}</td>
           <td class="r bilan-poids">${poidsUtil  > 0 ? fmtT(poidsUtil)  : nil}</td>
           <td class="r bilan-aff-cell">${poidsStock > 0 ? fmtT(poidsStock) : nil}</td>
           <td class="r"><strong>${fmtT(poidsUtil + poidsStock)}</strong></td>
-        </tr>`;
-      }).join('');
+        </tr>`
+      ).join('');
 
-      const totMlUtil  = pArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
-      const totMlAff   = pAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
-      const totPProf   = pArc.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
-      const totPProfAff= pAff.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
-      const totSurfUtil= tArc.reduce((s, b) => s + _surfTole(b), 0);
-      const totSurfAff = tAff.reduce((s, b) => s + _surfTole(b), 0);
-      const totPTole   = tArc.reduce((s, b) => s + _poidsTole(b), 0);
-      const totPToleAff= tAff.reduce((s, b) => s + _poidsTole(b), 0);
+      // Totaux globaux
+      const totMlUtil   = pArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const totMlAff    = pAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const totPProf    = pArc.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const totPProfAff = pAff.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const totSurfUtil = tArc.reduce((s, b) => s + _surfTole(b), 0);
+      const totSurfAff  = tAff.reduce((s, b) => s + _surfTole(b), 0);
+      const totPTole    = tArc.reduce((s, b) => s + _poidsTole(b), 0);
+      const totPToleAff = tAff.reduce((s, b) => s + _poidsTole(b), 0);
       const totPoidsUtil  = totPProf  + totPTole;
       const totPoidsStock = totPProfAff + totPToleAff;
       const totalRow = tousChantiers.length > 1 ? `<tr class="syn-total">
@@ -2080,7 +2109,7 @@ const Stock = (() => {
                 <th rowspan="2" style="width:30px;text-align:center;padding:4px">
                   <input type="checkbox" id="bilan-check-all" title="Tout sélectionner / désélectionner">
                 </th>
-                <th rowspan="2">Chantier</th>
+                <th rowspan="2" class="bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="chantier">Chantier${si('chantier')}</th>
                 <th colspan="2" class="r bilan-grp-sep">Profilés utilisés</th>
                 <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Profilés affectés</th>
                 <th colspan="2" class="r bilan-grp-sep">Tôles utilisées</th>
@@ -2088,13 +2117,17 @@ const Stock = (() => {
                 <th colspan="3" class="r">Total poids</th>
               </tr>
               <tr class="bilan-group-hdr">
-                <th class="r">ML</th><th class="r">Poids</th>
-                <th class="r bilan-th-aff">ML</th><th class="r bilan-th-aff bilan-grp-sep">Poids</th>
-                <th class="r">m²</th><th class="r">Poids</th>
-                <th class="r bilan-th-aff">m²</th><th class="r bilan-th-aff bilan-grp-sep">Poids</th>
-                <th class="r">Utilisé</th>
-                <th class="r bilan-th-aff">Stock</th>
-                <th class="r">Total</th>
+                <th class="r bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="ml-util">ML${si('ml-util')}</th>
+                <th class="r bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="poids-prof-util">Poids${si('poids-prof-util')}</th>
+                <th class="r bilan-th-aff bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="ml-aff">ML${si('ml-aff')}</th>
+                <th class="r bilan-th-aff bilan-sort-th bilan-grp-sep" data-syn-action="bilan-sort" data-bilan-col="poids-prof-aff">Poids${si('poids-prof-aff')}</th>
+                <th class="r bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="surf-util">m²${si('surf-util')}</th>
+                <th class="r bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="poids-tole-util">Poids${si('poids-tole-util')}</th>
+                <th class="r bilan-th-aff bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="surf-aff">m²${si('surf-aff')}</th>
+                <th class="r bilan-th-aff bilan-sort-th bilan-grp-sep" data-syn-action="bilan-sort" data-bilan-col="poids-tole-aff">Poids${si('poids-tole-aff')}</th>
+                <th class="r bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="poids-util">Utilisé${si('poids-util')}</th>
+                <th class="r bilan-th-aff bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="poids-stock">Stock${si('poids-stock')}</th>
+                <th class="r bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="poids-tot">Total${si('poids-tot')}</th>
               </tr>
             </thead>
             <tbody>
@@ -3243,6 +3276,17 @@ ${hasT ? `
         } else if (action === 'retour-bilan') {
           _bilanChantier = '';
           _rendreSynthese();
+        } else if (action === 'bilan-sort') {
+          const c = el.dataset.bilanCol;
+          if (c) {
+            if (_bilanSort.col === c) {
+              _bilanSort.dir = _bilanSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+              _bilanSort.col = c;
+              _bilanSort.dir = c === 'chantier' ? 'asc' : 'desc';
+            }
+            _rendreSynthese();
+          }
         }
     };
     if (zsyn) zsyn.addEventListener('click', _synHandler);
