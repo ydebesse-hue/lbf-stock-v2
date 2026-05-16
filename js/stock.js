@@ -2206,7 +2206,6 @@ const Stock = (() => {
                   </div>
                   <button type="button" class="th-filtre-btn${_bilanFiltreSet.size > 0 ? ' th-filtre-actif' : ''}"
                           data-filtre="bilan-chantier" data-syn-action="toggle-bilan-filtre"
-                          onclick="event.stopPropagation()"
                           >${_bilanFiltreSet.size === 0 ? 'Tous' : `${_bilanFiltreSet.size} chantier${_bilanFiltreSet.size > 1 ? 's' : ''}`}</button>
                 </th>
                 <th colspan="2" class="r bilan-grp-sep">Profilés utilisés</th>
@@ -3489,6 +3488,7 @@ ${hasT ? `
             _rendreSynthese();
           }
         } else if (action === 'toggle-bilan-filtre') {
+          e.stopPropagation();
           _ouvrirFiltrePanel('bilan-chantier', el, () => {
             _appliquerFiltreChBilan(zsyn);
             const btn = zsyn?.querySelector('.th-filtre-btn[data-filtre="bilan-chantier"]');
