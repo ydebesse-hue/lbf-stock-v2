@@ -1956,6 +1956,15 @@ const Stock = (() => {
             <table class="syn-table">
               <thead><tr><th>Désignation</th><th class="r">Util.</th><th class="r">ML util.</th><th class="r bilan-th-aff">Aff.</th><th class="r bilan-th-aff">ML aff.</th><th class="r">Total ML</th><th class="r">Poids</th></tr></thead>
               <tbody>${profilRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
+              <tfoot><tr class="syn-total">
+                <td>Total</td>
+                <td class="r">${chPArc.length}</td>
+                <td class="r">${fmt(mlArc)} m</td>
+                <td class="r bilan-th-aff">${chPAff.length}</td>
+                <td class="r bilan-th-aff">${fmt(mlAff)} m</td>
+                <td class="r"><strong>${fmt(mlAff + mlArc)} m</strong></td>
+                <td class="r bilan-poids">${fmtT(poidsP)}</td>
+              </tr></tfoot>
             </table>
           </div>` : ''}
           ${hasT ? `
@@ -1964,6 +1973,15 @@ const Stock = (() => {
             <table class="syn-table">
               <thead><tr><th>Épaisseur / Type</th><th class="r">Util.</th><th class="r">m² util.</th><th class="r bilan-th-aff">Aff.</th><th class="r bilan-th-aff">m² aff.</th><th class="r">Total m²</th><th class="r">Poids</th></tr></thead>
               <tbody>${toleRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
+              <tfoot><tr class="syn-total">
+                <td>Total</td>
+                <td class="r">${chTArc.length}</td>
+                <td class="r">${fmt(surfArc)} m²</td>
+                <td class="r bilan-th-aff">${chTAff.length}</td>
+                <td class="r bilan-th-aff">${fmt(surfAff)} m²</td>
+                <td class="r"><strong>${fmt(surfAff + surfArc)} m²</strong></td>
+                <td class="r bilan-poids">${fmtT(poidsT)}</td>
+              </tr></tfoot>
             </table>
           </div>` : ''}
           ${chutes.length ? `
