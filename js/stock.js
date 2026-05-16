@@ -1856,36 +1856,63 @@ const Stock = (() => {
         const chObj = _chantiers.find(c => c.nom === _bilanChantier);
         const titre = chObj ? [chObj.numero_affaire, chObj.ville, chObj.nom].filter(Boolean).join(' — ') : _bilanChantier;
 
-        // ── Tableau profilés (type → désignation) ─────────────────
+        // ── Tableau profilés (type → désignation → barres) ───────────
+        const nilD = '<span class=bilan-nil>—</span>';
         const parType = {};
         const accP = (list, sfx) => list.forEach(b => {
           const t = b.section_type || '?', d = b.designation || '?';
           if (!parType[t]) parType[t] = {};
-          if (!parType[t][d]) parType[t][d] = { nbAff:0, mlAff:0, poidsAff:0, nbArc:0, mlArc:0, poidsArc:0 };
-          parType[t][d][`nb${sfx}`]++;
+          if (!parType[t][d]) parType[t][d] = { mlAff:0, poidsAff:0, mlArc:0, poidsArc:0, barsAff:[], barsArc:[] };
           parType[t][d][`ml${sfx}`]    += b.longueur_m || 0;
           parType[t][d][`poids${sfx}`] += _poidsEffectifProfil(b);
+          parType[t][d][`bars${sfx}`].push(b);
         });
         accP(chPAff, 'Aff'); accP(chPArc, 'Arc');
 
         const profilRows = Object.entries(parType).sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([type, desigs]) => {
           const desigEntries = Object.entries(desigs).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
           const tot = desigEntries.reduce((a, [, d]) => {
-            a.nb += d.nbAff + d.nbArc; a.ml += d.mlAff + d.mlArc; a.poids += d.poidsAff + d.poidsArc; return a;
-          }, { nb: 0, ml: 0, poids: 0 });
-          return `<tr class="bilan-type-row">
-              <td colspan="7"><span class="syn-type-chip">${_e(type)}</span>
-                <span class="bilan-type-meta">${tot.nb} barre${tot.nb > 1 ? 's' : ''} &nbsp;·&nbsp; ${fmt(tot.ml)} m &nbsp;·&nbsp; ${fmtT(tot.poids)}</span>
-              </td></tr>` +
-            desigEntries.map(([desig, d]) => `<tr>
+            a.mlArc += d.mlArc; a.poidsArc += d.poidsArc;
+            a.mlAff += d.mlAff; a.poidsAff += d.poidsAff; return a;
+          }, { mlArc:0, poidsArc:0, mlAff:0, poidsAff:0 });
+
+          const desigRows = desigEntries.map(([desig, d]) => {
+            const barRows = [...d.barsArc, ...d.barsAff]
+              .sort((a, b) => a.id.localeCompare(b.id, 'fr', { numeric: true }))
+              .map(b => {
+                const isAff = b.statut !== 'archivee';
+                const ml = b.longueur_m || 0;
+                const po = _poidsEffectifProfil(b);
+                return `<tr class="bilan-bar-row${isAff ? ' bilan-bar-aff' : ''}">
+                  <td class="bilan-bar-cell"><span class="bilan-bar-id">${_e(b.id)}</span></td>
+                  <td class="r">${!isAff ? fmt(ml)+' m' : nilD}</td>
+                  <td class="r">${!isAff ? fmtT(po) : nilD}</td>
+                  <td class="r bilan-aff-cell">${isAff ? fmt(ml)+' m' : nilD}</td>
+                  <td class="r bilan-aff-cell">${isAff ? fmtT(po) : nilD}</td>
+                  <td class="r">${fmt(ml)} m</td>
+                  <td class="r bilan-poids">${fmtT(po)}</td>
+                </tr>`;
+              }).join('');
+            return `<tr class="bilan-desig-row">
               <td class="bilan-desig-cell"><span class="bilan-indent">└</span>${_e(desig)}</td>
-              <td class="r">${d.nbArc  || '<span class=bilan-nil>—</span>'}</td>
-              <td class="r">${d.mlArc  > 0 ? fmt(d.mlArc)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
-              <td class="r bilan-aff-cell">${d.nbAff  || '<span class=bilan-nil>—</span>'}</td>
-              <td class="r bilan-aff-cell">${d.mlAff  > 0 ? fmt(d.mlAff)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
+              <td class="r">${d.mlArc > 0 ? fmt(d.mlArc)+' m' : nilD}</td>
+              <td class="r">${d.poidsArc > 0 ? fmtT(d.poidsArc) : nilD}</td>
+              <td class="r bilan-aff-cell">${d.mlAff > 0 ? fmt(d.mlAff)+' m' : nilD}</td>
+              <td class="r bilan-aff-cell">${d.poidsAff > 0 ? fmtT(d.poidsAff) : nilD}</td>
               <td class="r"><strong>${fmt(d.mlAff + d.mlArc)} m</strong></td>
               <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
-            </tr>`).join('');
+            </tr>${barRows}`;
+          }).join('');
+
+          return `<tr class="bilan-type-row">
+            <td><span class="syn-type-chip">${_e(type)}</span></td>
+            <td class="r">${tot.mlArc > 0 ? fmt(tot.mlArc)+' m' : nilD}</td>
+            <td class="r">${tot.poidsArc > 0 ? fmtT(tot.poidsArc) : nilD}</td>
+            <td class="r bilan-aff-cell">${tot.mlAff > 0 ? fmt(tot.mlAff)+' m' : nilD}</td>
+            <td class="r bilan-aff-cell">${tot.poidsAff > 0 ? fmtT(tot.poidsAff) : nilD}</td>
+            <td class="r"><strong>${fmt(tot.mlAff + tot.mlArc)} m</strong></td>
+            <td class="r bilan-poids">${fmtT(tot.poidsAff + tot.poidsArc)}</td>
+          </tr>${desigRows}`;
         }).join('');
 
         // ── Tableau tôles (épaisseur → type_tole) ─────────────────
@@ -1962,14 +1989,26 @@ const Stock = (() => {
           <div class="syn-section-titre">Profilés</div>
           <div class="syn-card syn-card-tbl" style="margin-bottom:12px">
             <table class="syn-table">
-              <thead><tr><th>Désignation</th><th class="r">Util.</th><th class="r">ML util.</th><th class="r bilan-th-aff">Aff.</th><th class="r bilan-th-aff">ML aff.</th><th class="r">Total ML</th><th class="r">Poids</th></tr></thead>
+              <thead>
+                <tr class="bilan-group-hdr">
+                  <th rowspan="2">Désignation / ID</th>
+                  <th colspan="2" class="r bilan-grp-sep">Utilisés</th>
+                  <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Affectés (stock)</th>
+                  <th colspan="2" class="r">Total</th>
+                </tr>
+                <tr class="bilan-group-hdr">
+                  <th class="r">ML</th><th class="r bilan-grp-sep">Poids</th>
+                  <th class="r bilan-th-aff">ML</th><th class="r bilan-th-aff bilan-grp-sep">Poids</th>
+                  <th class="r">ML</th><th class="r">Poids</th>
+                </tr>
+              </thead>
               <tbody>${profilRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
               <tfoot><tr class="syn-total">
                 <td>Total</td>
-                <td class="r">${chPArc.length}</td>
                 <td class="r">${fmt(mlArc)} m</td>
-                <td class="r bilan-th-aff">${chPAff.length}</td>
+                <td class="r">${fmtT(poidsPArc)}</td>
                 <td class="r bilan-th-aff">${fmt(mlAff)} m</td>
+                <td class="r bilan-th-aff">${fmtT(poidsPAff)}</td>
                 <td class="r"><strong>${fmt(mlAff + mlArc)} m</strong></td>
                 <td class="r bilan-poids">${fmtT(poidsP)}</td>
               </tr></tfoot>
