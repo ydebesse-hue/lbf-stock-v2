@@ -222,10 +222,11 @@ const Stock = (() => {
   let _sectionActive = 'stock';  // 'stock' | 'admin'
   let _ongletAdmin   = 'stockage';
   let _onglet        = 'synthese';
-  let _synTab        = 'profils';
-  let _synProfilsTous = false;
-  let _bilanChantier  = '';
-  let _bilanSort      = { col: 'chantier', dir: 'asc' };
+  let _synTab          = 'profils';
+  let _synProfilsTous  = false;
+  let _bilanChantier   = '';
+  let _bilanSort       = { col: 'chantier', dir: 'asc' };
+  let _bilanNiveau     = 'desig'; // 'type' | 'desig' | 'barre'
   let _archivesTab    = 'profils';  // sous-onglet de l'onglet Archivées
   let _selectionIds   = new Set();  // IDs sélectionnés pour actions groupées
   let _recentsVuLe    = (() => {    // timestamp de dernière consultation des Récents
@@ -1915,29 +1916,48 @@ const Stock = (() => {
           </tr>${desigRows}`;
         }).join('');
 
-        // ── Tableau tôles (épaisseur → type_tole) ─────────────────
+        // ── Tableau tôles (épaisseur → type_tole → tôles individuelles) ─
         const parEp = {};
         const accT = (list, sfx) => list.forEach(b => {
           const ep = b.epaisseur_mm ?? '?', ty = b.type_tole || '?';
           const k  = `${ep}__${ty}`;
-          if (!parEp[k]) parEp[k] = { ep, ty, nbAff:0, surfAff:0, poidsAff:0, nbArc:0, surfArc:0, poidsArc:0 };
-          parEp[k][`nb${sfx}`]++;
+          if (!parEp[k]) parEp[k] = { ep, ty, surfAff:0, poidsAff:0, surfArc:0, poidsArc:0, barsAff:[], barsArc:[] };
           parEp[k][`surf${sfx}`]  += _surfTole(b);
           parEp[k][`poids${sfx}`] += _poidsTole(b);
+          parEp[k][`bars${sfx}`].push(b);
         });
         accT(chTAff, 'Aff'); accT(chTArc, 'Arc');
 
         const toleRows = Object.values(parEp)
-          .sort((a, b) => (a.ep - b.ep) || (a.ty).localeCompare(b.ty, 'fr'))
-          .map(d => `<tr>
-            <td><strong>${_e(String(d.ep))} mm</strong> &nbsp;${_badgeTypeTole(d.ty)}</td>
-            <td class="r">${d.nbArc  || '<span class=bilan-nil>—</span>'}</td>
-            <td class="r">${d.surfArc  > 0 ? fmt(d.surfArc)  + ' m²' : '<span class=bilan-nil>—</span>'}</td>
-            <td class="r bilan-aff-cell">${d.nbAff  || '<span class=bilan-nil>—</span>'}</td>
-            <td class="r bilan-aff-cell">${d.surfAff  > 0 ? fmt(d.surfAff)  + ' m²' : '<span class=bilan-nil>—</span>'}</td>
-            <td class="r"><strong>${fmt(d.surfAff + d.surfArc)} m²</strong></td>
-            <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
-          </tr>`).join('');
+          .sort((a, b) => (a.ep - b.ep) || a.ty.localeCompare(b.ty, 'fr'))
+          .map(d => {
+            const barRows = [...d.barsArc, ...d.barsAff]
+              .sort((a, b) => a.id.localeCompare(b.id, 'fr', { numeric: true }))
+              .map(b => {
+                const isAff = b.statut !== 'archivee';
+                const su = _surfTole(b);
+                const po = _poidsTole(b);
+                const dims = b.largeur_mm && b.longueur_mm ? `${b.largeur_mm}×${b.longueur_mm} mm` : '';
+                return `<tr class="bilan-bar-row${isAff ? ' bilan-bar-aff' : ''}">
+                  <td class="bilan-bar-cell"><span class="bilan-bar-id">${_e(b.id)}</span>${dims ? ` <span style="color:#aaa;font-size:10px">${dims}</span>` : ''}</td>
+                  <td class="r">${!isAff ? fmt(su)+' m²' : nilD}</td>
+                  <td class="r">${!isAff ? fmtT(po) : nilD}</td>
+                  <td class="r bilan-aff-cell">${isAff ? fmt(su)+' m²' : nilD}</td>
+                  <td class="r bilan-aff-cell">${isAff ? fmtT(po) : nilD}</td>
+                  <td class="r">${fmt(su)} m²</td>
+                  <td class="r bilan-poids">${fmtT(po)}</td>
+                </tr>`;
+              }).join('');
+            return `<tr class="bilan-desig-row">
+              <td><strong>${_e(String(d.ep))} mm</strong> &nbsp;${_badgeTypeTole(d.ty)}</td>
+              <td class="r">${d.surfArc > 0 ? fmt(d.surfArc)+' m²' : nilD}</td>
+              <td class="r">${d.poidsArc > 0 ? fmtT(d.poidsArc) : nilD}</td>
+              <td class="r bilan-aff-cell">${d.surfAff > 0 ? fmt(d.surfAff)+' m²' : nilD}</td>
+              <td class="r bilan-aff-cell">${d.poidsAff > 0 ? fmtT(d.poidsAff) : nilD}</td>
+              <td class="r"><strong>${fmt(d.surfAff + d.surfArc)} m²</strong></td>
+              <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
+            </tr>${barRows}`;
+          }).join('');
 
         const hasP = chPAff.length + chPArc.length > 0;
         const hasT = chTAff.length + chTArc.length > 0;
@@ -1986,9 +2006,14 @@ const Stock = (() => {
             </table>
           </div>
           ${hasP ? `
-          <div class="syn-section-titre">Profilés</div>
+          <div class="syn-section-titre" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            Profilés
+            <span class="bilan-niv-btns">
+              <span class="bilan-niv-btn${_bilanNiveau==='type'?' active':''}" data-syn-action="bilan-niveau" data-niveau="type">Groupes</span><span class="bilan-niv-btn${_bilanNiveau==='desig'?' active':''}" data-syn-action="bilan-niveau" data-niveau="desig">Désignations</span><span class="bilan-niv-btn${_bilanNiveau==='barre'?' active':''}" data-syn-action="bilan-niveau" data-niveau="barre">Barres</span>
+            </span>
+          </div>
           <div class="syn-card syn-card-tbl" style="margin-bottom:12px">
-            <table class="syn-table">
+            <table class="syn-table bilan-table-detail" data-niveau="${_bilanNiveau}">
               <thead>
                 <tr class="bilan-group-hdr">
                   <th rowspan="2">Désignation / ID</th>
@@ -2015,17 +2040,34 @@ const Stock = (() => {
             </table>
           </div>` : ''}
           ${hasT ? `
-          <div class="syn-section-titre">Tôles</div>
+          <div class="syn-section-titre" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            Tôles
+            <span class="bilan-niv-btns">
+              <span class="bilan-niv-btn${_bilanNiveau==='type'?' active':''}" data-syn-action="bilan-niveau" data-niveau="type">Groupes</span><span class="bilan-niv-btn${_bilanNiveau==='desig'?' active':''}" data-syn-action="bilan-niveau" data-niveau="desig">Épaisseurs</span><span class="bilan-niv-btn${_bilanNiveau==='barre'?' active':''}" data-syn-action="bilan-niveau" data-niveau="barre">Tôles</span>
+            </span>
+          </div>
           <div class="syn-card syn-card-tbl">
-            <table class="syn-table">
-              <thead><tr><th>Épaisseur / Type</th><th class="r">Util.</th><th class="r">m² util.</th><th class="r bilan-th-aff">Aff.</th><th class="r bilan-th-aff">m² aff.</th><th class="r">Total m²</th><th class="r">Poids</th></tr></thead>
+            <table class="syn-table bilan-table-detail" data-niveau="${_bilanNiveau}">
+              <thead>
+                <tr class="bilan-group-hdr">
+                  <th rowspan="2">Épaisseur / Type / ID</th>
+                  <th colspan="2" class="r bilan-grp-sep">Utilisées</th>
+                  <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Affectées (stock)</th>
+                  <th colspan="2" class="r">Total</th>
+                </tr>
+                <tr class="bilan-group-hdr">
+                  <th class="r">m²</th><th class="r bilan-grp-sep">Poids</th>
+                  <th class="r bilan-th-aff">m²</th><th class="r bilan-th-aff bilan-grp-sep">Poids</th>
+                  <th class="r">m²</th><th class="r">Poids</th>
+                </tr>
+              </thead>
               <tbody>${toleRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
               <tfoot><tr class="syn-total">
                 <td>Total</td>
-                <td class="r">${chTArc.length}</td>
                 <td class="r">${fmt(surfArc)} m²</td>
-                <td class="r bilan-th-aff">${chTAff.length}</td>
+                <td class="r">${fmtT(poidsTArc)}</td>
                 <td class="r bilan-th-aff">${fmt(surfAff)} m²</td>
+                <td class="r bilan-th-aff">${fmtT(poidsTAff)}</td>
                 <td class="r"><strong>${fmt(surfAff + surfArc)} m²</strong></td>
                 <td class="r bilan-poids">${fmtT(poidsT)}</td>
               </tr></tfoot>
@@ -3322,6 +3364,13 @@ ${hasT ? `
         } else if (action === 'retour-bilan') {
           _bilanChantier = '';
           _rendreSynthese();
+        } else if (action === 'bilan-niveau') {
+          const niv = el.dataset.niveau;
+          if (niv) {
+            _bilanNiveau = niv;
+            document.querySelectorAll('.bilan-table-detail').forEach(t => t.dataset.niveau = niv);
+            document.querySelectorAll('.bilan-niv-btn').forEach(b => b.classList.toggle('active', b.dataset.niveau === niv));
+          }
         } else if (action === 'bilan-sort') {
           const c = el.dataset.bilanCol;
           if (c) {

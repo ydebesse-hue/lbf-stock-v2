@@ -1664,6 +1664,16 @@
     .bilan-bar-cell { font-family: monospace; }
     .bilan-bar-id { background: #f0f0f0; border-radius: 3px; padding: 1px 5px; font-size: 11px; }
     .bilan-bar-aff .bilan-bar-id { background: #ddeaf8; }
+    /* Niveaux de détail */
+    .bilan-table-detail[data-niveau="type"] .bilan-desig-row,
+    .bilan-table-detail[data-niveau="type"] .bilan-bar-row { display: none; }
+    .bilan-table-detail[data-niveau="desig"] .bilan-bar-row { display: none; }
+    /* Boutons de niveau */
+    .bilan-niv-btns { display: inline-flex; border-radius: 3px; overflow: hidden; border: 1px solid #ccc; font-weight: normal; }
+    .bilan-niv-btn { padding: 2px 10px; font-size: 11px; cursor: pointer; background: #f5f5f5; color: #555; white-space: nowrap; }
+    .bilan-niv-btn + .bilan-niv-btn { border-left: 1px solid #ccc; }
+    .bilan-niv-btn:hover { background: #e8e8e8; }
+    .bilan-niv-btn.active { background: var(--noir); color: white; }
     .bilan-sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
     .bilan-sort-th:hover { background: #e6e6e6; }
     .bilan-th-aff.bilan-sort-th:hover { background: #c8dcf0 !important; }
