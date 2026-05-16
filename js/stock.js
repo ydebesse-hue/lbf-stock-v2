@@ -1677,15 +1677,6 @@ const Stock = (() => {
 
       const canEdit = Auth.hasRight('can_validate');
 
-      // Surface totale par épaisseur (toutes types confondus) — source de vérité pour alertes et bannière
-      const parEpTotal = {};
-      tolesActives.forEach(b => {
-        const ep = b.epaisseur_mm;
-        if (ep == null) return;
-        if (!parEpTotal[ep]) parEpTotal[ep] = 0;
-        parEpTotal[ep] += _surfaceTole(b) * (b.quantite || 1);
-      });
-
       // Grouper par type_tole → épaisseur
       const parType = {};
       tolesActives.forEach(b => {
@@ -1704,18 +1695,17 @@ const Stock = (() => {
 
       const rowsType = lignesType.map(([type, d]) => {
         const epsEntries = Object.entries(d.eps).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
-        const typeHasAlert = epsEntries.some(([ep]) => {
+        const typeHasAlert = epsEntries.some(([ep, sd]) => {
           const s = _seuils[ep] || 0;
-          return s > 0 && (parEpTotal[ep] || parEpTotal[parseFloat(ep)] || 0) < s;
+          return s > 0 && sd.surface < s;
         });
         const sousLignes = epsEntries.map(([ep, sd]) => {
-          const seuil      = _seuils[ep] || 0;
-          const surfTotale = parEpTotal[ep] || parEpTotal[parseFloat(ep)] || 0;
-          const alerte     = seuil > 0 && surfTotale < seuil;
+          const seuil  = _seuils[ep] || 0;
+          const alerte = seuil > 0 && sd.surface < seuil;
           const alertIcon = seuil > 0
             ? (alerte
-              ? `<span title="Stock total ${fmt(surfTotale)} m² — sous le seuil (${fmt(seuil)} m²)" style="color:#c0392b;font-weight:700;margin-left:4px">⚠</span>`
-              : `<span title="Stock total ${fmt(surfTotale)} m² — au-dessus du seuil (${fmt(seuil)} m²)" style="color:var(--vert);margin-left:4px">✓</span>`)
+              ? `<span title="Sous le seuil (${fmt(seuil)} m²)" style="color:#c0392b;font-weight:700;margin-left:4px">⚠</span>`
+              : `<span title="Au-dessus du seuil (${fmt(seuil)} m²)" style="color:var(--vert);margin-left:4px">✓</span>`)
             : '';
           const seuilInput = canEdit
             ? `<div style="margin-top:3px;white-space:nowrap">
@@ -1765,24 +1755,27 @@ const Stock = (() => {
         <td class="r">${fmtT(poidsTot)}</td>
       </tr>` : '';
 
-      // Bannière réappro — utilise parEpTotal (même source que les icônes ⚠/✓)
-      const basStock = Object.entries(parEpTotal)
-        .filter(([ep, surf]) => (_seuils[ep] || 0) > 0 && surf < (_seuils[ep] || 0))
-        .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+      // Bannière réappro — par combinaison type+épaisseur (chaque type est indépendant)
+      const basStock = [];
+      lignesType.forEach(([type, d]) => {
+        Object.entries(d.eps).forEach(([ep, sd]) => {
+          const seuil = _seuils[ep] || 0;
+          if (seuil > 0 && sd.surface < seuil) basStock.push({ type, ep, surface: sd.surface, seuil });
+        });
+      });
+      basStock.sort((a, b) => parseFloat(a.ep) - parseFloat(b.ep) || a.type.localeCompare(b.type, 'fr'));
       const reapproHtml = basStock.length ? `
         <div class="syn-reappro">
-          <div class="syn-reappro-titre">⚠ À réapprovisionner — ${basStock.length} épaisseur${basStock.length > 1 ? 's' : ''} sous le seuil</div>
+          <div class="syn-reappro-titre">⚠ À réapprovisionner — ${basStock.length} référence${basStock.length > 1 ? 's' : ''} sous le seuil</div>
           <table class="hist-table" style="margin:0">
-            <thead><tr><th>Épaisseur</th><th>Stock actuel</th><th>Seuil</th><th>Manquant</th></tr></thead>
-            <tbody>${basStock.map(([ep, surf]) => {
-              const seuil = _seuils[ep];
-              return `<tr>
+            <thead><tr><th>Type</th><th>Épaisseur</th><th>Stock actuel</th><th>Seuil</th><th>Manquant</th></tr></thead>
+            <tbody>${basStock.map(({ type, ep, surface, seuil }) => `<tr>
+                <td>${_badgeTypeTole(type)}</td>
                 <td><strong>${_e(String(ep))} mm</strong></td>
-                <td>${fmt(surf)} m²</td>
+                <td>${fmt(surface)} m²</td>
                 <td>${fmt(seuil)} m²</td>
-                <td style="color:#c0392b;font-weight:600">−${fmt(seuil - surf)} m²</td>
-              </tr>`;
-            }).join('')}</tbody>
+                <td style="color:#c0392b;font-weight:600">−${fmt(seuil - surface)} m²</td>
+              </tr>`).join('')}</tbody>
           </table>
         </div>` : '';
 
