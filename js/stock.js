@@ -2009,7 +2009,7 @@ const Stock = (() => {
           <div class="syn-section-titre" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             Profilés
             <span class="bilan-niv-btns">
-              <span class="bilan-niv-btn${_bilanNiveau==='type'?' active':''}" data-syn-action="bilan-niveau" data-niveau="type">Groupes</span><span class="bilan-niv-btn${_bilanNiveau==='desig'?' active':''}" data-syn-action="bilan-niveau" data-niveau="desig">Désignations</span><span class="bilan-niv-btn${_bilanNiveau==='barre'?' active':''}" data-syn-action="bilan-niveau" data-niveau="barre">Barres</span>
+              <span class="bilan-niv-btn${_bilanNiveau==='desig'?' active':''}" data-syn-action="bilan-niveau" data-niveau="desig">Désignations</span><span class="bilan-niv-btn${_bilanNiveau==='barre'?' active':''}" data-syn-action="bilan-niveau" data-niveau="barre">Barres</span>
             </span>
           </div>
           <div class="syn-card syn-card-tbl" style="margin-bottom:12px">
@@ -2043,7 +2043,7 @@ const Stock = (() => {
           <div class="syn-section-titre" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             Tôles
             <span class="bilan-niv-btns">
-              <span class="bilan-niv-btn${_bilanNiveau==='type'?' active':''}" data-syn-action="bilan-niveau" data-niveau="type">Groupes</span><span class="bilan-niv-btn${_bilanNiveau==='desig'?' active':''}" data-syn-action="bilan-niveau" data-niveau="desig">Épaisseurs</span><span class="bilan-niv-btn${_bilanNiveau==='barre'?' active':''}" data-syn-action="bilan-niveau" data-niveau="barre">Tôles</span>
+              <span class="bilan-niv-btn${_bilanNiveau==='desig'?' active':''}" data-syn-action="bilan-niveau" data-niveau="desig">Épaisseurs</span><span class="bilan-niv-btn${_bilanNiveau==='barre'?' active':''}" data-syn-action="bilan-niveau" data-niveau="barre">Tôles</span>
             </span>
           </div>
           <div class="syn-card syn-card-tbl">
@@ -2452,85 +2452,84 @@ const Stock = (() => {
   function _imprimerBilanChantiers(chantiersList) {
     if (!chantiersList || !chantiersList.length) return;
 
-    const barres  = _data.barres || [];
-    const profils = barres.filter(b => b.categorie === 'profil');
-    const toles   = barres.filter(b => b.categorie === 'tole');
-    const surfTole = b => _surfaceTole(b) * (b.quantite || 1);
+    const barres    = _data.barres || [];
+    const profils   = barres.filter(b => b.categorie === 'profil');
+    const toles     = barres.filter(b => b.categorie === 'tole');
+    const surfTole  = b => _surfaceTole(b) * (b.quantite || 1);
     const poidsTole = b => b.poids_total_kg || 0;
-
-    const f2  = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
-    const fP  = v => !v ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + ' t';
+    const f2   = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+    const fP   = v => !v ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + ' t';
+    const nilD = '—';
     const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-    // Construire une section de détail par chantier
     const sections = chantiersList.map((ch, idx) => {
       const chObj  = _chantiers.find(c => c.nom === ch);
       const titre  = chObj ? [chObj.numero_affaire, chObj.ville, chObj.nom].filter(Boolean).join(' — ') : ch;
 
-      const pAff = profils.filter(b => b.statut === 'valide'   && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
-      const pArc = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation === ch);
-      const tAff = toles.filter(b   => b.statut === 'valide'   && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
-      const tArc = toles.filter(b   => b.statut === 'archivee' && b.chantier_affectation === ch);
+      const pUtil = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation === ch);
+      const pAff  = profils.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
+      const tUtil = toles.filter(b   => b.statut === 'archivee' && b.chantier_affectation === ch);
+      const tAff  = toles.filter(b   => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
 
-      const mlAff  = pAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
-      const mlArc  = pArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
-      const sAff   = tAff.reduce((s, b) => s + surfTole(b), 0);
-      const sArc   = tArc.reduce((s, b) => s + surfTole(b), 0);
-      const poidsP = [...pAff, ...pArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0);
-      const poidsT = [...tAff, ...tArc].reduce((s, b) => s + poidsTole(b), 0);
-      const hasP   = pAff.length + pArc.length > 0;
-      const hasT   = tAff.length + tArc.length > 0;
+      const mlUtil     = pUtil.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const mlAff      = pAff.reduce((s,  b) => s + (b.longueur_m || 0), 0);
+      const surfUtil   = tUtil.reduce((s, b) => s + surfTole(b), 0);
+      const surfAff    = tAff.reduce((s,  b) => s + surfTole(b), 0);
+      const poidsPUtil = pUtil.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const poidsPAff  = pAff.reduce((s,  b) => s + _poidsEffectifProfil(b), 0);
+      const poidsTUtil = tUtil.reduce((s, b) => s + poidsTole(b), 0);
+      const poidsTAff  = tAff.reduce((s,  b) => s + poidsTole(b), 0);
+      const hasP = pUtil.length + pAff.length > 0;
+      const hasT = tUtil.length + tAff.length > 0;
 
       // Profilés par type → désignation
       const parType = {};
       const accP = (list, sfx) => list.forEach(b => {
         const t = b.section_type || '?', d = b.designation || '?';
         if (!parType[t]) parType[t] = {};
-        if (!parType[t][d]) parType[t][d] = { nbAff:0, mlAff:0, poidsAff:0, nbArc:0, mlArc:0, poidsArc:0 };
-        parType[t][d][`nb${sfx}`]++;
+        if (!parType[t][d]) parType[t][d] = { mlUtil:0, poidsUtil:0, mlAff:0, poidsAff:0 };
         parType[t][d][`ml${sfx}`]    += b.longueur_m || 0;
         parType[t][d][`poids${sfx}`] += _poidsEffectifProfil(b);
       });
-      accP(pAff, 'Aff'); accP(pArc, 'Arc');
+      accP(pUtil, 'Util'); accP(pAff, 'Aff');
 
       const profilRows = Object.entries(parType).sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([type, desigs]) => {
-        const de = Object.entries(desigs).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
-        const tot = de.reduce((a, [, d]) => { a.nb += d.nbAff+d.nbArc; a.ml += d.mlAff+d.mlArc; a.p += d.poidsAff+d.poidsArc; return a; }, {nb:0,ml:0,p:0});
+        const de  = Object.entries(desigs).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
+        const tot = de.reduce((a, [, d]) => { a.mlU += d.mlUtil; a.pU += d.poidsUtil; a.mlA += d.mlAff; a.pA += d.poidsAff; return a; }, {mlU:0,pU:0,mlA:0,pA:0});
         return `<tr style="background:#f5f5f5;font-weight:bold">
             <td colspan="7" style="padding:5px 8px">${_e(type)}
-              <span style="font-weight:normal;color:#888;font-size:10px;margin-left:6px">${tot.nb} barre${tot.nb>1?'s':''} · ${f2(tot.ml)} m · ${fP(tot.p)}</span>
+              <span style="font-weight:normal;color:#888;font-size:10px;margin-left:6px">${f2(tot.mlU+tot.mlA)} m · ${fP(tot.pU+tot.pA)}</span>
             </td></tr>` +
           de.map(([desig, d]) => `<tr>
             <td style="padding:3px 8px 3px 20px;font-size:11px;color:#555">└ ${_e(desig)}</td>
-            <td style="text-align:right;padding:3px 6px">${d.nbAff||'—'}</td>
-            <td style="text-align:right;padding:3px 6px">${d.mlAff>0?f2(d.mlAff)+' m':'—'}</td>
-            <td style="text-align:right;padding:3px 6px">${d.nbArc||'—'}</td>
-            <td style="text-align:right;padding:3px 6px">${d.mlArc>0?f2(d.mlArc)+' m':'—'}</td>
-            <td style="text-align:right;padding:3px 6px;font-weight:bold">${f2(d.mlAff+d.mlArc)} m</td>
-            <td style="text-align:right;padding:3px 6px;color:#888">${fP(d.poidsAff+d.poidsArc)}</td>
+            <td style="text-align:right;padding:3px 6px">${d.mlUtil>0?f2(d.mlUtil)+' m':nilD}</td>
+            <td style="text-align:right;padding:3px 6px;color:#888">${fP(d.poidsUtil)}</td>
+            <td style="text-align:right;padding:3px 6px;color:#2471a3">${d.mlAff>0?f2(d.mlAff)+' m':nilD}</td>
+            <td style="text-align:right;padding:3px 6px;color:#2471a3">${fP(d.poidsAff)}</td>
+            <td style="text-align:right;padding:3px 6px;font-weight:bold">${f2(d.mlUtil+d.mlAff)} m</td>
+            <td style="text-align:right;padding:3px 6px;color:#888">${fP(d.poidsUtil+d.poidsAff)}</td>
           </tr>`).join('');
       }).join('');
 
-      // Tôles par épaisseur / type
+      // Tôles par épaisseur → type_tole
       const parEp = {};
       const accT = (list, sfx) => list.forEach(b => {
-        const k = `${b.epaisseur_mm}__${b.type_tole||'?'}`;
-        if (!parEp[k]) parEp[k] = { ep: b.epaisseur_mm, ty: b.type_tole||'?', nbAff:0, sAff:0, pAff:0, nbArc:0, sArc:0, pArc:0 };
-        parEp[k][`nb${sfx}`]++;
-        parEp[k][`s${sfx}`] += surfTole(b);
-        parEp[k][`p${sfx}`] += poidsTole(b);
+        const k = `${b.epaisseur_mm??'?'}__${b.type_tole||'?'}`;
+        if (!parEp[k]) parEp[k] = { ep: b.epaisseur_mm, ty: b.type_tole||'?', surfUtil:0, poidsUtil:0, surfAff:0, poidsAff:0 };
+        parEp[k][`surf${sfx}`]  += surfTole(b);
+        parEp[k][`poids${sfx}`] += poidsTole(b);
       });
-      accT(tAff, 'Aff'); accT(tArc, 'Arc');
+      accT(tUtil, 'Util'); accT(tAff, 'Aff');
 
       const toleRows = Object.values(parEp).sort((a, b) => a.ep - b.ep || a.ty.localeCompare(b.ty,'fr'))
         .map(d => `<tr>
           <td style="padding:3px 8px;font-size:11px"><strong>${_e(String(d.ep))} mm</strong> ${_e(d.ty)}</td>
-          <td style="text-align:right;padding:3px 6px">${d.nbAff||'—'}</td>
-          <td style="text-align:right;padding:3px 6px">${d.sAff>0?f2(d.sAff)+' m²':'—'}</td>
-          <td style="text-align:right;padding:3px 6px">${d.nbArc||'—'}</td>
-          <td style="text-align:right;padding:3px 6px">${d.sArc>0?f2(d.sArc)+' m²':'—'}</td>
-          <td style="text-align:right;padding:3px 6px;font-weight:bold">${f2(d.sAff+d.sArc)} m²</td>
-          <td style="text-align:right;padding:3px 6px;color:#888">${fP(d.pAff+d.pArc)}</td>
+          <td style="text-align:right;padding:3px 6px">${d.surfUtil>0?f2(d.surfUtil)+' m²':nilD}</td>
+          <td style="text-align:right;padding:3px 6px;color:#888">${fP(d.poidsUtil)}</td>
+          <td style="text-align:right;padding:3px 6px;color:#2471a3">${d.surfAff>0?f2(d.surfAff)+' m²':nilD}</td>
+          <td style="text-align:right;padding:3px 6px;color:#2471a3">${fP(d.poidsAff)}</td>
+          <td style="text-align:right;padding:3px 6px;font-weight:bold">${f2(d.surfUtil+d.surfAff)} m²</td>
+          <td style="text-align:right;padding:3px 6px;color:#888">${fP(d.poidsUtil+d.poidsAff)}</td>
         </tr>`).join('');
 
       const pageBreak = idx > 0 ? 'page-break-before:always;' : '';
@@ -2538,26 +2537,44 @@ const Stock = (() => {
         <div style="${pageBreak}padding-top:${idx>0?'16px':'0'}">
           <h2 style="font-size:14px;font-weight:bold;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px">${_e(titre)}</h2>
           <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px">
-            <thead><tr style="background:#f0f0f0">
-              <th style="padding:4px 8px;text-align:left;border:1px solid #ddd">Catégorie</th>
-              <th style="padding:4px 8px;text-align:right;border:1px solid #ddd">Qté</th>
-              <th style="padding:4px 8px;text-align:right;border:1px solid #ddd">Métrage / Surface</th>
-              <th style="padding:4px 8px;text-align:right;border:1px solid #ddd">Poids</th>
-            </tr></thead>
+            <thead>
+              <tr style="background:#f0f0f0">
+                <th style="padding:4px 8px;text-align:left;border:1px solid #ddd" rowspan="2">Catégorie</th>
+                <th style="padding:4px 8px;text-align:center;border:1px solid #ddd" colspan="2">Utilisés</th>
+                <th style="padding:4px 8px;text-align:center;border:1px solid #ddd;background:#ddeaf8;color:#2471a3" colspan="2">Affectés (stock)</th>
+                <th style="padding:4px 8px;text-align:right;border:1px solid #ddd" rowspan="2">Total poids</th>
+              </tr>
+              <tr style="background:#f0f0f0">
+                <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal">Métrage</th>
+                <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal">Poids</th>
+                <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal;background:#eef4fc;color:#2471a3">Métrage</th>
+                <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal;background:#eef4fc;color:#2471a3">Poids</th>
+              </tr>
+            </thead>
             <tbody>
-              ${hasP ? `
-              <tr><td style="padding:3px 8px;border:1px solid #eee">Profilés affectés</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${pAff.length}</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(mlAff)} m</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td></tr>
-              <tr><td style="padding:3px 8px;border:1px solid #eee">Profilés archivés</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${pArc.length}</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(mlArc)} m</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td></tr>
-              ` : ''}
-              ${hasT ? `
-              <tr><td style="padding:3px 8px;border:1px solid #eee">Tôles affectées</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${tAff.length}</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(sAff)} m²</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td></tr>
-              <tr><td style="padding:3px 8px;border:1px solid #eee">Tôles archivées</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${tArc.length}</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(sArc)} m²</td><td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td></tr>
-              ` : ''}
+              ${hasP ? `<tr>
+                <td style="padding:3px 8px;border:1px solid #eee">Profilés</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(mlUtil)} m</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee">${fP(poidsPUtil)}</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee;color:#2471a3">${mlAff>0?f2(mlAff)+' m':nilD}</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee;color:#2471a3">${fP(poidsPAff)}</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td>
+              </tr>` : ''}
+              ${hasT ? `<tr>
+                <td style="padding:3px 8px;border:1px solid #eee">Tôles</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee">${f2(surfUtil)} m²</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee">${fP(poidsTUtil)}</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee;color:#2471a3">${surfAff>0?f2(surfAff)+' m²':nilD}</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee;color:#2471a3">${fP(poidsTAff)}</td>
+                <td style="text-align:right;padding:3px 8px;border:1px solid #eee"></td>
+              </tr>` : ''}
               <tr style="font-weight:bold;background:#f9f9f9">
-                <td style="padding:4px 8px;border:1px solid #ddd">Poids total engagé</td>
-                <td style="text-align:right;padding:4px 8px;border:1px solid #ddd">${pAff.length+pArc.length+tAff.length+tArc.length}</td>
+                <td style="padding:4px 8px;border:1px solid #ddd">Total poids engagé</td>
                 <td style="padding:4px 8px;border:1px solid #ddd"></td>
-                <td style="text-align:right;padding:4px 8px;border:1px solid #ddd">${fP(poidsP+poidsT)}</td>
+                <td style="text-align:right;padding:4px 8px;border:1px solid #ddd">${fP(poidsPUtil+poidsTUtil)}</td>
+                <td style="padding:4px 8px;border:1px solid #ddd"></td>
+                <td style="text-align:right;padding:4px 8px;border:1px solid #ddd;color:#2471a3">${fP(poidsPAff+poidsTAff)}</td>
+                <td style="text-align:right;padding:4px 8px;border:1px solid #ddd">${fP(poidsPUtil+poidsTUtil+poidsPAff+poidsTAff)}</td>
               </tr>
             </tbody>
           </table>
@@ -2565,13 +2582,13 @@ const Stock = (() => {
           <div style="font-size:11px;font-weight:bold;margin:8px 0 4px;color:#444;text-transform:uppercase;letter-spacing:.5px">Profilés</div>
           <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px">
             <thead><tr style="background:#f0f0f0">
-              <th style="padding:4px 8px;text-align:left;border:1px solid #ddd">Désignation</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Aff.</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">ML aff.</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Arch.</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">ML arch.</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #ddd">Type / Désignation</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Util. ML</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Util. Poids</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd;background:#ddeaf8;color:#2471a3">Aff. ML</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd;background:#ddeaf8;color:#2471a3">Aff. Poids</th>
               <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Total ML</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Poids</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Total Poids</th>
             </tr></thead>
             <tbody>${profilRows||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:6px">—</td></tr>'}</tbody>
           </table>` : ''}
@@ -2580,12 +2597,12 @@ const Stock = (() => {
           <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px">
             <thead><tr style="background:#f0f0f0">
               <th style="padding:4px 8px;text-align:left;border:1px solid #ddd">Épaisseur / Type</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Aff.</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">m² aff.</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Arch.</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">m² arch.</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Util. m²</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Util. Poids</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd;background:#ddeaf8;color:#2471a3">Aff. m²</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd;background:#ddeaf8;color:#2471a3">Aff. Poids</th>
               <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Total m²</th>
-              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Poids</th>
+              <th style="padding:4px 6px;text-align:right;border:1px solid #ddd">Total Poids</th>
             </tr></thead>
             <tbody>${toleRows||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:6px">—</td></tr>'}</tbody>
           </table>` : ''}
@@ -2593,26 +2610,39 @@ const Stock = (() => {
         </div>`;
     }).join('<hr style="border:none;border-top:1px solid #ccc;margin:20px 0">');
 
-    // Table de synthèse en tête de document
+    // Table de synthèse multi-chantiers
     const summaryRows = chantiersList.map(ch => {
       const chObj = _chantiers.find(c => c.nom === ch);
       const meta  = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
-      const pA = profils.filter(b => b.statut === 'valide'   && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
-      const pR = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation === ch);
-      const tA = toles.filter(b   => b.statut === 'valide'   && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
-      const tR = toles.filter(b   => b.statut === 'archivee' && b.chantier_affectation === ch);
-      const ml   = [...pA, ...pR].reduce((s, b) => s + (b.longueur_m || 0), 0);
-      const surf = [...tA, ...tR].reduce((s, b) => s + surfTole(b), 0);
-      const p    = [...pA, ...pR].reduce((s, b) => s + _poidsEffectifProfil(b), 0) + [...tA, ...tR].reduce((s, b) => s + poidsTole(b), 0);
+      const pU = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation === ch);
+      const pA = profils.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
+      const tU = toles.filter(b   => b.statut === 'archivee' && b.chantier_affectation === ch);
+      const tA = toles.filter(b   => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
+      const mlU  = pU.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const mlA  = pA.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const sU   = tU.reduce((s, b) => s + surfTole(b), 0);
+      const sA   = tA.reduce((s, b) => s + surfTole(b), 0);
+      const ppU  = pU.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const ppA  = pA.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const ptU  = tU.reduce((s, b) => s + poidsTole(b), 0);
+      const ptA  = tA.reduce((s, b) => s + poidsTole(b), 0);
       return `<tr>
         <td style="padding:4px 8px;border:1px solid #eee">${meta?`<span style="font-size:10px;color:#999">${_e(meta)}</span> `:''}${_e(ch)}</td>
-        <td style="text-align:right;padding:4px 8px;border:1px solid #eee">${ml>0?f2(ml)+' m':'—'}</td>
-        <td style="text-align:right;padding:4px 8px;border:1px solid #eee">${surf>0?f2(surf)+' m²':'—'}</td>
-        <td style="text-align:right;padding:4px 8px;border:1px solid #eee">${fP(p)}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee">${mlU>0?f2(mlU)+' m':nilD}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee">${fP(ppU)}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee;color:#2471a3">${mlA>0?f2(mlA)+' m':nilD}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee;color:#2471a3">${fP(ppA)}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee">${sU>0?f2(sU)+' m²':nilD}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee">${fP(ptU)}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee;color:#2471a3">${sA>0?f2(sA)+' m²':nilD}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee;color:#2471a3">${fP(ptA)}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee">${fP(ppU+ptU)}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee;color:#2471a3">${fP(ppA+ptA)}</td>
+        <td style="text-align:right;padding:4px 6px;border:1px solid #eee;font-weight:bold">${fP(ppU+ppA+ptU+ptA)}</td>
       </tr>`;
     }).join('');
 
-    const titre = chantiersList.length === 1
+    const titreDoc = chantiersList.length === 1
       ? (() => { const c = _chantiers.find(x => x.nom === chantiersList[0]); return c ? [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ') : chantiersList[0]; })()
       : `${chantiersList.length} chantiers`;
 
@@ -2622,7 +2652,7 @@ const Stock = (() => {
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Arial,sans-serif;font-size:12px;color:#222;padding:20px 28px}
   .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px}
-  @media print{body{padding:10px 16px}@page{margin:1cm}}
+  @media print{body{padding:10px 16px}@page{size:landscape;margin:1cm}}
 </style></head><body>
 <div class="hdr">
   <div><div style="font-size:18px;font-weight:bold;letter-spacing:2px">LBF</div>
@@ -2633,12 +2663,33 @@ const Stock = (() => {
 ${chantiersList.length > 1 ? `
 <h2 style="font-size:13px;font-weight:bold;margin:0 0 8px;border-bottom:1px solid #ddd;padding-bottom:3px">Synthèse — ${chantiersList.length} chantiers</h2>
 <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:11px">
-  <thead><tr style="background:#f0f0f0">
-    <th style="padding:5px 8px;text-align:left;border:1px solid #ddd">Chantier</th>
-    <th style="padding:5px 8px;text-align:right;border:1px solid #ddd">Profilés (ML)</th>
-    <th style="padding:5px 8px;text-align:right;border:1px solid #ddd">Tôles (m²)</th>
-    <th style="padding:5px 8px;text-align:right;border:1px solid #ddd">Poids</th>
-  </tr></thead>
+  <thead>
+    <tr style="background:#f0f0f0">
+      <th style="padding:5px 8px;text-align:left;border:1px solid #ddd" rowspan="3">Chantier</th>
+      <th style="padding:5px 6px;text-align:center;border:1px solid #ddd" colspan="4">Profilés</th>
+      <th style="padding:5px 6px;text-align:center;border:1px solid #ddd" colspan="4">Tôles</th>
+      <th style="padding:5px 6px;text-align:center;border:1px solid #ddd" colspan="3">Total poids</th>
+    </tr>
+    <tr style="background:#f0f0f0">
+      <th style="padding:3px 6px;text-align:center;border:1px solid #ddd" colspan="2">Utilisés</th>
+      <th style="padding:3px 6px;text-align:center;border:1px solid #ddd;background:#ddeaf8;color:#2471a3" colspan="2">Affectés (stock)</th>
+      <th style="padding:3px 6px;text-align:center;border:1px solid #ddd" colspan="2">Utilisées</th>
+      <th style="padding:3px 6px;text-align:center;border:1px solid #ddd;background:#ddeaf8;color:#2471a3" colspan="2">Affectées (stock)</th>
+      <th style="padding:3px 6px;text-align:center;border:1px solid #ddd" rowspan="2">Utilisé</th>
+      <th style="padding:3px 6px;text-align:center;border:1px solid #ddd;background:#ddeaf8;color:#2471a3" rowspan="2">Stock</th>
+      <th style="padding:3px 6px;text-align:center;border:1px solid #ddd" rowspan="2">Total</th>
+    </tr>
+    <tr style="background:#f0f0f0">
+      <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal">ML</th>
+      <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal">Poids</th>
+      <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal;background:#eef4fc;color:#2471a3">ML</th>
+      <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal;background:#eef4fc;color:#2471a3">Poids</th>
+      <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal">m²</th>
+      <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal">Poids</th>
+      <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal;background:#eef4fc;color:#2471a3">m²</th>
+      <th style="padding:3px 6px;text-align:right;border:1px solid #ddd;font-weight:normal;background:#eef4fc;color:#2471a3">Poids</th>
+    </tr>
+  </thead>
   <tbody>${summaryRows}</tbody>
 </table>
 <h2 style="font-size:13px;font-weight:bold;margin:0 0 12px;border-bottom:1px solid #ddd;padding-bottom:3px">Détail par chantier</h2>
@@ -2657,92 +2708,91 @@ ${sections}
   function _exporterBilanPDF() {
     if (!_bilanChantier) return;
 
-    const barres = _data.barres;
-    const profils = barres.filter(b => b.categorie === 'profil');
-    const pAff = profils.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation === _bilanChantier);
-    const pArc = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation === _bilanChantier);
-    const toles = barres.filter(b => b.categorie === 'tole');
-    const tAff = toles.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation === _bilanChantier);
-    const tArc = toles.filter(b => b.statut === 'archivee' && b.chantier_affectation === _bilanChantier);
-
-    const surfTole = b => _surfaceTole(b) * (b.quantite || 1);
+    const barres    = _data.barres;
+    const profils   = barres.filter(b => b.categorie === 'profil');
+    const toles     = barres.filter(b => b.categorie === 'tole');
+    const surfTole  = b => _surfaceTole(b) * (b.quantite || 1);
     const poidsTole = b => b.poids_total_kg || 0;
-    const fmt2 = v => v == null ? '—' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
-    const fmtP = v => v == null || v === 0 ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + ' t';
+    const f2   = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+    const fP   = v => !v ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + ' t';
+    const nilD = '—';
 
-    const chObj = _chantiers.find(c => c.nom === _bilanChantier);
-    const titre = chObj ? [chObj.numero_affaire, chObj.ville, chObj.nom].filter(Boolean).join(' — ') : _bilanChantier;
+    const ch    = _bilanChantier;
+    const chObj = _chantiers.find(c => c.nom === ch);
+    const titre = chObj ? [chObj.numero_affaire, chObj.ville, chObj.nom].filter(Boolean).join(' — ') : ch;
 
-    const mlAff   = pAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
-    const mlArc   = pArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
-    const surfAff = tAff.reduce((s, b) => s + surfTole(b), 0);
-    const surfArc = tArc.reduce((s, b) => s + surfTole(b), 0);
-    const poidsP  = [...pAff, ...pArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0);
-    const poidsT  = [...tAff, ...tArc].reduce((s, b) => s + poidsTole(b), 0);
-    const hasP    = pAff.length + pArc.length > 0;
-    const hasT    = tAff.length + tArc.length > 0;
+    const pUtil = profils.filter(b => b.statut === 'archivee' && b.chantier_affectation === ch);
+    const pAff  = profils.filter(b => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
+    const tUtil = toles.filter(b   => b.statut === 'archivee' && b.chantier_affectation === ch);
+    const tAff  = toles.filter(b   => b.statut === 'valide' && b.disponibilite === 'affecte' && b.chantier_affectation === ch);
+
+    const mlUtil     = pUtil.reduce((s, b) => s + (b.longueur_m || 0), 0);
+    const mlAff      = pAff.reduce((s,  b) => s + (b.longueur_m || 0), 0);
+    const surfUtil   = tUtil.reduce((s, b) => s + surfTole(b), 0);
+    const surfAff    = tAff.reduce((s,  b) => s + surfTole(b), 0);
+    const poidsPUtil = pUtil.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+    const poidsPAff  = pAff.reduce((s,  b) => s + _poidsEffectifProfil(b), 0);
+    const poidsTUtil = tUtil.reduce((s, b) => s + poidsTole(b), 0);
+    const poidsTAff  = tAff.reduce((s,  b) => s + poidsTole(b), 0);
+    const hasP = pUtil.length + pAff.length > 0;
+    const hasT = tUtil.length + tAff.length > 0;
 
     // Profilés par type → désignation
     const parType = {};
     const accP = (list, sfx) => list.forEach(b => {
       const t = b.section_type || '?', d = b.designation || '?';
       if (!parType[t]) parType[t] = {};
-      if (!parType[t][d]) parType[t][d] = { nbAff:0, mlAff:0, poidsAff:0, nbArc:0, mlArc:0, poidsArc:0 };
-      parType[t][d][`nb${sfx}`]++;
+      if (!parType[t][d]) parType[t][d] = { mlUtil:0, poidsUtil:0, mlAff:0, poidsAff:0 };
       parType[t][d][`ml${sfx}`]    += b.longueur_m || 0;
       parType[t][d][`poids${sfx}`] += _poidsEffectifProfil(b);
     });
-    accP(pAff, 'Aff'); accP(pArc, 'Arc');
+    accP(pUtil, 'Util'); accP(pAff, 'Aff');
 
     const profilRowsHtml = Object.entries(parType).sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([type, desigs]) => {
-      const desigEntries = Object.entries(desigs).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
-      const tot = desigEntries.reduce((a, [, d]) => {
-        a.nb += d.nbAff + d.nbArc; a.ml += d.mlAff + d.mlArc; a.poids += d.poidsAff + d.poidsArc; return a;
-      }, { nb: 0, ml: 0, poids: 0 });
+      const de  = Object.entries(desigs).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
+      const tot = de.reduce((a, [, d]) => { a.mlU += d.mlUtil; a.pU += d.poidsUtil; a.mlA += d.mlAff; a.pA += d.poidsAff; return a; }, {mlU:0,pU:0,mlA:0,pA:0});
       return `<tr style="background:#f5f5f5;font-weight:bold">
           <td colspan="7" style="padding:5px 8px">${_e(type)}
-            <span style="font-weight:normal;color:#888;font-size:11px;margin-left:8px">${tot.nb} barre${tot.nb>1?'s':''} · ${fmt2(tot.ml)} m · ${fmtP(tot.poids)}</span>
+            <span style="font-weight:normal;color:#888;font-size:11px;margin-left:8px">${f2(tot.mlU+tot.mlA)} m · ${fP(tot.pU+tot.pA)}</span>
           </td></tr>` +
-        desigEntries.map(([desig, d]) => `<tr>
+        de.map(([desig, d]) => `<tr>
           <td style="padding:4px 8px 4px 20px;font-size:12px;color:#555">└ ${_e(desig)}</td>
-          <td style="text-align:right;padding:4px 8px">${d.nbAff || '—'}</td>
-          <td style="text-align:right;padding:4px 8px">${d.mlAff > 0 ? fmt2(d.mlAff)+' m' : '—'}</td>
-          <td style="text-align:right;padding:4px 8px">${d.nbArc || '—'}</td>
-          <td style="text-align:right;padding:4px 8px">${d.mlArc > 0 ? fmt2(d.mlArc)+' m' : '—'}</td>
-          <td style="text-align:right;padding:4px 8px;font-weight:bold">${fmt2(d.mlAff + d.mlArc)} m</td>
-          <td style="text-align:right;padding:4px 8px;color:#888">${fmtP(d.poidsAff + d.poidsArc)}</td>
+          <td style="text-align:right;padding:4px 8px">${d.mlUtil>0?f2(d.mlUtil)+' m':nilD}</td>
+          <td style="text-align:right;padding:4px 8px;color:#888">${fP(d.poidsUtil)}</td>
+          <td style="text-align:right;padding:4px 8px;color:#2471a3">${d.mlAff>0?f2(d.mlAff)+' m':nilD}</td>
+          <td style="text-align:right;padding:4px 8px;color:#2471a3">${fP(d.poidsAff)}</td>
+          <td style="text-align:right;padding:4px 8px;font-weight:bold">${f2(d.mlUtil+d.mlAff)} m</td>
+          <td style="text-align:right;padding:4px 8px;color:#888">${fP(d.poidsUtil+d.poidsAff)}</td>
         </tr>`).join('');
     }).join('');
 
-    // Tôles par épaisseur / type
+    // Tôles par épaisseur → type_tole
     const parEp = {};
     const accT = (list, sfx) => list.forEach(b => {
       const ep = b.epaisseur_mm ?? '?', ty = b.type_tole || '?';
       const k  = `${ep}__${ty}`;
-      if (!parEp[k]) parEp[k] = { ep, ty, nbAff:0, surfAff:0, poidsAff:0, nbArc:0, surfArc:0, poidsArc:0 };
-      parEp[k][`nb${sfx}`]++;
+      if (!parEp[k]) parEp[k] = { ep, ty, surfUtil:0, poidsUtil:0, surfAff:0, poidsAff:0 };
       parEp[k][`surf${sfx}`]  += surfTole(b);
       parEp[k][`poids${sfx}`] += poidsTole(b);
     });
-    accT(tAff, 'Aff'); accT(tArc, 'Arc');
+    accT(tUtil, 'Util'); accT(tAff, 'Aff');
 
     const toleRowsHtml = Object.values(parEp)
       .sort((a, b) => (a.ep - b.ep) || a.ty.localeCompare(b.ty, 'fr'))
       .map(d => `<tr>
         <td style="padding:4px 8px;font-size:12px"><strong>${_e(String(d.ep))} mm</strong> ${_e(d.ty)}</td>
-        <td style="text-align:right;padding:4px 8px">${d.nbAff || '—'}</td>
-        <td style="text-align:right;padding:4px 8px">${d.surfAff > 0 ? fmt2(d.surfAff)+' m²' : '—'}</td>
-        <td style="text-align:right;padding:4px 8px">${d.nbArc || '—'}</td>
-        <td style="text-align:right;padding:4px 8px">${d.surfArc > 0 ? fmt2(d.surfArc)+' m²' : '—'}</td>
-        <td style="text-align:right;padding:4px 8px;font-weight:bold">${fmt2(d.surfAff + d.surfArc)} m²</td>
-        <td style="text-align:right;padding:4px 8px;color:#888">${fmtP(d.poidsAff + d.poidsArc)}</td>
+        <td style="text-align:right;padding:4px 8px">${d.surfUtil>0?f2(d.surfUtil)+' m²':nilD}</td>
+        <td style="text-align:right;padding:4px 8px;color:#888">${fP(d.poidsUtil)}</td>
+        <td style="text-align:right;padding:4px 8px;color:#2471a3">${d.surfAff>0?f2(d.surfAff)+' m²':nilD}</td>
+        <td style="text-align:right;padding:4px 8px;color:#2471a3">${fP(d.poidsAff)}</td>
+        <td style="text-align:right;padding:4px 8px;font-weight:bold">${f2(d.surfUtil+d.surfAff)} m²</td>
+        <td style="text-align:right;padding:4px 8px;color:#888">${fP(d.poidsUtil+d.poidsAff)}</td>
       </tr>`).join('');
 
     const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
     const html = `<!DOCTYPE html>
-<html lang="fr">
-<head>
+<html lang="fr"><head>
 <meta charset="utf-8">
 <title>Bilan — ${_e(titre)}</title>
 <style>
@@ -2756,20 +2806,15 @@ ${sections}
   th.r { text-align: right; }
   td { padding: 4px 8px; border: 1px solid #eee; vertical-align: middle; }
   td.r { text-align: right; }
-  .kpi-table td { font-size: 12px; }
   .kpi-total td { font-weight: bold; background: #f9f9f9; border-top: 2px solid #ccc; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 2px solid #222; padding-bottom: 10px; }
   .logo { font-size: 18px; font-weight: bold; letter-spacing: 2px; color: #111; }
   .date { font-size: 10px; color: #888; text-align: right; }
   @media print { body { padding: 10px 16px; } @page { margin: 1cm; } }
 </style>
-</head>
-<body>
+</head><body>
 <div class="header">
-  <div>
-    <div class="logo">LBF</div>
-    <div style="font-size:10px;color:#888">Bilan de consommation</div>
-  </div>
+  <div><div class="logo">LBF</div><div style="font-size:10px;color:#888">Bilan de consommation</div></div>
   <div class="date">Édité le ${date}</div>
 </div>
 
@@ -2777,18 +2822,15 @@ ${sections}
 <div class="subtitle">Bilan matière — profilés &amp; tôles</div>
 
 <h2>Résumé</h2>
-<table class="kpi-table">
-  <thead><tr><th>Catégorie</th><th class="r">Qté</th><th class="r">Métrage / Surface</th><th class="r">Poids</th></tr></thead>
+<table>
+  <thead>
+    <tr><th rowspan="2">Catégorie</th><th class="r" colspan="2">Utilisés</th><th class="r" colspan="2" style="background:#ddeaf8;color:#2471a3">Affectés (stock)</th><th class="r" rowspan="2">Total poids</th></tr>
+    <tr><th class="r">Métrage</th><th class="r">Poids</th><th class="r" style="background:#eef4fc;color:#2471a3">Métrage</th><th class="r" style="background:#eef4fc;color:#2471a3">Poids</th></tr>
+  </thead>
   <tbody>
-    ${hasP ? `
-    <tr><td>Profilés affectés</td><td class="r">${pAff.length}</td><td class="r">${fmt2(mlAff)} m</td><td class="r"></td></tr>
-    <tr><td>Profilés archivés (consommés)</td><td class="r">${pArc.length}</td><td class="r">${fmt2(mlArc)} m</td><td class="r">${fmtP(poidsP)}</td></tr>
-    ` : ''}
-    ${hasT ? `
-    <tr><td>Tôles affectées</td><td class="r">${tAff.length}</td><td class="r">${fmt2(surfAff)} m²</td><td class="r"></td></tr>
-    <tr><td>Tôles archivées (consommées)</td><td class="r">${tArc.length}</td><td class="r">${fmt2(surfArc)} m²</td><td class="r">${fmtP(poidsT)}</td></tr>
-    ` : ''}
-    <tr class="kpi-total"><td>Poids total engagé</td><td class="r">${pAff.length+pArc.length+tAff.length+tArc.length}</td><td class="r"></td><td class="r">${fmtP(poidsP + poidsT)}</td></tr>
+    ${hasP ? `<tr><td>Profilés</td><td class="r">${f2(mlUtil)} m</td><td class="r">${fP(poidsPUtil)}</td><td class="r" style="color:#2471a3">${mlAff>0?f2(mlAff)+' m':nilD}</td><td class="r" style="color:#2471a3">${fP(poidsPAff)}</td><td class="r"></td></tr>` : ''}
+    ${hasT ? `<tr><td>Tôles</td><td class="r">${f2(surfUtil)} m²</td><td class="r">${fP(poidsTUtil)}</td><td class="r" style="color:#2471a3">${surfAff>0?f2(surfAff)+' m²':nilD}</td><td class="r" style="color:#2471a3">${fP(poidsTAff)}</td><td class="r"></td></tr>` : ''}
+    <tr class="kpi-total"><td>Total poids engagé</td><td class="r"></td><td class="r">${fP(poidsPUtil+poidsTUtil)}</td><td class="r"></td><td class="r" style="color:#2471a3">${fP(poidsPAff+poidsTAff)}</td><td class="r">${fP(poidsPUtil+poidsPAff+poidsTUtil+poidsTAff)}</td></tr>
   </tbody>
 </table>
 
@@ -2796,8 +2838,10 @@ ${hasP ? `
 <h2>Profilés</h2>
 <table>
   <thead><tr>
-    <th>Désignation</th><th class="r">Aff.</th><th class="r">ML aff.</th>
-    <th class="r">Arch.</th><th class="r">ML arch.</th><th class="r">Total ML</th><th class="r">Poids</th>
+    <th>Type / Désignation</th>
+    <th class="r">Util. ML</th><th class="r">Util. Poids</th>
+    <th class="r" style="background:#ddeaf8;color:#2471a3">Aff. ML</th><th class="r" style="background:#ddeaf8;color:#2471a3">Aff. Poids</th>
+    <th class="r">Total ML</th><th class="r">Total Poids</th>
   </tr></thead>
   <tbody>${profilRowsHtml || '<tr><td colspan="7" style="color:#aaa;text-align:center">—</td></tr>'}</tbody>
 </table>
@@ -2807,8 +2851,10 @@ ${hasT ? `
 <h2>Tôles</h2>
 <table>
   <thead><tr>
-    <th>Épaisseur / Type</th><th class="r">Aff.</th><th class="r">m² aff.</th>
-    <th class="r">Arch.</th><th class="r">m² arch.</th><th class="r">Total m²</th><th class="r">Poids</th>
+    <th>Épaisseur / Type</th>
+    <th class="r">Util. m²</th><th class="r">Util. Poids</th>
+    <th class="r" style="background:#ddeaf8;color:#2471a3">Aff. m²</th><th class="r" style="background:#ddeaf8;color:#2471a3">Aff. Poids</th>
+    <th class="r">Total m²</th><th class="r">Total Poids</th>
   </tr></thead>
   <tbody>${toleRowsHtml || '<tr><td colspan="7" style="color:#aaa;text-align:center">—</td></tr>'}</tbody>
 </table>
