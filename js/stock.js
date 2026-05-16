@@ -2188,10 +2188,8 @@ const Stock = (() => {
           <table class="syn-table">
             <thead>
               <tr class="syn-table-title-row">
-                <th colspan="13" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span style="flex:1">Consommation par chantier</span>
-                  <input type="text" id="bilan-filtre-ch" class="bilan-filtre-inp"
-                         placeholder="Filtrer chantier…" value="${_e(_bilanFiltre)}">
+                <th colspan="13">
+                  Consommation par chantier
                   <span class="syn-scope-btn" data-syn-action="print-bilan-selection"
                         title="Imprimer tous les chantiers ou la sélection cochée">📄 PDF</span>
                 </th>
@@ -2200,7 +2198,15 @@ const Stock = (() => {
                 <th rowspan="2" style="width:30px;text-align:center;padding:4px">
                   <input type="checkbox" id="bilan-check-all" title="Tout sélectionner / désélectionner">
                 </th>
-                <th rowspan="2" class="bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="chantier">Chantier${si('chantier')}</th>
+                <th rowspan="2" class="bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="chantier">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    Chantier${si('chantier')}
+                  </div>
+                  <div onclick="event.stopPropagation()">
+                    <input type="text" id="bilan-filtre-ch" class="bilan-filtre-inp"
+                           placeholder="Filtrer…" value="${_e(_bilanFiltre)}">
+                  </div>
+                </th>
                 <th colspan="2" class="r bilan-grp-sep">Profilés utilisés</th>
                 <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Profilés affectés</th>
                 <th colspan="2" class="r bilan-grp-sep">Tôles utilisées</th>
