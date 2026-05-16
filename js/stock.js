@@ -1675,6 +1675,8 @@ const Stock = (() => {
       const pAfft         = tolesAffectees.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
       const nbTolTotal    = tolesDispo.length + tolesAffectees.length + tolesAttente.length;
 
+      const canEdit = Auth.hasRight('can_validate');
+
       // Grouper par type_tole → épaisseur
       const parType = {};
       tolesActives.forEach(b => {
@@ -1692,10 +1694,30 @@ const Stock = (() => {
       const lignesType = Object.entries(parType).sort((a, b) => b[1].surface - a[1].surface);
 
       const rowsType = lignesType.map(([type, d]) => {
-        const sousLignes = Object.entries(d.eps)
-          .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
-          .map(([ep, sd]) => `
-            <tr class="syn-sous-ligne" data-syn-parent="${_e(type)}"
+        const epsEntries = Object.entries(d.eps).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+        const typeHasAlert = epsEntries.some(([ep, sd]) => {
+          const s = _seuils[ep] || 0;
+          return s > 0 && sd.surface < s;
+        });
+        const sousLignes = epsEntries.map(([ep, sd]) => {
+          const seuil  = _seuils[ep] || 0;
+          const alerte = seuil > 0 && sd.surface < seuil;
+          const alertIcon = seuil > 0
+            ? (alerte
+              ? `<span title="Sous le seuil (${fmt(seuil)} m²)" style="color:#c0392b;font-weight:700;margin-left:4px">⚠</span>`
+              : `<span style="color:var(--vert);margin-left:4px">✓</span>`)
+            : '';
+          const seuilInput = canEdit
+            ? `<div style="margin-top:3px;white-space:nowrap">
+                <input type="number" class="syn-seuil-input" data-ep="${_e(String(ep))}"
+                       value="${seuil > 0 ? seuil : ''}" min="0" step="0.1" placeholder="seuil…"
+                       title="Seuil d'alerte pour ${ep} mm (en m²)"
+                       onclick="event.stopPropagation()"
+                       style="width:54px;padding:1px 3px;border:1px solid #ddd;border-radius:3px;font-size:10px;text-align:right"> m²
+              </div>`
+            : '';
+          return `
+            <tr class="syn-sous-ligne${alerte ? ' ligne-stock-bas' : ''}" data-syn-parent="${_e(type)}"
                 data-syn-action="voir-tole-ep" data-syn-type="${_e(type)}" data-syn-ep="${_e(String(ep))}"
                 style="display:none" title="Filtrer ${_LABEL_TYPE_TOLE[type] || type} ${_e(String(ep))} mm">
               <td class="syn-sous-cell">
@@ -1703,9 +1725,13 @@ const Stock = (() => {
                 ${_e(String(ep))} mm
               </td>
               <td class="r syn-sous-val">${sd.nb}</td>
-              <td class="r syn-sous-val">${fmt(sd.surface)} m²</td>
+              <td class="r syn-sous-val" style="vertical-align:top">
+                ${fmt(sd.surface)} m²${alertIcon}
+                ${seuilInput}
+              </td>
               <td class="r syn-sous-val">${fmtT(sd.poids)}</td>
-            </tr>`).join('');
+            </tr>`;
+        }).join('');
         return `<tr class="syn-type-row">
           <td>
             <span class="syn-toggle-icon" data-syn-action="toggle-type" data-syn-type-group="${_e(type)}">▶</span>
@@ -1714,7 +1740,7 @@ const Stock = (() => {
                   title="Voir ${_LABEL_TYPE_TOLE[type] || _e(type)} dans le stock">${_LABEL_TYPE_TOLE[type] || _e(type)}</span>
           </td>
           <td class="r">${d.nb}</td>
-          <td class="r">${fmt(d.surface)} m²</td>
+          <td class="r">${fmt(d.surface)} m²${typeHasAlert ? ' <span style="color:#c0392b;font-weight:700">⚠</span>' : ''}</td>
           <td class="r">${fmtT(d.poids)}</td>
         </tr>${sousLignes}`;
       }).join('');
@@ -1729,16 +1755,15 @@ const Stock = (() => {
         <td class="r">${fmtT(poidsTot)}</td>
       </tr>` : '';
 
-      // Seuils d'alerte (données par épaisseur pour la section admin)
-      const canEdit = Auth.hasRight('can_validate');
-      const parEp   = {};
-      tolesActives.forEach(b => {
-        const ep = b.epaisseur_mm;
-        if (!parEp[ep]) parEp[ep] = { surface: 0 };
-        parEp[ep].surface += _surfaceTole(b) * (b.quantite || 1);
+      // Réappro : dériver parEp depuis parType (pas de double itération)
+      const parEp = {};
+      Object.values(parType).forEach(({ eps }) => {
+        Object.entries(eps).forEach(([ep, d]) => {
+          if (!parEp[ep]) parEp[ep] = { surface: 0 };
+          parEp[ep].surface += d.surface;
+        });
       });
       const lignesEp = Object.entries(parEp).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
-
       const basStock = lignesEp.filter(([ep, d]) => (_seuils[ep] || 0) > 0 && d.surface < _seuils[ep]);
       const reapproHtml = basStock.length ? `
         <div class="syn-reappro">
@@ -1755,39 +1780,6 @@ const Stock = (() => {
               </tr>`;
             }).join('')}</tbody>
           </table>
-        </div>` : '';
-
-      const seuilSection = canEdit ? `
-        <div class="syn-section-titre" style="margin-top:12px">Seuils d'alerte par épaisseur</div>
-        <div class="syn-card syn-card-tbl">
-          <table class="syn-table">
-            <thead><tr>
-              <th>Épaisseur</th>
-              <th class="r">Surface</th>
-              <th class="r" style="white-space:nowrap">Seuil alerte</th>
-              <th style="text-align:center;width:34px">État</th>
-            </tr></thead>
-            <tbody>${lignesEp.map(([ep, d]) => {
-              const seuil  = _seuils[ep] || 0;
-              const alerte = seuil > 0 && d.surface < seuil;
-              return `<tr class="${alerte ? 'ligne-stock-bas' : ''}">
-                <td>${_e(String(ep))} mm</td>
-                <td class="r">${fmt(d.surface)} m²</td>
-                <td style="text-align:right;white-space:nowrap">
-                  <input type="number" class="syn-seuil-input" data-ep="${_e(String(ep))}"
-                         value="${seuil > 0 ? seuil : ''}" min="0" step="0.1" placeholder="—"
-                         title="Seuil d'alerte pour ${ep} mm (en m²)"
-                         style="width:72px;padding:2px 5px;border:1px solid #ccc;border-radius:3px;font-size:12px;text-align:right"> m²
-                </td>
-                <td style="text-align:center">${alerte
-                  ? `<span title="Surface (${fmt(d.surface)} m²) sous le seuil (${fmt(seuil)} m²)" style="color:#c0392b;font-weight:700">⚠</span>`
-                  : `<span style="color:var(--vert)">✓</span>`}</td>
-              </tr>`;
-            }).join('')}</tbody>
-          </table>
-          <div style="font-size:11px;color:#888;margin-top:6px;padding:0 6px">
-            Saisissez un seuil en m² — l'alerte se déclenche quand la surface restante de cette épaisseur descend en dessous.
-          </div>
         </div>` : '';
 
       return `${reapproHtml}
@@ -1849,8 +1841,7 @@ const Stock = (() => {
               ${totalRow}
             </tbody>
           </table>
-        </div>
-        ${seuilSection}`;
+        </div>`;
     };
 
     // ── Contenu onglet Bilan chantiers ────────────────────────────
