@@ -1878,10 +1878,10 @@ const Stock = (() => {
               </td></tr>` +
             desigEntries.map(([desig, d]) => `<tr>
               <td class="bilan-desig-cell"><span class="bilan-indent">└</span>${_e(desig)}</td>
-              <td class="r">${d.nbAff  || '<span class=bilan-nil>—</span>'}</td>
-              <td class="r">${d.mlAff  > 0 ? fmt(d.mlAff)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
               <td class="r">${d.nbArc  || '<span class=bilan-nil>—</span>'}</td>
               <td class="r">${d.mlArc  > 0 ? fmt(d.mlArc)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
+              <td class="r bilan-aff-cell">${d.nbAff  || '<span class=bilan-nil>—</span>'}</td>
+              <td class="r bilan-aff-cell">${d.mlAff  > 0 ? fmt(d.mlAff)  + ' m' : '<span class=bilan-nil>—</span>'}</td>
               <td class="r"><strong>${fmt(d.mlAff + d.mlArc)} m</strong></td>
               <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
             </tr>`).join('');
@@ -1903,10 +1903,10 @@ const Stock = (() => {
           .sort((a, b) => (a.ep - b.ep) || (a.ty).localeCompare(b.ty, 'fr'))
           .map(d => `<tr>
             <td><strong>${_e(String(d.ep))} mm</strong> &nbsp;${_badgeTypeTole(d.ty)}</td>
-            <td class="r">${d.nbAff  || '<span class=bilan-nil>—</span>'}</td>
-            <td class="r">${d.surfAff  > 0 ? fmt(d.surfAff)  + ' m²' : '<span class=bilan-nil>—</span>'}</td>
             <td class="r">${d.nbArc  || '<span class=bilan-nil>—</span>'}</td>
             <td class="r">${d.surfArc  > 0 ? fmt(d.surfArc)  + ' m²' : '<span class=bilan-nil>—</span>'}</td>
+            <td class="r bilan-aff-cell">${d.nbAff  || '<span class=bilan-nil>—</span>'}</td>
+            <td class="r bilan-aff-cell">${d.surfAff  > 0 ? fmt(d.surfAff)  + ' m²' : '<span class=bilan-nil>—</span>'}</td>
             <td class="r"><strong>${fmt(d.surfAff + d.surfArc)} m²</strong></td>
             <td class="r bilan-poids">${fmtT(d.poidsAff + d.poidsArc)}</td>
           </tr>`).join('');
@@ -1924,22 +1924,24 @@ const Stock = (() => {
             <table class="syn-kpi-inner">
               <thead><tr><th></th><th>Qté</th><th>Métrage / Surface</th><th>Poids</th></tr></thead>
               <tbody>
-                ${hasP ? `<tr>
-                  <td>Profilés affectés</td>
-                  <td><strong>${chPAff.length}</strong></td><td>${fmt(mlAff)} m</td><td>${fmtT(poidsPAff)}</td>
-                </tr>
-                <tr>
+                ${hasP ? `
+                ${chPArc.length ? `<tr>
                   <td>Profilés utilisés</td>
                   <td><strong>${chPArc.length}</strong></td><td>${fmt(mlArc)} m</td><td>${fmtT(poidsPArc)}</td>
                 </tr>` : ''}
-                ${hasT ? `<tr>
-                  <td>Tôles affectées</td>
-                  <td><strong>${chTAff.length}</strong></td><td>${fmt(surfAff)} m²</td><td>${fmtT(poidsTAff)}</td>
-                </tr>
-                <tr>
+                ${chPAff.length ? `<tr class="bilan-aff-row">
+                  <td>Profilés affectés (stock)</td>
+                  <td><strong>${chPAff.length}</strong></td><td>${fmt(mlAff)} m</td><td>${fmtT(poidsPAff)}</td>
+                </tr>` : ''}` : ''}
+                ${hasT ? `
+                ${chTArc.length ? `<tr>
                   <td>Tôles utilisées</td>
                   <td><strong>${chTArc.length}</strong></td><td>${fmt(surfArc)} m²</td><td>${fmtT(poidsTArc)}</td>
                 </tr>` : ''}
+                ${chTAff.length ? `<tr class="bilan-aff-row">
+                  <td>Tôles affectées (stock)</td>
+                  <td><strong>${chTAff.length}</strong></td><td>${fmt(surfAff)} m²</td><td>${fmtT(poidsTAff)}</td>
+                </tr>` : ''}` : ''}
                 <tr class="syn-kpi-inner-total">
                   <td>Poids total engagé</td>
                   <td><strong>${chPAff.length + chPArc.length + chTAff.length + chTArc.length}</strong></td>
@@ -1952,7 +1954,7 @@ const Stock = (() => {
           <div class="syn-section-titre">Profilés</div>
           <div class="syn-card syn-card-tbl" style="margin-bottom:12px">
             <table class="syn-table">
-              <thead><tr><th>Désignation</th><th class="r">Aff.</th><th class="r">ML aff.</th><th class="r">Util.</th><th class="r">ML util.</th><th class="r">Total ML</th><th class="r">Poids</th></tr></thead>
+              <thead><tr><th>Désignation</th><th class="r">Util.</th><th class="r">ML util.</th><th class="r bilan-th-aff">Aff.</th><th class="r bilan-th-aff">ML aff.</th><th class="r">Total ML</th><th class="r">Poids</th></tr></thead>
               <tbody>${profilRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
             </table>
           </div>` : ''}
@@ -1960,7 +1962,7 @@ const Stock = (() => {
           <div class="syn-section-titre">Tôles</div>
           <div class="syn-card syn-card-tbl">
             <table class="syn-table">
-              <thead><tr><th>Épaisseur / Type</th><th class="r">Aff.</th><th class="r">m² aff.</th><th class="r">Util.</th><th class="r">m² util.</th><th class="r">Total m²</th><th class="r">Poids</th></tr></thead>
+              <thead><tr><th>Épaisseur / Type</th><th class="r">Util.</th><th class="r">m² util.</th><th class="r bilan-th-aff">Aff.</th><th class="r bilan-th-aff">m² aff.</th><th class="r">Total m²</th><th class="r">Poids</th></tr></thead>
               <tbody>${toleRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
             </table>
           </div>` : ''}
