@@ -1841,12 +1841,16 @@ const Stock = (() => {
           b.statut !== 'archivee' && b.chantier_affectation === _bilanChantier
         );
 
-        const mlAff    = chPAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
-        const mlArc    = chPArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
-        const surfAff  = chTAff.reduce((s, b) => s + _surfTole(b), 0);
-        const surfArc  = chTArc.reduce((s, b) => s + _surfTole(b), 0);
-        const poidsP   = [...chPAff, ...chPArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0);
-        const poidsT   = [...chTAff, ...chTArc].reduce((s, b) => s + _poidsTole(b), 0);
+        const mlAff      = chPAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const mlArc      = chPArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const surfAff    = chTAff.reduce((s, b) => s + _surfTole(b), 0);
+        const surfArc    = chTArc.reduce((s, b) => s + _surfTole(b), 0);
+        const poidsPAff  = chPAff.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const poidsPArc  = chPArc.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const poidsTAff  = chTAff.reduce((s, b) => s + _poidsTole(b), 0);
+        const poidsTArc  = chTArc.reduce((s, b) => s + _poidsTole(b), 0);
+        const poidsP     = poidsPAff + poidsPArc;
+        const poidsT     = poidsTAff + poidsTArc;
 
         const chObj = _chantiers.find(c => c.nom === _bilanChantier);
         const titre = chObj ? [chObj.numero_affaire, chObj.ville, chObj.nom].filter(Boolean).join(' — ') : _bilanChantier;
@@ -1922,19 +1926,19 @@ const Stock = (() => {
               <tbody>
                 ${hasP ? `<tr>
                   <td>Profilés affectés</td>
-                  <td><strong>${chPAff.length}</strong></td><td>${fmt(mlAff)} m</td><td>${fmtT(poidsP * mlAff / (mlAff + mlArc || 1))}</td>
+                  <td><strong>${chPAff.length}</strong></td><td>${fmt(mlAff)} m</td><td>${fmtT(poidsPAff)}</td>
                 </tr>
                 <tr>
-                  <td>Profilés archivés</td>
-                  <td><strong>${chPArc.length}</strong></td><td>${fmt(mlArc)} m</td><td></td>
+                  <td>Profilés utilisés</td>
+                  <td><strong>${chPArc.length}</strong></td><td>${fmt(mlArc)} m</td><td>${fmtT(poidsPArc)}</td>
                 </tr>` : ''}
                 ${hasT ? `<tr>
                   <td>Tôles affectées</td>
-                  <td><strong>${chTAff.length}</strong></td><td>${fmt(surfAff)} m²</td><td></td>
+                  <td><strong>${chTAff.length}</strong></td><td>${fmt(surfAff)} m²</td><td>${fmtT(poidsTAff)}</td>
                 </tr>
                 <tr>
-                  <td>Tôles archivées</td>
-                  <td><strong>${chTArc.length}</strong></td><td>${fmt(surfArc)} m²</td><td></td>
+                  <td>Tôles utilisées</td>
+                  <td><strong>${chTArc.length}</strong></td><td>${fmt(surfArc)} m²</td><td>${fmtT(poidsTArc)}</td>
                 </tr>` : ''}
                 <tr class="syn-kpi-inner-total">
                   <td>Poids total engagé</td>
@@ -1948,7 +1952,7 @@ const Stock = (() => {
           <div class="syn-section-titre">Profilés</div>
           <div class="syn-card syn-card-tbl" style="margin-bottom:12px">
             <table class="syn-table">
-              <thead><tr><th>Désignation</th><th class="r">Aff.</th><th class="r">ML aff.</th><th class="r">Arch.</th><th class="r">ML arch.</th><th class="r">Total ML</th><th class="r">Poids</th></tr></thead>
+              <thead><tr><th>Désignation</th><th class="r">Aff.</th><th class="r">ML aff.</th><th class="r">Util.</th><th class="r">ML util.</th><th class="r">Total ML</th><th class="r">Poids</th></tr></thead>
               <tbody>${profilRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
             </table>
           </div>` : ''}
@@ -1956,7 +1960,7 @@ const Stock = (() => {
           <div class="syn-section-titre">Tôles</div>
           <div class="syn-card syn-card-tbl">
             <table class="syn-table">
-              <thead><tr><th>Épaisseur / Type</th><th class="r">Aff.</th><th class="r">m² aff.</th><th class="r">Arch.</th><th class="r">m² arch.</th><th class="r">Total m²</th><th class="r">Poids</th></tr></thead>
+              <thead><tr><th>Épaisseur / Type</th><th class="r">Aff.</th><th class="r">m² aff.</th><th class="r">Util.</th><th class="r">m² util.</th><th class="r">Total m²</th><th class="r">Poids</th></tr></thead>
               <tbody>${toleRows || '<tr><td colspan="7" class="bilan-vide">—</td></tr>'}</tbody>
             </table>
           </div>` : ''}
