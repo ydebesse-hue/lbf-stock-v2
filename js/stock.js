@@ -460,19 +460,19 @@ const Stock = (() => {
   }
 
   /**
-   * Génère un nouvel ID pour un profilé (BAR-XXXX)
+   * Génère un nouvel ID pour un profilé (PXXXX)
    * @returns {string}
    */
   function _genererIdBarre() {
     const nums = _data.barres
-      .filter(b => b.id && b.id.startsWith('BAR-'))
-      .map(b => parseInt(b.id.replace('BAR-',''), 10))
+      .filter(b => b.id && /^P\d/.test(b.id))
+      .map(b => parseInt(b.id.slice(1).split('-')[0], 10))
       .filter(n => !isNaN(n));
     const max = nums.length ? Math.max(...nums) : 0;
-    return `BAR-${String(max + 1).padStart(4, '0')}`;
+    return `P${String(max + 1).padStart(4, '0')}`;
   }
 
-  // Génère BAR-XXXX-1, BAR-XXXX-2, ... pour les portions consommées issues de BAR-XXXX
+  // Génère PXXXX-1, PXXXX-2, ... pour les portions consommées issues de PXXXX
   function _genererIdPortion(barreId) {
     const prefix = barreId + '-';
     const suffixes = _data.barres
@@ -484,16 +484,70 @@ const Stock = (() => {
   }
 
   /**
-   * Génère un nouvel ID pour une tôle (TOL-XXXX)
+   * Génère un nouvel ID pour une tôle (TXXXX)
    * @returns {string}
    */
   function _genererIdTole() {
     const nums = _data.barres
-      .filter(b => b.id && b.id.startsWith('TOL-'))
-      .map(b => parseInt(b.id.replace('TOL-',''), 10))
+      .filter(b => b.id && /^T\d/.test(b.id))
+      .map(b => parseInt(b.id.slice(1).split('-')[0], 10))
       .filter(n => !isNaN(n));
     const max = nums.length ? Math.max(...nums) : 0;
-    return `TOL-${String(max + 1).padStart(4, '0')}`;
+    return `T${String(max + 1).padStart(4, '0')}`;
+  }
+
+  /**
+   * Migration one-shot : BAR-XXXX → PXXXX, TOL-XXXX → TXXXX.
+   * À appeler une seule fois via la console : await Stock.migrerIds()
+   */
+  async function _migrerIds() {
+    const _newId = id => {
+      if (!id) return id;
+      if (/^BAR-/.test(id)) return 'P' + id.slice(4);
+      if (/^TOL-/.test(id)) return 'T' + id.slice(4);
+      return id;
+    };
+
+    const oldBarres = _data.barres.filter(b => /^(BAR|TOL)-/.test(b.id || ''));
+    if (!oldBarres.length) {
+      console.log('[Migration] Aucun ancien ID trouvé — rien à faire.');
+      return { ok: 0, err: 0 };
+    }
+
+    console.log(`[Migration] ${oldBarres.length} entrée(s) à renommer dans stock…`);
+    let ok = 0, err = 0;
+
+    for (const b of oldBarres) {
+      const newId = _newId(b.id);
+      try {
+        await window.SB.upsert('stock', { ...b, id: newId });
+        await window.SB.supprimer('stock', b.id);
+        ok++;
+        console.log(`  ✓ ${b.id} → ${newId}`);
+      } catch(e) {
+        err++;
+        console.error(`  ✗ ${b.id} :`, e.message);
+      }
+    }
+
+    // Migrer id_barre dans les demandes
+    const oldDemandes = _demandes.filter(d => /^(BAR|TOL)-/.test(d.id_barre || ''));
+    for (const d of oldDemandes) {
+      const newIdBarre = _newId(d.id_barre);
+      try {
+        await window.SB.upsert('demandes', { ...d, id_barre: newIdBarre });
+        console.log(`  ✓ demande ${d.id} id_barre ${d.id_barre} → ${newIdBarre}`);
+      } catch(e) {
+        console.error(`  ✗ demande ${d.id} :`, e.message);
+      }
+    }
+
+    // Vider le cache localStorage (fallback offline)
+    try { localStorage.removeItem(CLE_LOCAL); } catch {}
+
+    console.log(`[Migration] Terminé : ${ok} renommé(s), ${err} erreur(s). Rechargement de la page…`);
+    if (!err) window.location.reload();
+    return { ok, err };
   }
 
   /**
@@ -8866,6 +8920,7 @@ ${hasT ? `
     exporterCSV: _exporterCSV,
     ouvrirImport: _ouvrirImport,
     ouvrirUtiliserBarre: _ouvrirUtiliserBarre,
+    migrerIds: _migrerIds,
   };
 
 })();
