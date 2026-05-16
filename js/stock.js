@@ -226,6 +226,7 @@ const Stock = (() => {
   let _synProfilsTous  = false;
   let _bilanChantier   = '';
   let _bilanSort       = { col: 'chantier', dir: 'asc' };
+  let _bilanFiltre     = '';
   let _bilanNiveau     = 'desig'; // 'type' | 'desig' | 'barre'
   let _archivesTab    = 'profils';  // sous-onglet de l'onglet Archivées
   let _selectionIds   = new Set();  // IDs sélectionnés pour actions groupées
@@ -2136,7 +2137,7 @@ const Stock = (() => {
       const si = c => ` <span class="bilan-sort-icon">${c === sCol ? (sDir === 'asc' ? '▲' : '▼') : '⇅'}</span>`;
 
       const rows = chData.map(({ ch, mlUtil, mlAff, pProf, pProfAff, surfUtil, surfAff, pTole, pToleAff, poidsUtil, poidsStock, meta }) =>
-        `<tr class="${adminBilan ? 'bilan-ch-row' : ''}" ${adminBilan ? `data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail"` : ''}>
+        `<tr class="${adminBilan ? 'bilan-ch-row' : ''}" data-bilan-ch="${_e(ch)}"${adminBilan ? ` data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail"` : ''}>
           <td onclick="event.stopPropagation()" style="width:30px;text-align:center;padding:4px 6px">
             <input type="checkbox" class="bilan-ch-check" data-ch="${_e(ch)}">
           </td>
@@ -2187,8 +2188,10 @@ const Stock = (() => {
           <table class="syn-table">
             <thead>
               <tr class="syn-table-title-row">
-                <th colspan="13">
-                  Consommation par chantier
+                <th colspan="13" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="flex:1">Consommation par chantier</span>
+                  <input type="text" id="bilan-filtre-ch" class="bilan-filtre-inp"
+                         placeholder="Filtrer chantier…" value="${_e(_bilanFiltre)}">
                   <span class="syn-scope-btn" data-syn-action="print-bilan-selection"
                         title="Imprimer tous les chantiers ou la sélection cochée">📄 PDF</span>
                 </th>
@@ -2241,6 +2244,17 @@ const Stock = (() => {
       _synTab === 'bilan'   ? _contenuBilan()   :
       _synTab === 'profils' ? _contenuProfils() : _contenuToles()
     }</div>`;
+
+    if (_bilanFiltre && _synTab === 'bilan' && !_bilanChantier) _appliquerFiltreChBilan(zone);
+  }
+
+  function _appliquerFiltreChBilan(zone) {
+    const q = _bilanFiltre.toLowerCase().trim();
+    zone.querySelectorAll('tr[data-bilan-ch]').forEach(tr => {
+      const ch   = (tr.dataset.bilanCh || '').toLowerCase();
+      const meta = (tr.querySelector('.bilan-meta')?.textContent || '').toLowerCase();
+      tr.style.display = (!q || ch.includes(q) || meta.includes(q)) ? '' : 'none';
+    });
   }
 
 
@@ -3409,6 +3423,7 @@ ${hasT ? `
           _rendreSynthese();
         } else if (action === 'retour-bilan') {
           _bilanChantier = '';
+          _bilanFiltre   = '';
           _rendreSynthese();
         } else if (action === 'bilan-niveau') {
           const niv = el.dataset.niveau;
@@ -3451,6 +3466,13 @@ ${hasT ? `
         const n   = [...all].filter(cb => cb.checked).length;
         const ca  = zsyn.querySelector('#bilan-check-all');
         if (ca) { ca.checked = n === all.length; ca.indeterminate = n > 0 && n < all.length; }
+      }
+    });
+
+    zsyn?.addEventListener('input', e => {
+      if (e.target.id === 'bilan-filtre-ch') {
+        _bilanFiltre = e.target.value;
+        _appliquerFiltreChBilan(zsyn);
       }
     });
 
