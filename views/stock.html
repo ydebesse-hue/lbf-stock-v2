@@ -1674,18 +1674,10 @@
     .bilan-niv-btn + .bilan-niv-btn { border-left: 1px solid #ccc; }
     .bilan-niv-btn:hover { background: #e8e8e8; }
     .bilan-niv-btn.active { background: var(--noir); color: white; }
-    .bilan-filtre-toggle { font-size: 11px; padding: 2px 8px; border: 1px solid #bbb; border-radius: 3px; cursor: pointer; background: #f5f5f5; color: #444; font-weight: normal; white-space: nowrap; }
-    .bilan-filtre-toggle:hover { border-color: #888; background: #ececec; }
-    .bilan-filtre-toggle.active { background: #2471a3; color: white; border-color: #1a5276; }
-    #bilan-filtre-panel { position: absolute; background: white; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 4px 16px rgba(0,0,0,.18); z-index: 2000; min-width: 240px; max-width: 340px; }
-    .bilan-fp-head { padding: 8px 10px 6px; border-bottom: 1px solid #eee; }
-    .bilan-fp-search { width: 100%; margin-top: 6px; font-size: 12px; padding: 4px 7px; border: 1px solid #ccc; border-radius: 3px; box-sizing: border-box; outline: none; }
-    .bilan-fp-list { max-height: 220px; overflow-y: auto; padding: 4px 0; }
-    .bilan-fp-item { display: flex; align-items: center; gap: 7px; padding: 4px 10px; cursor: pointer; font-size: 12px; font-weight: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .bilan-fp-item:hover { background: #f0f6ff; }
-    .bilan-fp-footer { padding: 6px 10px; border-top: 1px solid #eee; text-align: right; }
-    .bilan-fp-ok { font-size: 12px; padding: 4px 14px; border: 1px solid #2471a3; background: #2471a3; color: white; border-radius: 3px; cursor: pointer; }
-    .bilan-fp-ok:hover { background: #1a5276; }
+    /* th-filtre-btn sur fond clair (bilan) */
+    .bilan-sort-th .th-filtre-btn { color: #444; background: rgba(0,0,0,.07); border-color: rgba(0,0,0,.18); }
+    .bilan-sort-th .th-filtre-btn:hover { background: rgba(0,0,0,.13); }
+    .bilan-sort-th .th-filtre-btn.th-filtre-actif { background: var(--rouge); color: white; border-color: var(--rouge); }
     .bilan-sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
     .bilan-sort-th:hover { background: #e6e6e6; }
     .bilan-th-aff.bilan-sort-th:hover { background: #c8dcf0 !important; }

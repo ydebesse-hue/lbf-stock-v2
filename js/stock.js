@@ -2204,10 +2204,10 @@ const Stock = (() => {
                   <div style="display:flex;align-items:center;gap:4px">
                     Chantier${si('chantier')}
                   </div>
-                  <div onclick="event.stopPropagation()" style="margin-top:4px">
-                    <button class="bilan-filtre-toggle${_bilanFiltreSet.size > 0 ? ' active' : ''}"
-                            data-syn-action="toggle-bilan-filtre">▼ ${_bilanFiltreSet.size > 0 ? `${_bilanFiltreSet.size} chantier${_bilanFiltreSet.size > 1 ? 's' : ''}` : 'Tous'}</button>
-                  </div>
+                  <button type="button" class="th-filtre-btn${_bilanFiltreSet.size > 0 ? ' th-filtre-actif' : ''}"
+                          data-filtre="bilan-chantier" data-syn-action="toggle-bilan-filtre"
+                          onclick="event.stopPropagation()"
+                          >${_bilanFiltreSet.size === 0 ? 'Tous' : `${_bilanFiltreSet.size} chantier${_bilanFiltreSet.size > 1 ? 's' : ''}`}</button>
                 </th>
                 <th colspan="2" class="r bilan-grp-sep">Profilés utilisés</th>
                 <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Profilés affectés</th>
@@ -2254,95 +2254,6 @@ const Stock = (() => {
     }</div>`;
 
     if (_bilanFiltreSet.size > 0 && _synTab === 'bilan' && !_bilanChantier) _appliquerFiltreChBilan(zone);
-  }
-
-  function _ouvrirFiltreChBilan(zone, btnEl) {
-    document.getElementById('bilan-filtre-panel')?.remove();
-
-    const allRows = [...zone.querySelectorAll('tr[data-bilan-ch]')];
-    const chantiers = allRows.map(tr => tr.dataset.bilanCh);
-
-    const allChecked = _bilanFiltreSet.size === 0;
-    const items = chantiers.map(ch => {
-      const chObj   = _chantiers.find(c => c.nom === ch);
-      const label   = chObj ? [chObj.numero_affaire, chObj.ville, ch].filter(Boolean).join(' — ') : ch;
-      const checked = allChecked || _bilanFiltreSet.has(ch);
-      return `<label class="bilan-fp-item">
-        <input type="checkbox" class="bilan-fp-ch" data-ch="${_e(ch)}"${checked ? ' checked' : ''}>
-        <span>${_e(label)}</span>
-      </label>`;
-    }).join('');
-
-    const panel = document.createElement('div');
-    panel.id    = 'bilan-filtre-panel';
-    panel.className = 'bilan-fp';
-    panel.innerHTML = `
-      <div class="bilan-fp-head">
-        <label class="bilan-fp-item">
-          <input type="checkbox" id="bilan-fp-all"${allChecked ? ' checked' : ''}>
-          <strong>Tous les chantiers</strong>
-        </label>
-        <input type="text" class="bilan-fp-search" placeholder="Rechercher dans la liste…">
-      </div>
-      <div class="bilan-fp-list">${items}</div>
-      <div class="bilan-fp-footer">
-        <button class="bilan-fp-ok">Appliquer</button>
-      </div>`;
-    document.body.appendChild(panel);
-
-    const rect = btnEl.getBoundingClientRect();
-    panel.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
-    panel.style.left = (rect.left  + window.scrollX)      + 'px';
-
-    const allCb  = panel.querySelector('#bilan-fp-all');
-    const search = panel.querySelector('.bilan-fp-search');
-    const chCbs  = () => [...panel.querySelectorAll('.bilan-fp-ch')];
-
-    const syncAll = () => {
-      const cbs = chCbs();
-      const n   = cbs.filter(c => c.checked).length;
-      allCb.checked       = n === cbs.length;
-      allCb.indeterminate = n > 0 && n < cbs.length;
-    };
-
-    allCb.addEventListener('change', () => {
-      chCbs().forEach(cb => { cb.checked = allCb.checked; });
-    });
-
-    panel.querySelector('.bilan-fp-list').addEventListener('change', syncAll);
-
-    search.addEventListener('input', () => {
-      const q = search.value.toLowerCase();
-      panel.querySelectorAll('.bilan-fp-item').forEach(item => {
-        if (item.querySelector('#bilan-fp-all')) return;
-        item.style.display = (!q || item.textContent.toLowerCase().includes(q)) ? '' : 'none';
-      });
-    });
-
-    panel.querySelector('.bilan-fp-ok').addEventListener('click', () => {
-      const checked = chCbs().filter(c => c.checked).map(c => c.dataset.ch);
-      _bilanFiltreSet = checked.length === chantiers.length ? new Set() : new Set(checked);
-      panel.remove();
-      _appliquerFiltreChBilan(zone);
-      const btn = zone.querySelector('.bilan-filtre-toggle');
-      if (btn) {
-        const n = _bilanFiltreSet.size;
-        btn.textContent = n > 0 ? `▼ ${n} chantier${n > 1 ? 's' : ''}` : '▼ Tous';
-        btn.classList.toggle('active', n > 0);
-      }
-    });
-
-    search.focus();
-
-    setTimeout(() => {
-      const close = e => {
-        if (!panel.contains(e.target) && e.target !== btnEl) {
-          panel.remove();
-          document.removeEventListener('click', close);
-        }
-      };
-      document.addEventListener('click', close);
-    }, 0);
   }
 
   function _appliquerFiltreChBilan(zone) {
@@ -3148,22 +3059,31 @@ ${hasT ? `
       case 't-lieu':
         return uniq(toles.filter(b => b.lieu_stockage).map(b => b.lieu_stockage))
           .map(v => ({ value: v, label: v }));
+      case 'bilan-chantier': {
+        const all = _data.barres || [];
+        const chs = [...new Set(all
+          .filter(b => b.chantier_affectation && (b.statut === 'archivee' || (b.statut === 'valide' && b.disponibilite === 'affecte')))
+          .map(b => b.chantier_affectation)
+        )].sort((a, b) => a.localeCompare(b, 'fr'));
+        return chs.map(v => ({ value: v, label: _labelChantier(v) }));
+      }
       default: return [];
     }
   }
 
   function _getSet(fid) {
+    if (fid === 'bilan-chantier') return _bilanFiltreSet;
     const sets = fid.startsWith('p-') ? _filtresP : _filtresT;
     return sets[fid.slice(2)] || new Set();
   }
 
-  function _ouvrirFiltrePanel(fid, btn) {
+  function _ouvrirFiltrePanel(fid, btn, onUpdate) {
     const panel = document.getElementById('filtre-panel');
     if (!panel) return;
-    // Toggle closed if same button clicked again
     if (_filtreActif && _filtreActif.fid === fid) { _fermerFiltrePanel(); return; }
     _filtreActif = { fid, btn };
 
+    const apply = onUpdate || _filtrer;
     const options = _optionsFiltre(fid);
     const sel = _getSet(fid);
     const allSelected = sel.size === 0;
@@ -3179,7 +3099,6 @@ ${hasT ? `
     const toutEl = panel.querySelector('#fp-tout');
     if (toutEl && someSelected) { toutEl.indeterminate = true; toutEl.checked = false; }
 
-    // Position
     const rect = btn.getBoundingClientRect();
     panel.style.top  = Math.min(rect.bottom + 4, window.innerHeight - 270) + 'px';
     panel.style.left = Math.min(rect.left, window.innerWidth - 180) + 'px';
@@ -3188,9 +3107,8 @@ ${hasT ? `
     toutEl?.addEventListener('change', () => {
       if (toutEl.checked) _getSet(fid).clear();
       else options.forEach(o => _getSet(fid).add(o.value));
-      _filtrer();
-      // Refresh panel with updated state
-      requestAnimationFrame(() => _ouvrirFiltrePanel(fid, document.querySelector(`.th-filtre-btn[data-filtre="${fid}"]`) || btn));
+      apply();
+      requestAnimationFrame(() => _ouvrirFiltrePanel(fid, document.querySelector(`.th-filtre-btn[data-filtre="${fid}"]`) || btn, onUpdate));
     });
 
     panel.querySelectorAll('.fp-item:not(.fp-tout) input').forEach(cb => {
@@ -3202,7 +3120,7 @@ ${hasT ? `
           toutEl.checked = s.size === 0;
           toutEl.indeterminate = s.size > 0 && s.size < options.length;
         }
-        _filtrer();
+        apply();
       });
     });
   }
@@ -3571,7 +3489,15 @@ ${hasT ? `
             _rendreSynthese();
           }
         } else if (action === 'toggle-bilan-filtre') {
-          _ouvrirFiltreChBilan(zsyn, el);
+          _ouvrirFiltrePanel('bilan-chantier', el, () => {
+            _appliquerFiltreChBilan(zsyn);
+            const btn = zsyn?.querySelector('.th-filtre-btn[data-filtre="bilan-chantier"]');
+            if (btn) {
+              const n = _bilanFiltreSet.size;
+              btn.textContent = n === 0 ? 'Tous' : `${n} chantier${n > 1 ? 's' : ''}`;
+              btn.classList.toggle('th-filtre-actif', n > 0);
+            }
+          });
         }
     };
     if (zsyn) zsyn.addEventListener('click', _synHandler);
@@ -3598,7 +3524,6 @@ ${hasT ? `
       }
     });
 
-    zsyn?.addEventListener('input', e => { /* reserved */ });
 
     // Les filtres dans le thead sont gérés par des listeners directs attachés dans _rendrTableau()
 
