@@ -2137,7 +2137,9 @@ const Stock = (() => {
       const si = c => ` <span class="bilan-sort-icon">${c === sCol ? (sDir === 'asc' ? '▲' : '▼') : '⇅'}</span>`;
 
       const rows = chData.map(({ ch, mlUtil, mlAff, pProf, pProfAff, surfUtil, surfAff, pTole, pToleAff, poidsUtil, poidsStock, meta }) =>
-        `<tr class="${adminBilan ? 'bilan-ch-row' : ''}" data-bilan-ch="${_e(ch)}"${adminBilan ? ` data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail"` : ''}>
+        `<tr class="${adminBilan ? 'bilan-ch-row' : ''}" data-bilan-ch="${_e(ch)}"
+            data-v="${mlUtil},${pProf},${mlAff},${pProfAff},${surfUtil},${pTole},${surfAff},${pToleAff}"
+            ${adminBilan ? `data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail"` : ''}>
           <td onclick="event.stopPropagation()" style="width:20px;text-align:center;padding:2px 4px">
             <input type="checkbox" class="bilan-ch-check" data-ch="${_e(ch)}">
           </td>
@@ -2264,11 +2266,43 @@ const Stock = (() => {
 
   function _appliquerFiltreChBilan(zone) {
     const q = _bilanFiltre.toLowerCase().trim();
-    zone.querySelectorAll('tr[data-bilan-ch]').forEach(tr => {
+    const allRows = [...zone.querySelectorAll('tr[data-bilan-ch]')];
+    const fmt  = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+    const fmtT = v => !v ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + ' t';
+
+    let n = 0, totals = [0, 0, 0, 0, 0, 0, 0, 0];
+    allRows.forEach(tr => {
       const ch   = (tr.dataset.bilanCh || '').toLowerCase();
       const meta = (tr.querySelector('.bilan-meta')?.textContent || '').toLowerCase();
-      tr.style.display = (!q || ch.includes(q) || meta.includes(q)) ? '' : 'none';
+      const vis  = !q || ch.includes(q) || meta.includes(q);
+      tr.style.display = vis ? '' : 'none';
+      if (vis && tr.dataset.v) {
+        n++;
+        tr.dataset.v.split(',').forEach((v, i) => { totals[i] += parseFloat(v) || 0; });
+      }
     });
+
+    const totRow = zone.querySelector('tr.syn-total');
+    if (!totRow) return;
+    if (n < 2) { totRow.style.display = 'none'; return; }
+    totRow.style.display = '';
+
+    const [mlU, pPr, mlA, pPA, sU, pTl, sA, pTA] = totals;
+    const pUtil  = pPr + pTl;
+    const pStock = pPA + pTA;
+    const cells  = totRow.querySelectorAll('td');
+    cells[1].textContent  = `Total (${n} chantier${n > 1 ? 's' : ''})`;
+    cells[2].textContent  = fmt(mlU) + ' m';
+    cells[3].textContent  = fmtT(pPr);
+    cells[4].textContent  = fmt(mlA) + ' m';
+    cells[5].textContent  = fmtT(pPA);
+    cells[6].textContent  = fmt(sU) + ' m²';
+    cells[7].textContent  = fmtT(pTl);
+    cells[8].textContent  = fmt(sA) + ' m²';
+    cells[9].textContent  = fmtT(pTA);
+    cells[10].textContent = fmtT(pUtil);
+    cells[11].textContent = fmtT(pStock);
+    cells[12].innerHTML   = `<strong>${fmtT(pUtil + pStock)}</strong>`;
   }
 
 
