@@ -1920,35 +1920,42 @@ const Stock = (() => {
             <span class="syn-lien" data-syn-action="retour-bilan">← Tous les chantiers</span>
             <span class="syn-scope-btn" data-syn-action="export-bilan-pdf" title="Exporter en PDF">📄 PDF</span>
           </div>
-          <div class="syn-kpi k-vert syn-kpi-table" style="margin-bottom:16px">
-            <div class="bilan-titre-ch">${_e(titre)}</div>
-            <table class="syn-kpi-inner">
-              <thead><tr><th></th><th>Qté</th><th>Métrage / Surface</th><th>Poids</th></tr></thead>
-              <tbody>
-                ${hasP ? `
-                ${chPArc.length ? `<tr>
-                  <td>Profilés utilisés</td>
-                  <td><strong>${chPArc.length}</strong></td><td>${fmt(mlArc)} m</td><td>${fmtT(poidsPArc)}</td>
-                </tr>` : ''}
-                ${chPAff.length ? `<tr class="bilan-aff-row">
-                  <td>Profilés affectés (stock)</td>
-                  <td><strong>${chPAff.length}</strong></td><td>${fmt(mlAff)} m</td><td>${fmtT(poidsPAff)}</td>
-                </tr>` : ''}` : ''}
-                ${hasT ? `
-                ${chTArc.length ? `<tr>
-                  <td>Tôles utilisées</td>
-                  <td><strong>${chTArc.length}</strong></td><td>${fmt(surfArc)} m²</td><td>${fmtT(poidsTArc)}</td>
-                </tr>` : ''}
-                ${chTAff.length ? `<tr class="bilan-aff-row">
-                  <td>Tôles affectées (stock)</td>
-                  <td><strong>${chTAff.length}</strong></td><td>${fmt(surfAff)} m²</td><td>${fmtT(poidsTAff)}</td>
-                </tr>` : ''}` : ''}
-                <tr class="syn-kpi-inner-total">
-                  <td>Poids total engagé</td>
-                  <td><strong>${chPAff.length + chPArc.length + chTAff.length + chTArc.length}</strong></td>
-                  <td></td><td>${fmtT(poidsP + poidsT)}</td>
+          <div class="syn-card syn-card-tbl" style="margin-bottom:16px">
+            <table class="syn-table">
+              <thead>
+                <tr class="syn-table-title-row"><th colspan="11">${_e(titre)}</th></tr>
+                <tr class="bilan-group-hdr">
+                  <th colspan="2" class="r bilan-grp-sep">Profilés utilisés</th>
+                  <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Profilés affectés</th>
+                  <th colspan="2" class="r bilan-grp-sep">Tôles utilisées</th>
+                  <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Tôles affectées</th>
+                  <th class="r">Utilisé</th>
+                  <th class="r bilan-th-aff">Stock</th>
+                  <th class="r">Total</th>
                 </tr>
-              </tbody>
+                <tr class="bilan-group-hdr">
+                  <th class="r">ML</th><th class="r bilan-grp-sep">Poids</th>
+                  <th class="r bilan-th-aff">ML</th><th class="r bilan-th-aff bilan-grp-sep">Poids</th>
+                  <th class="r">m²</th><th class="r bilan-grp-sep">Poids</th>
+                  <th class="r bilan-th-aff">m²</th><th class="r bilan-th-aff bilan-grp-sep">Poids</th>
+                  <th class="r">Poids</th>
+                  <th class="r bilan-th-aff">Poids</th>
+                  <th class="r">Poids</th>
+                </tr>
+              </thead>
+              <tbody><tr>
+                <td class="r">${mlArc > 0 ? fmt(mlArc) + ' m' : '<span class=bilan-nil>—</span>'}</td>
+                <td class="r bilan-grp-sep bilan-poids">${fmtT(poidsPArc)}</td>
+                <td class="r bilan-aff-cell">${mlAff > 0 ? fmt(mlAff) + ' m' : '<span class=bilan-nil>—</span>'}</td>
+                <td class="r bilan-aff-cell bilan-grp-sep">${fmtT(poidsPAff)}</td>
+                <td class="r">${surfArc > 0 ? fmt(surfArc) + ' m²' : '<span class=bilan-nil>—</span>'}</td>
+                <td class="r bilan-grp-sep bilan-poids">${fmtT(poidsTArc)}</td>
+                <td class="r bilan-aff-cell">${surfAff > 0 ? fmt(surfAff) + ' m²' : '<span class=bilan-nil>—</span>'}</td>
+                <td class="r bilan-aff-cell bilan-grp-sep">${fmtT(poidsTAff)}</td>
+                <td class="r bilan-poids">${fmtT(poidsP - poidsPAff + poidsT - poidsTAff)}</td>
+                <td class="r bilan-aff-cell">${fmtT(poidsPAff + poidsTAff)}</td>
+                <td class="r"><strong>${fmtT(poidsP + poidsT)}</strong></td>
+              </tr></tbody>
             </table>
           </div>
           ${hasP ? `
