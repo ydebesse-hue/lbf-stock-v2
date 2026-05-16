@@ -1755,30 +1755,23 @@ const Stock = (() => {
         <td class="r">${fmtT(poidsTot)}</td>
       </tr>` : '';
 
-      // Réappro : dériver parEp depuis parType (pas de double itération)
-      const parEp = {};
-      Object.values(parType).forEach(({ eps }) => {
-        Object.entries(eps).forEach(([ep, d]) => {
-          if (!parEp[ep]) parEp[ep] = { surface: 0 };
-          parEp[ep].surface += d.surface;
-        });
+      // Réappro : même source que _majAlerteSeuil pour garantir la cohérence
+      const basStock = [];
+      _surfacesParEpaisseur().forEach((entry, ep) => {
+        if (entry.seuil > 0 && entry.surface < entry.seuil) basStock.push([ep, entry]);
       });
-      const lignesEp = Object.entries(parEp).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
-      const basStock = lignesEp.filter(([ep, d]) => (_seuils[ep] || 0) > 0 && d.surface < _seuils[ep]);
+      basStock.sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
       const reapproHtml = basStock.length ? `
         <div class="syn-reappro">
           <div class="syn-reappro-titre">⚠ À réapprovisionner — ${basStock.length} épaisseur${basStock.length > 1 ? 's' : ''} sous le seuil</div>
           <table class="hist-table" style="margin:0">
             <thead><tr><th>Épaisseur</th><th>Stock actuel</th><th>Seuil</th><th>Manquant</th></tr></thead>
-            <tbody>${basStock.map(([ep, d]) => {
-              const seuil = _seuils[ep];
-              return `<tr>
+            <tbody>${basStock.map(([ep, entry]) => `<tr>
                 <td><strong>${_e(String(ep))} mm</strong></td>
-                <td>${fmt(d.surface)} m²</td>
-                <td>${fmt(seuil)} m²</td>
-                <td style="color:#c0392b;font-weight:600">−${fmt(seuil - d.surface)} m²</td>
-              </tr>`;
-            }).join('')}</tbody>
+                <td>${fmt(entry.surface)} m²</td>
+                <td>${fmt(entry.seuil)} m²</td>
+                <td style="color:#c0392b;font-weight:600">−${fmt(entry.seuil - entry.surface)} m²</td>
+              </tr>`).join('')}</tbody>
           </table>
         </div>` : '';
 
