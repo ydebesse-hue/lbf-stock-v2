@@ -1677,6 +1677,15 @@ const Stock = (() => {
 
       const canEdit = Auth.hasRight('can_validate');
 
+      // Surface totale par épaisseur (toutes types confondus) — source de vérité pour alertes et bannière
+      const parEpTotal = {};
+      tolesActives.forEach(b => {
+        const ep = b.epaisseur_mm;
+        if (ep == null) return;
+        if (!parEpTotal[ep]) parEpTotal[ep] = 0;
+        parEpTotal[ep] += _surfaceTole(b) * (b.quantite || 1);
+      });
+
       // Grouper par type_tole → épaisseur
       const parType = {};
       tolesActives.forEach(b => {
@@ -1695,17 +1704,18 @@ const Stock = (() => {
 
       const rowsType = lignesType.map(([type, d]) => {
         const epsEntries = Object.entries(d.eps).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
-        const typeHasAlert = epsEntries.some(([ep, sd]) => {
+        const typeHasAlert = epsEntries.some(([ep]) => {
           const s = _seuils[ep] || 0;
-          return s > 0 && sd.surface < s;
+          return s > 0 && (parEpTotal[ep] || parEpTotal[parseFloat(ep)] || 0) < s;
         });
         const sousLignes = epsEntries.map(([ep, sd]) => {
-          const seuil  = _seuils[ep] || 0;
-          const alerte = seuil > 0 && sd.surface < seuil;
+          const seuil      = _seuils[ep] || 0;
+          const surfTotale = parEpTotal[ep] || parEpTotal[parseFloat(ep)] || 0;
+          const alerte     = seuil > 0 && surfTotale < seuil;
           const alertIcon = seuil > 0
             ? (alerte
-              ? `<span title="Sous le seuil (${fmt(seuil)} m²)" style="color:#c0392b;font-weight:700;margin-left:4px">⚠</span>`
-              : `<span style="color:var(--vert);margin-left:4px">✓</span>`)
+              ? `<span title="Stock total ${fmt(surfTotale)} m² — sous le seuil (${fmt(seuil)} m²)" style="color:#c0392b;font-weight:700;margin-left:4px">⚠</span>`
+              : `<span title="Stock total ${fmt(surfTotale)} m² — au-dessus du seuil (${fmt(seuil)} m²)" style="color:var(--vert);margin-left:4px">✓</span>`)
             : '';
           const seuilInput = canEdit
             ? `<div style="margin-top:3px;white-space:nowrap">
@@ -1755,15 +1765,8 @@ const Stock = (() => {
         <td class="r">${fmtT(poidsTot)}</td>
       </tr>` : '';
 
-      // Réappro : itération directe (même logique que l'ancienne implémentation)
-      const parEpSeuil = {};
-      tolesActives.forEach(b => {
-        const ep = b.epaisseur_mm;
-        if (ep == null) return;
-        if (!parEpSeuil[ep]) parEpSeuil[ep] = 0;
-        parEpSeuil[ep] += _surfaceTole(b) * (b.quantite || 1);
-      });
-      const basStock = Object.entries(parEpSeuil)
+      // Bannière réappro — utilise parEpTotal (même source que les icônes ⚠/✓)
+      const basStock = Object.entries(parEpTotal)
         .filter(([ep, surf]) => (_seuils[ep] || 0) > 0 && surf < (_seuils[ep] || 0))
         .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
       const reapproHtml = basStock.length ? `
