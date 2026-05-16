@@ -1766,6 +1766,11 @@
       .bilan-bar-row td { padding: 2px 5px; }
       .bilan-desig-cell { padding-left: 10px !important; }
       .bilan-bar-cell { font-size: 10px; }
+      /* Contraindre la colonne Type/Désignation */
+      .syn-type-row td:first-child,
+      .syn-sous-ligne td:first-child,
+      .bilan-type-row td:first-child,
+      .bilan-desig-row td:first-child { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
     }
   </style>
 </head>
