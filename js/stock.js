@@ -2001,18 +2001,22 @@ const Stock = (() => {
       }
 
       // ── Vue d'ensemble tous chantiers ─────────────────────────────
+      const nil = '<span class=bilan-nil>—</span>';
       const rows = tousChantiers.map(ch => {
         const chPa = pAff.filter(b => b.chantier_affectation === ch);
         const chPr = pArc.filter(b => b.chantier_affectation === ch);
         const chTa = tAff.filter(b => b.chantier_affectation === ch);
         const chTr = tArc.filter(b => b.chantier_affectation === ch);
-        const nbChutes = barres.filter(b =>
-          b.categorie === 'tole' && b.is_chute && b.statut !== 'archivee' && b.chantier_affectation === ch
-        ).length;
-        const mlTot   = [...chPa, ...chPr].reduce((s, b) => s + (b.longueur_m || 0), 0);
-        const surfTot = [...chTa, ...chTr].reduce((s, b) => s + _surfTole(b), 0);
-        const poids   = [...chPa, ...chPr].reduce((s, b) => s + _poidsEffectifProfil(b), 0)
-                      + [...chTa, ...chTr].reduce((s, b) => s + _poidsTole(b), 0);
+        const mlUtil  = chPr.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const mlAff   = chPa.reduce((s, b) => s + (b.longueur_m || 0), 0);
+        const pProf   = chPr.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const pProfAff= chPa.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+        const surfUtil = chTr.reduce((s, b) => s + _surfTole(b), 0);
+        const surfAff  = chTa.reduce((s, b) => s + _surfTole(b), 0);
+        const pTole    = chTr.reduce((s, b) => s + _poidsTole(b), 0);
+        const pToleAff = chTa.reduce((s, b) => s + _poidsTole(b), 0);
+        const poidsUtil  = pProf  + pTole;
+        const poidsStock = pProfAff + pToleAff;
         const chObj = _chantiers.find(c => c.nom === ch);
         const meta  = chObj ? [chObj.numero_affaire, chObj.ville].filter(Boolean).join(' · ') : '';
         const adminBilan = Auth.hasRight('can_validate');
@@ -2021,24 +2025,44 @@ const Stock = (() => {
             <input type="checkbox" class="bilan-ch-check" data-ch="${_e(ch)}">
           </td>
           <td>${meta ? `<span class="bilan-meta">${_e(meta)}</span><br>` : ''}<strong>${_e(ch)}</strong></td>
-          <td class="r">${mlTot   > 0 ? fmt(mlTot)   + ' m'  : '<span class=bilan-nil>—</span>'}</td>
-          <td class="r">${surfTot > 0 ? fmt(surfTot) + ' m²' : '<span class=bilan-nil>—</span>'}</td>
-          <td class="r bilan-poids">${fmtT(poids)}</td>
-          <td class="r">${nbChutes > 0 ? `<span style="color:#27ae60;font-weight:600">${nbChutes}</span>` : '<span class=bilan-nil>—</span>'}</td>
+          <td class="r">${mlUtil  > 0 ? fmt(mlUtil)  + ' m'  : nil}</td>
+          <td class="r bilan-poids">${pProf   > 0 ? fmtT(pProf)   : nil}</td>
+          <td class="r bilan-aff-cell">${mlAff   > 0 ? fmt(mlAff)   + ' m'  : nil}</td>
+          <td class="r bilan-aff-cell">${pProfAff> 0 ? fmtT(pProfAff) : nil}</td>
+          <td class="r">${surfUtil > 0 ? fmt(surfUtil) + ' m²' : nil}</td>
+          <td class="r bilan-poids">${pTole   > 0 ? fmtT(pTole)   : nil}</td>
+          <td class="r bilan-aff-cell">${surfAff > 0 ? fmt(surfAff) + ' m²' : nil}</td>
+          <td class="r bilan-aff-cell">${pToleAff> 0 ? fmtT(pToleAff) : nil}</td>
+          <td class="r bilan-poids">${poidsUtil  > 0 ? fmtT(poidsUtil)  : nil}</td>
+          <td class="r bilan-aff-cell">${poidsStock > 0 ? fmtT(poidsStock) : nil}</td>
+          <td class="r"><strong>${fmtT(poidsUtil + poidsStock)}</strong></td>
         </tr>`;
       }).join('');
 
-      const totMl   = [...pAff, ...pArc].reduce((s, b) => s + (b.longueur_m || 0), 0);
-      const totSurf = [...tAff, ...tArc].reduce((s, b) => s + _surfTole(b), 0);
-      const totPoids = [...pAff, ...pArc].reduce((s, b) => s + _poidsEffectifProfil(b), 0)
-                     + [...tAff, ...tArc].reduce((s, b) => s + _poidsTole(b), 0);
+      const totMlUtil  = pArc.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const totMlAff   = pAff.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const totPProf   = pArc.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const totPProfAff= pAff.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const totSurfUtil= tArc.reduce((s, b) => s + _surfTole(b), 0);
+      const totSurfAff = tAff.reduce((s, b) => s + _surfTole(b), 0);
+      const totPTole   = tArc.reduce((s, b) => s + _poidsTole(b), 0);
+      const totPToleAff= tAff.reduce((s, b) => s + _poidsTole(b), 0);
+      const totPoidsUtil  = totPProf  + totPTole;
+      const totPoidsStock = totPProfAff + totPToleAff;
       const totalRow = tousChantiers.length > 1 ? `<tr class="syn-total">
         <td></td>
         <td>Total (${tousChantiers.length} chantier${tousChantiers.length > 1 ? 's' : ''})</td>
-        <td class="r">${fmt(totMl)} m</td>
-        <td class="r">${fmt(totSurf)} m²</td>
-        <td class="r bilan-poids">${fmtT(totPoids)}</td>
-        <td></td>
+        <td class="r">${fmt(totMlUtil)} m</td>
+        <td class="r bilan-poids">${fmtT(totPProf)}</td>
+        <td class="r bilan-aff-cell">${fmt(totMlAff)} m</td>
+        <td class="r bilan-aff-cell">${fmtT(totPProfAff)}</td>
+        <td class="r">${fmt(totSurfUtil)} m²</td>
+        <td class="r bilan-poids">${fmtT(totPTole)}</td>
+        <td class="r bilan-aff-cell">${fmt(totSurfAff)} m²</td>
+        <td class="r bilan-aff-cell">${fmtT(totPToleAff)}</td>
+        <td class="r bilan-poids">${fmtT(totPoidsUtil)}</td>
+        <td class="r bilan-aff-cell">${fmtT(totPoidsStock)}</td>
+        <td class="r"><strong>${fmtT(totPoidsUtil + totPoidsStock)}</strong></td>
       </tr>` : '';
 
       return `
@@ -2046,25 +2070,35 @@ const Stock = (() => {
           <table class="syn-table">
             <thead>
               <tr class="syn-table-title-row">
-                <th colspan="5">
+                <th colspan="13">
                   Consommation par chantier
                   <span class="syn-scope-btn" data-syn-action="print-bilan-selection"
                         title="Imprimer tous les chantiers ou la sélection cochée">📄 PDF</span>
                 </th>
               </tr>
-              <tr>
-                <th style="width:30px;text-align:center;padding:4px">
+              <tr class="bilan-group-hdr">
+                <th rowspan="2" style="width:30px;text-align:center;padding:4px">
                   <input type="checkbox" id="bilan-check-all" title="Tout sélectionner / désélectionner">
                 </th>
-                <th>Chantier</th>
-                <th class="r">Profilés (ML)</th>
-                <th class="r">Tôles (m²)</th>
-                <th class="r">Poids</th>
-                <th class="r" style="color:#27ae60">Chutes dispo</th>
+                <th rowspan="2">Chantier</th>
+                <th colspan="2" class="r bilan-grp-sep">Profilés utilisés</th>
+                <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Profilés affectés</th>
+                <th colspan="2" class="r bilan-grp-sep">Tôles utilisées</th>
+                <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Tôles affectées</th>
+                <th colspan="3" class="r">Total poids</th>
+              </tr>
+              <tr class="bilan-group-hdr">
+                <th class="r">ML</th><th class="r">Poids</th>
+                <th class="r bilan-th-aff">ML</th><th class="r bilan-th-aff bilan-grp-sep">Poids</th>
+                <th class="r">m²</th><th class="r">Poids</th>
+                <th class="r bilan-th-aff">m²</th><th class="r bilan-th-aff bilan-grp-sep">Poids</th>
+                <th class="r">Utilisé</th>
+                <th class="r bilan-th-aff">Stock</th>
+                <th class="r">Total</th>
               </tr>
             </thead>
             <tbody>
-              ${rows || '<tr><td colspan="6" class="bilan-vide">Aucun profilé ou tôle affecté ou archivé</td></tr>'}
+              ${rows || '<tr><td colspan="13" class="bilan-vide">Aucun profilé ou tôle affecté ou archivé</td></tr>'}
               ${totalRow}
             </tbody>
           </table>
