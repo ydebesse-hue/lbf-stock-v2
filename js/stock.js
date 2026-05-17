@@ -1178,7 +1178,7 @@ const Stock = (() => {
       case 'id':
         return `<span class="chip-id">${_e(t.id)}</span>`;
       case 'type':
-        return `${_badgeTypeTole(t.type_tole)}${t.is_chute ? ' <span class="chip-chute">chute</span>' : ''}`;
+        return _badgeTypeTole(t.type_tole);
       case 'epaisseur':
         return `<strong>${t.epaisseur_mm} mm</strong>`;
       case 'dimensions':
@@ -1254,10 +1254,18 @@ const Stock = (() => {
     });
     h += '<th>Action</th></tr></thead><tbody>';
 
-    // Épaisseurs dont la surface totale est sous le seuil configuré
+    // Combinaisons type+épaisseur dont la surface est sous le seuil configuré
     const _epSousSeuil = new Set();
-    _surfacesParEpaisseur().forEach((entry, ep) => {
-      if (entry.seuil > 0 && entry.surface < entry.seuil) _epSousSeuil.add(ep);
+    const _parTypeEpSurf = {};
+    (_data?.barres || []).forEach(b => {
+      if (b.categorie !== 'tole' || b.statut === 'archivee') return;
+      const _k = `${b.type_tole || '?'}|${b.epaisseur_mm}`;
+      if (!_parTypeEpSurf[_k]) _parTypeEpSurf[_k] = { surface: 0, ep: b.epaisseur_mm };
+      _parTypeEpSurf[_k].surface += _surfaceTole(b) * (b.quantite || 1);
+    });
+    Object.entries(_parTypeEpSurf).forEach(([k, { surface, ep }]) => {
+      const seuil = _seuils[ep] || 0;
+      if (seuil > 0 && surface < seuil) _epSousSeuil.add(k);
     });
 
     if (!data.length) {
@@ -1265,8 +1273,8 @@ const Stock = (() => {
     } else {
       data.forEach(t => {
         const attente    = t.statut === 'en_attente';
-        const stockBas   = !attente && _epSousSeuil.has(t.epaisseur_mm);
-        const rowClass   = attente ? 'ligne-attente' : stockBas ? 'ligne-stock-bas' : '';
+        const stockBas   = !attente && _epSousSeuil.has(`${t.type_tole || '?'}|${t.epaisseur_mm}`);
+        const rowClass   = attente ? 'ligne-attente' : stockBas ? 'ligne-stock-bas' : t.is_chute ? 'ligne-chute' : '';
         h += `<tr${rowClass ? ` class="${rowClass}"` : ''} data-id="${_e(t.id)}">`;
         colsVis.forEach(c => {
           const editable = modif && COLS_EDITABLES_TOLE.has(c.key);
@@ -3212,10 +3220,17 @@ ${hasT ? `
   function _majAlerteSeuil() {
     const badge = document.getElementById('badge-stock-bas');
     if (!badge || !_data) return;
-    const surfaces = _surfacesParEpaisseur();
+    const parTypeEp = {};
+    (_data?.barres || []).forEach(b => {
+      if (b.categorie !== 'tole' || b.statut === 'archivee') return;
+      const k = `${b.type_tole || '?'}|${b.epaisseur_mm}`;
+      if (!parTypeEp[k]) parTypeEp[k] = { surface: 0, ep: b.epaisseur_mm };
+      parTypeEp[k].surface += _surfaceTole(b) * (b.quantite || 1);
+    });
     let nb = 0;
-    surfaces.forEach(entry => {
-      if (entry.seuil > 0 && entry.surface < entry.seuil) nb++;
+    Object.values(parTypeEp).forEach(({ surface, ep }) => {
+      const seuil = _seuils[ep] || 0;
+      if (seuil > 0 && surface < seuil) nb++;
     });
     badge.style.display = nb > 0 ? 'inline-flex' : 'none';
     const span = badge.querySelector('.stock-bas-nb');
