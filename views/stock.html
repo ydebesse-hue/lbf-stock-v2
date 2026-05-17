@@ -1124,6 +1124,43 @@
     .col-p-ajoute_par  { width: 90px;  }
     .col-p-commentaire { width: 130px; }
 
+    /* ── TABLE TÔLES ────────────────────────────────────────── */
+    .table-toles { table-layout: fixed; min-width: 760px; }
+    .table-toles thead th { white-space: normal; word-break: break-word; line-height: 1.3; vertical-align: top; }
+    .table-toles td       { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Colonne ID collante (aucune colonne check, donc left: 0) */
+    .table-toles th.col-t-id,
+    .table-toles td.col-t-id {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: white;
+      box-shadow: 2px 0 5px -2px rgba(0,0,0,.15);
+    }
+    .table-toles thead th.col-t-id { background: var(--noir); top: 0; z-index: 25 !important; }
+
+    /* Fonds de ligne sur la cellule collante */
+    .table-toles tbody tr:hover         td.col-t-id { background: #fafafa; }
+    .table-toles tr.ligne-attente       td.col-t-id { background: var(--or-bg); }
+    .table-toles tr.ligne-stock-bas     td.col-t-id { background: #fff0f0; }
+    .table-toles tr.ligne-chute         td.col-t-id { background: #e8f4f8; }
+
+    /* Largeurs colonnes tôles */
+    .col-t-id         { width: 75px;  }
+    .col-t-type       { width: 68px;  }
+    .col-t-epaisseur  { width: 80px;  text-align: center; }
+    .col-t-dimensions { width: 130px; text-align: center; }
+    .col-t-surf_unit  { width: 82px;  text-align: center; }
+    .col-t-quantite   { width: 62px;  text-align: center; }
+    .col-t-surf_tot   { width: 82px;  text-align: center; }
+    .col-t-poids      { width: 72px;  text-align: center; }
+    .col-t-lieu       { width: 100px; }
+    .col-t-date       { width: 82px;  }
+    .col-t-chantier   { width: 118px; }
+    .col-t-dispo      { width: 108px; }
+    .col-t-ref_cmd    { width: 110px; }
+
     /* ── SÉLECTEUR DE VUE ───────────────────────────────────── */
     .vue-selector {
       display: flex;
