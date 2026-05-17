@@ -1037,7 +1037,7 @@
       margin-top: 10px;
     }
     /* ── TABLEAU PROFILÉS — colonnes par classe ──────────────── */
-    .table-profils { table-layout: fixed; }
+    .table-profils { table-layout: fixed; min-width: 760px; }
     .table-profils thead th { white-space: normal; word-break: break-word; line-height: 1.3; vertical-align: top; }
     .table-profils td       { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -1047,7 +1047,7 @@
     .table-profils td.col-p-check {
       position: sticky; left: 0; z-index: 2; background: white;
     }
-    .table-profils thead th.col-p-check { background: var(--noir); z-index: 20; }
+    .table-profils thead th.col-p-check { background: var(--noir); top: 0; z-index: 25 !important; }
     .table-profils tbody tr:hover    td.col-p-check { background: #fafafa; }
     .table-profils tr.ligne-attente  td.col-p-check { background: #fffde7; }
     .table-profils tr.ligne-focus    td.col-p-check { background: #fff0f0; }
@@ -1085,7 +1085,14 @@
       background: white;
       box-shadow: 2px 0 5px -2px rgba(0,0,0,.15);
     }
-    .table-profils thead th.col-p-id { background: var(--noir); z-index: 20; }
+    /* En-tête ID : sticky sur les deux axes (top + left) avec z-index élevé.
+       !important nécessaire : #tableau-stock thead th (sélecteur avec ID) impose
+       z-index:10 et écrase la règle moins spécifique ci-dessus. */
+    .table-profils thead th.col-p-id {
+      background: var(--noir);
+      top: 0;
+      z-index: 25 !important;
+    }
 
     /* Conserver les fonds de ligne sur la cellule collante */
     .table-profils tbody tr:hover       td.col-p-id { background: #fafafa; }
