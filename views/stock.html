@@ -1159,6 +1159,7 @@
     .col-t-date       { width: 82px;  }
     .col-t-chantier   { width: 118px; }
     .col-t-dispo      { width: 108px; }
+    .col-t-hist       { width: 44px;  text-align: center; }
     .col-t-ref_cmd    { width: 110px; }
 
     /* ── SÉLECTEUR DE VUE ───────────────────────────────────── */
@@ -1608,6 +1609,14 @@
       #badge-stock-bas              { order: 20; flex-basis: 100%; }
 
       .csv-txt { display: none; }
+
+      /* ─ Historique barre/tôle sur mobile ─ */
+      #hist-contenu { max-height: calc(75vh - 100px); }
+      #hist-contenu .hist-table { min-width: 500px; font-size: 11px; }
+      #hist-contenu .hist-table th,
+      #hist-contenu .hist-table td { padding: 5px 7px; }
+      #hist-titre { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .tole-famille-header { font-size: 12px; padding: 7px 10px; gap: 8px; }
     }
 
     /* ── SYNTHÈSE ──────────────────────────────────────────────── */
@@ -2839,8 +2848,8 @@
 
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-detail-tole').classList.remove('open')">Fermer</button>
-        <!-- Bouton modifier — masqué si profil Consultation (géré par JS) -->
         <button id="dtole-btn-modifier" class="btn-modale btn-modale-vert" style="display:none">Modifier</button>
+        <button id="dtole-btn-sortie"   class="btn-modale btn-modale-rouge" style="display:none">Sortie chantier</button>
       </div>
     </div>
   </div>

@@ -1218,7 +1218,7 @@ const Stock = (() => {
     const modif = Auth.hasRight('can_edit');
     const vis   = _chargerColsVisToles();
     const colsVis = COLS_TOLES.filter(c => vis[c.key]);
-    const nbCols  = colsVis.length + 1; // +actions
+    const nbCols  = colsVis.length + 2; // +hist +actions
 
     let h = '<table class="table-toles"><thead><tr>';
     colsVis.forEach(c => {
@@ -1252,7 +1252,7 @@ const Stock = (() => {
       }
       h += `<th class="col-t-${c.key}${clsTri}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
-    h += '<th>Action</th></tr></thead><tbody>';
+    h += '<th class="col-t-hist">Hist.</th><th>Action</th></tr></thead><tbody>';
 
     // Combinaisons type+épaisseur dont la surface est sous le seuil configuré
     const _epSousSeuil = new Set();
@@ -1282,6 +1282,7 @@ const Stock = (() => {
           const dataField = editable ? ` data-field="${c.key}"` : '';
           h += `<td class="${cls}"${dataField}>${_cellTole(c.key, t, modif)}</td>`;
         });
+        h += `<td class="col-t-hist" style="text-align:center"><button class="btn-historique" onclick="Stock.ouvrirHistoriqueTole('${_e(t.id)}')" title="Historique">📋</button></td>`;
         h += `<td class="td-actions">${_actionsLigneTole(t, modif, admin)}</td>`;
         h += `</tr>`;
       });
@@ -1395,7 +1396,6 @@ const Stock = (() => {
       }
     }
 
-    h += ` <button class="btn-historique" onclick="Stock.ouvrirHistoriqueTole('${_e(t.id)}')" title="Historique">📋</button>`;
     return h;
   }
 
@@ -3681,6 +3681,8 @@ ${hasT ? `
         const deja = tr.classList.contains('ligne-focus');
         zoneTab.querySelectorAll('tr.ligne-focus').forEach(r => r.classList.remove('ligne-focus'));
         if (!deja) tr.classList.add('ligne-focus');
+        // Ligne tôle → ouvre la fiche détail (accès actions sur mobile)
+        if (tr.closest('.table-toles') && tr.dataset.id) ouvrirDetailTole(tr.dataset.id);
       });
     }
 
@@ -5887,15 +5889,19 @@ ${hasT ? `
     const zoneDispo = m.querySelector('#dtole-dispo');
     if (zoneDispo) zoneDispo.innerHTML = _badgeDispo(t);
 
-    // Bouton modifier — conditionnel
+    const canModif = Auth.hasRight('can_edit');
+
     const btnModif = m.querySelector('#dtole-btn-modifier');
     if (btnModif) {
-      const canModif = Auth.hasRight('can_edit');
       btnModif.style.display = canModif ? '' : 'none';
-      btnModif.onclick = () => {
-        _fermerModale('m-detail-tole');
-        ouvrirModification(id);
-      };
+      btnModif.onclick = () => { _fermerModale('m-detail-tole'); ouvrirModification(id); };
+    }
+
+    const btnSortie = m.querySelector('#dtole-btn-sortie');
+    if (btnSortie) {
+      const canSortie = canModif && (t.quantite ?? 0) > 0;
+      btnSortie.style.display = canSortie ? '' : 'none';
+      btnSortie.onclick = () => { _fermerModale('m-detail-tole'); _ouvrirSortieTole(id); };
     }
 
     _ouvrirModale('m-detail-tole');
