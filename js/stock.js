@@ -850,7 +850,7 @@ const Stock = (() => {
   function _valTri(item) {
     switch (_tri.col) {
       case 'id':          return item.id               || '';
-      case 'type':        return item.section_type     || '';
+      case 'type':        return item.categorie === 'tole' ? (item.type_tole || '') : (item.section_type || '');
       case 'designation': return item.designation      || '';
       case 'longueur':    return item.longueur_m       || 0;
       case 'poids':       return item.categorie === 'profil' ? _poidsEffectifProfil(item) : (item.poids_unitaire_kg || 0);
@@ -1253,7 +1253,7 @@ const Stock = (() => {
       }
       h += `<th class="col-t-${c.key}${clsTri}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
-    h += '<th>Action</th></tr></thead><tbody>';
+    h += '<th class="col-t-actions">Action</th></tr></thead><tbody>';
 
     // Combinaisons type+épaisseur dont la surface est sous le seuil configuré
     const _epSousSeuil = new Set();
@@ -1285,7 +1285,7 @@ const Stock = (() => {
           const dataField = editable ? ` data-field="${c.key}"` : '';
           h += `<td class="${cls}"${dataField}>${_cellTole(c.key, t, modif)}</td>`;
         });
-        h += `<td class="td-actions">${_actionsLigneTole(t, modif, admin)}</td>`;
+        h += `<td class="col-t-actions td-actions">${_actionsLigneTole(t, modif, admin)}</td>`;
         h += `</tr>`;
       });
     }
