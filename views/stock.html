@@ -2793,48 +2793,56 @@
     <div class="modale modale-lg">
       <div class="modale-titre">Fiche tôle</div>
 
-      <!-- Badge dispo -->
-      <div id="dtole-dispo" style="margin-bottom:12px"></div>
+      <div id="dtole-dispo" style="margin-bottom:10px"></div>
 
-      <!-- Schéma tôle perspective -->
-      <div class="schema-zone">
-        <div class="schema-svg-zone">
-          <div class="schema-titre">Tôle plate</div>
-          <svg width="155" height="115" viewBox="0 0 155 115">
-            <polygon points="28,42 118,42 118,60 28,60" fill="#d0d8e0" stroke="#555" stroke-width="1.5"/>
-            <polygon points="118,42 138,27 138,45 118,60" fill="#b0bbc8" stroke="#555" stroke-width="1.5"/>
-            <polygon points="28,42 48,27 138,27 118,42" fill="#c8d4de" stroke="#555" stroke-width="1.5"/>
-            <line x1="122" y1="42" x2="144" y2="42" stroke="#d22323" stroke-width="1" stroke-dasharray="3,2"/>
-            <line x1="122" y1="60" x2="144" y2="60" stroke="#d22323" stroke-width="1" stroke-dasharray="3,2"/>
-            <line x1="142" y1="42" x2="142" y2="60" stroke="#d22323" stroke-width="1.5"/>
-            <text x="149" y="53" font-size="9" fill="#d22323" font-family="Tahoma">e</text>
-            <line x1="28" y1="67" x2="118" y2="67" stroke="#d22323" stroke-width="1.5"/>
-            <line x1="28" y1="63" x2="28"  y2="71" stroke="#d22323" stroke-width="1"/>
-            <line x1="118" y1="63" x2="118" y2="71" stroke="#d22323" stroke-width="1"/>
-            <text x="73" y="79" font-size="9" fill="#d22323" font-family="Tahoma" text-anchor="middle">Largeur</text>
-            <text x="88" y="38" font-size="9" fill="#d22323" font-family="Tahoma" text-anchor="middle">Longueur →</text>
-          </svg>
-        </div>
-        <div class="schema-dims">
-          <h4>Dimensions</h4>
-          <div class="dim-row"><span class="dim-label">e — Épaisseur</span><span class="dim-val" id="dtole-epaisseur">—</span></div>
-          <div class="dim-row"><span class="dim-label">Largeur</span><span class="dim-val" id="dtole-largeur">—</span></div>
-          <div class="dim-row"><span class="dim-label">Longueur</span><span class="dim-val" id="dtole-longueur">—</span></div>
-          <div class="dim-row"><span class="dim-label">Quantité</span><span class="dim-val" id="dtole-quantite">—</span></div>
-          <div class="dim-row"><span class="dim-label">Poids unitaire</span><span class="dim-val" id="dtole-poids-u">—</span></div>
-          <div class="dim-row"><span class="dim-label">Poids total</span><span class="dim-val" id="dtole-poids-t">—</span></div>
-        </div>
-      </div>
-
-      <!-- Infos complémentaires -->
       <div class="fiche-infos">
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Type</div>
+          <div class="fiche-info-val" id="dtole-type">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Épaisseur</div>
+          <div class="fiche-info-val" id="dtole-epaisseur">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Largeur</div>
+          <div class="fiche-info-val" id="dtole-largeur">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Longueur</div>
+          <div class="fiche-info-val" id="dtole-longueur">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Quantité</div>
+          <div class="fiche-info-val" id="dtole-quantite">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Surface totale</div>
+          <div class="fiche-info-val" id="dtole-surface">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Poids unitaire</div>
+          <div class="fiche-info-val" id="dtole-poids-u">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Poids total</div>
+          <div class="fiche-info-val" id="dtole-poids-t">—</div>
+        </div>
         <div class="fiche-info-item">
           <div class="fiche-info-label">Chantier d'origine</div>
           <div class="fiche-info-val" id="dtole-chantier">—</div>
         </div>
         <div class="fiche-info-item">
+          <div class="fiche-info-label">Chantier affecté</div>
+          <div class="fiche-info-val" id="dtole-chantier-aff">—</div>
+        </div>
+        <div class="fiche-info-item">
           <div class="fiche-info-label">Lieu de stockage</div>
           <div class="fiche-info-val" id="dtole-lieu">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Réf. commande</div>
+          <div class="fiche-info-val" id="dtole-ref">—</div>
         </div>
         <div class="fiche-info-item">
           <div class="fiche-info-label">Date d'ajout</div>
@@ -2845,6 +2853,9 @@
           <div class="fiche-info-val" id="dtole-commentaire">—</div>
         </div>
       </div>
+
+      <!-- Historique chargé async -->
+      <div id="dtole-historique" style="margin-top:4px"></div>
 
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-detail-tole').classList.remove('open')">Fermer</button>

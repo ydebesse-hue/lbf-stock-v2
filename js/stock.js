@@ -5860,43 +5860,49 @@ ${hasT ? `
    * Ouvre la fiche détail d'une tôle
    * @param {string} id
    */
-  function ouvrirDetailTole(id) {
+  async function ouvrirDetailTole(id) {
     _selection = _parId(id);
     if (!_selection) return;
-
     const m = document.getElementById('m-detail-tole');
     if (!m) return;
-
     const t = _selection;
 
     // Titre
     const titre = m.querySelector('.modale-titre');
     if (titre) titre.textContent = `Fiche tôle — ${t.id}`;
 
-    // Infos
-    _afficherInfo(m, '#dtole-epaisseur',  `${t.epaisseur_mm} mm`);
-    _afficherInfo(m, '#dtole-largeur',    `${t.largeur_mm} mm`);
-    _afficherInfo(m, '#dtole-longueur',   `${t.longueur_mm} mm`);
-    _afficherInfo(m, '#dtole-quantite',   `${t.quantite} pièce${t.quantite > 1 ? 's' : ''}`);
-    _afficherInfo(m, '#dtole-poids-u',    `${t.poids_unitaire_kg.toFixed(1)} kg`);
-    _afficherInfo(m, '#dtole-poids-t',    `${t.poids_total_kg.toFixed(1)} kg`);
-    _afficherInfo(m, '#dtole-chantier',   t.chantier_origine);
-    _afficherInfo(m, '#dtole-lieu',       t.lieu_stockage);
-    _afficherInfo(m, '#dtole-date',       t.date_ajout || '—');
-    _afficherInfo(m, '#dtole-commentaire', t.commentaire || '—');
-
-    // Badge dispo
+    // Badge dispo + chute
     const zoneDispo = m.querySelector('#dtole-dispo');
-    if (zoneDispo) zoneDispo.innerHTML = _badgeDispo(t);
+    if (zoneDispo) {
+      const chuteChip = t.is_chute ? ' <span class="chip-chute">chute</span>' : '';
+      zoneDispo.innerHTML = _badgeDispo(t) + chuteChip;
+    }
 
+    // Infos (textContent pour le texte, innerHTML pour le badge type)
+    const surf = _surfaceTole(t);
+    const typeEl = m.querySelector('#dtole-type');
+    if (typeEl) typeEl.innerHTML = _badgeTypeTole(t.type_tole);
+    _afficherInfo(m, '#dtole-epaisseur',    `${t.epaisseur_mm} mm`);
+    _afficherInfo(m, '#dtole-largeur',      `${t.largeur_mm} mm`);
+    _afficherInfo(m, '#dtole-longueur',     `${t.longueur_mm} mm`);
+    _afficherInfo(m, '#dtole-quantite',     `${t.quantite} pièce${t.quantite !== 1 ? 's' : ''}`);
+    _afficherInfo(m, '#dtole-surface',      `${(surf * (t.quantite || 1)).toFixed(2)} m²  (${surf.toFixed(2)} m²/pièce)`);
+    _afficherInfo(m, '#dtole-poids-u',      t.poids_unitaire_kg != null ? `${t.poids_unitaire_kg.toFixed(1)} kg` : '—');
+    _afficherInfo(m, '#dtole-poids-t',      t.poids_total_kg    != null ? `${t.poids_total_kg.toFixed(1)} kg`    : '—');
+    _afficherInfo(m, '#dtole-chantier',     t.chantier_origine     ? (_labelChantier(t.chantier_origine)     || t.chantier_origine)     : '—');
+    _afficherInfo(m, '#dtole-chantier-aff', t.chantier_affectation ? (_labelChantier(t.chantier_affectation) || t.chantier_affectation) : '—');
+    _afficherInfo(m, '#dtole-lieu',         t.lieu_stockage  || '—');
+    _afficherInfo(m, '#dtole-ref',          t.ref_commande   || '—');
+    _afficherInfo(m, '#dtole-date',         t.date_ajout     || '—');
+    _afficherInfo(m, '#dtole-commentaire',  t.commentaire    || '—');
+
+    // Boutons
     const canModif = Auth.hasRight('can_edit');
-
     const btnModif = m.querySelector('#dtole-btn-modifier');
     if (btnModif) {
       btnModif.style.display = canModif ? '' : 'none';
       btnModif.onclick = () => { _fermerModale('m-detail-tole'); ouvrirModification(id); };
     }
-
     const btnSortie = m.querySelector('#dtole-btn-sortie');
     if (btnSortie) {
       const canSortie = canModif && (t.quantite ?? 0) > 0;
@@ -5904,7 +5910,22 @@ ${hasT ? `
       btnSortie.onclick = () => { _fermerModale('m-detail-tole'); _ouvrirSortieTole(id); };
     }
 
+    // Ouvre la modale et charge l'historique en bas
+    const zoneHist = m.querySelector('#dtole-historique');
+    if (zoneHist) zoneHist.innerHTML = '<div style="padding:10px 0;text-align:center;color:#aaa;font-style:italic;font-size:12px">Chargement de l\'historique…</div>';
     _ouvrirModale('m-detail-tole');
+    if (zoneHist) {
+      try {
+        const racineId = _trouverRacineTole(id);
+        const racine   = _parId(racineId);
+        const arbre    = _construireArbreTole(racineId);
+        const lignes   = await window.SB.lireHistoriqueParBarre(id);
+        zoneHist.innerHTML = _htmlFamilleTole(racine || { id: racineId }, arbre, id)
+                           + _htmlSectionJournalTole(id, lignes);
+      } catch {
+        zoneHist.innerHTML = '<div style="padding:10px 0;text-align:center;color:var(--rouge);font-size:12px">Impossible de charger l\'historique.</div>';
+      }
+    }
   }
 
 
