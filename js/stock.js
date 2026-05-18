@@ -5961,6 +5961,57 @@ ${hasT ? `
     _afficherInfo(m, '#dprofil-date',          b.date_ajout     || '—');
     _afficherInfo(m, '#dprofil-commentaire',   b.commentaire    || '—');
 
+    // Schéma collapsible
+    const btnToggle = m.querySelector('#dprofil-toggle-schema');
+    const zoneSchema = m.querySelector('#dprofil-schema');
+    const svgZone   = m.querySelector('#dprofil-svg-zone');
+    const dimsZone  = m.querySelector('#dprofil-dims-zone');
+    if (btnToggle && zoneSchema) {
+      const sec = _getDims(b.section_type, b.designation);
+      if (sec || b.section_type) {
+        btnToggle.style.display = '';
+        // Reset to collapsed state on each open
+        zoneSchema.style.display = 'none';
+        btnToggle.textContent = '▶ Voir schéma et caractéristiques';
+        if (svgZone) { svgZone.dataset.loaded = ''; svgZone.innerHTML = ''; }
+        if (dimsZone) dimsZone.innerHTML = '';
+        btnToggle.onclick = () => {
+          const open = zoneSchema.style.display !== 'none';
+          zoneSchema.style.display = open ? 'none' : 'flex';
+          btnToggle.textContent = open ? '▶ Voir schéma et caractéristiques' : '▼ Masquer schéma et caractéristiques';
+          if (!open && svgZone && !svgZone.dataset.loaded) {
+            const PHOTOS = {
+              'IPE':'../assets/profils/IPE.png','IPE A':'../assets/profils/IPEA.png',
+              'IPE AA':'../assets/profils/IPEAA.png','IPE O':'../assets/profils/IPEO.png',
+              'IPN':'../assets/profils/IPN.png','HEA':'../assets/profils/HEA.png',
+              'HEA A':'../assets/profils/HEAA.png','HEB':'../assets/profils/HEB.png',
+              'HEM':'../assets/profils/HEM.png','UPN':'../assets/profils/UPN.png',
+              'UPE':'../assets/profils/UPE.png','L égale':'../assets/profils/Le.png',
+              'L inégale':'../assets/profils/Li.png','Plat':'../assets/profils/Plat.png',
+              'SHS':'../assets/profils/SHS chaud.png','SHS chaud':'../assets/profils/SHS chaud.png',
+              'SHS froid':'../assets/profils/SHS froid.png','RHS':'../assets/profils/RHS chaud.png',
+              'RHS chaud':'../assets/profils/RHS chaud.png','RHS froid':'../assets/profils/RHS froid.png',
+              'CHS':'../assets/profils/CHS chaud.png','CHS chaud':'../assets/profils/CHS chaud.png',
+              'CHS froid':'../assets/profils/CHS froid.png',
+            };
+            const imgKey = sec?.fabrication ? `${b.section_type} ${sec.fabrication}` : b.section_type;
+            const imgSrc = PHOTOS[imgKey] || PHOTOS[b.section_type] || null;
+            const showSvg = () => { svgZone.innerHTML = profilSvgCote(sec || { serie: b.section_type }, 190, 190); };
+            if (imgSrc) {
+              svgZone.innerHTML = `<img alt="${_e(b.section_type)}" style="max-width:100%;max-height:190px;object-fit:contain;display:block;margin:0 auto;cursor:zoom-in;" onclick="profilZoomImage(this)">`;
+              const img = svgZone.querySelector('img');
+              if (img) { img.onerror = showSvg; img.src = imgSrc; }
+            } else { showSvg(); }
+            if (dimsZone) dimsZone.innerHTML = sec ? profilDimsTableau(sec) : '<div style="color:#aaa;font-size:12px">Dimensions non disponibles</div>';
+            svgZone.dataset.loaded = '1';
+          }
+        };
+      } else {
+        btnToggle.style.display = 'none';
+        zoneSchema.style.display = 'none';
+      }
+    }
+
     const canModif = Auth.hasRight('can_edit');
     const btnModif = m.querySelector('#dprofil-btn-modifier');
     if (btnModif) {
