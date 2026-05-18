@@ -224,6 +224,7 @@ const Stock = (() => {
   let _onglet        = 'synthese';
   let _synTab          = 'profils';
   let _synProfilsTous  = false;
+  let _synTolesTous    = false;
   let _bilanChantier   = '';
   let _bilanSort       = { col: 'chantier', dir: 'asc' };
   let _bilanFiltreSet  = new Set(); // empty = tous visibles
@@ -1647,14 +1648,11 @@ const Stock = (() => {
               <tr class="syn-table-title-row">
                 <th colspan="4">
                   <span class="syn-scope-btn" data-syn-action="toggle-all-types"
-                        id="syn-btn-expand-all" title="Déployer ou réduire tous les types"
-                        style="margin-right:4px">▼ Déployer</span>
+                        id="syn-btn-expand-all" title="Déployer ou réduire tous les types">▼ Déployer</span>
                   <span class="syn-scope-btn" data-syn-action="toggle-profils-scope"
-                        title="Basculer le périmètre">
-                    ${scopeLabel} ▾
-                  </span>
+                        title="Basculer le périmètre">${scopeLabel} ▾</span>
                   <span class="syn-scope-btn" data-syn-action="print-syn-profils"
-                        title="Imprimer la synthèse profilés" style="margin-left:4px">📄 PDF</span>
+                        title="Imprimer la synthèse profilés">📄 PDF</span>
                 </th>
               </tr>
               <tr>
@@ -1683,9 +1681,11 @@ const Stock = (() => {
 
       const canEdit = Auth.hasRight('can_validate');
 
-      // Grouper par type_tole → épaisseur
+      // Grouper par type_tole → épaisseur (périmètre selon scope)
+      const sourceToles = _synTolesTous ? tolesActives : tolesDispo;
+      const scopeLabelT = _synTolesTous ? 'Tous' : 'Disponibles';
       const parType = {};
-      tolesActives.forEach(b => {
+      sourceToles.forEach(b => {
         const ty = b.type_tole || '?';
         const ep = b.epaisseur_mm || '?';
         if (!parType[ty]) parType[ty] = { nb: 0, surface: 0, poids: 0, eps: {} };
@@ -1751,9 +1751,9 @@ const Stock = (() => {
         </tr>${sousLignes}`;
       }).join('');
 
-      const surfTot  = tolesActives.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0);
-      const poidsTot = tolesActives.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
-      const nbTot    = tolesActives.reduce((s, b) => s + (b.quantite || 1), 0);
+      const surfTot  = sourceToles.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0);
+      const poidsTot = sourceToles.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
+      const nbTot    = sourceToles.reduce((s, b) => s + (b.quantite || 1), 0);
       const totalRow = lignesType.length > 1 ? `<tr class="syn-total">
         <td>Total</td>
         <td class="r">${nbTot}</td>
@@ -1833,8 +1833,9 @@ const Stock = (() => {
               <tr class="syn-table-title-row">
                 <th colspan="4">
                   <span class="syn-scope-btn" data-syn-action="toggle-all-types"
-                        title="Déployer ou réduire tous les types"
-                        style="margin-right:4px">▼ Déployer</span>
+                        title="Déployer ou réduire tous les types">▼ Déployer</span>
+                  <span class="syn-scope-btn" data-syn-action="toggle-toles-scope"
+                        title="Basculer le périmètre">${scopeLabelT} ▾</span>
                   <span class="syn-scope-btn" data-syn-action="print-syn-toles"
                         title="Imprimer la synthèse tôles">📄 PDF</span>
                 </th>
@@ -3478,6 +3479,9 @@ ${hasT ? `
           _rendreSynthese();
         } else if (action === 'toggle-profils-scope') {
           _synProfilsTous = !_synProfilsTous;
+          _rendreSynthese();
+        } else if (action === 'toggle-toles-scope') {
+          _synTolesTous = !_synTolesTous;
           _rendreSynthese();
         } else if (action === 'toggle-type') {
           const grp      = el.dataset.synTypeGroup;
