@@ -3683,6 +3683,8 @@ ${hasT ? `
         if (!deja) tr.classList.add('ligne-focus');
         // Ligne tôle → ouvre la fiche détail (accès actions sur mobile)
         if (tr.closest('.table-toles') && tr.dataset.id) ouvrirDetailTole(tr.dataset.id);
+        // Ligne profilé → ouvre la fiche détail
+        if (tr.closest('.table-profils') && tr.dataset.id) ouvrirDetailProfil(tr.dataset.id);
       });
     }
 
@@ -5928,6 +5930,78 @@ ${hasT ? `
     }
   }
 
+
+  async function ouvrirDetailProfil(id) {
+    _selection = _parId(id);
+    if (!_selection) return;
+    const m = document.getElementById('m-detail-profil');
+    if (!m) return;
+    const b = _selection;
+
+    const titre = m.querySelector('.modale-titre');
+    if (titre) titre.textContent = `Fiche profilé — ${b.id}`;
+
+    const zoneDispo = m.querySelector('#dprofil-dispo');
+    if (zoneDispo) zoneDispo.innerHTML = _badgeDispo(b);
+
+    const typeEl = m.querySelector('#dprofil-type');
+    if (typeEl) typeEl.textContent = b.section_type || '—';
+    _afficherInfo(m, '#dprofil-designation', b.designation || '—');
+    _afficherInfo(m, '#dprofil-longueur',    b.longueur_m != null ? `${parseFloat(b.longueur_m).toFixed(2)} m` : '—');
+    const poids = _poidsEffectifProfil(b);
+    _afficherInfo(m, '#dprofil-poids',       poids > 0 ? `${poids.toFixed(1)} kg` : '—');
+    const classeEl = m.querySelector('#dprofil-classe');
+    if (classeEl) classeEl.innerHTML = b.classe_acier ? `<span class="badge-classe-acier">${_e(b.classe_acier)}</span>` : '—';
+    _afficherInfo(m, '#dprofil-chantier-aff',  b.chantier_affectation ? (_labelChantier(b.chantier_affectation) || b.chantier_affectation) : '—');
+    _afficherInfo(m, '#dprofil-chantier-orig', b.chantier_origine     ? (_labelChantier(b.chantier_origine)     || b.chantier_origine)     : '—');
+    _afficherInfo(m, '#dprofil-lieu',          b.lieu_stockage  || '—');
+    _afficherInfo(m, '#dprofil-ref',           b.ref_commande   || '—');
+    _afficherInfo(m, '#dprofil-fournisseur',   b.fournisseur    || '—');
+    _afficherInfo(m, '#dprofil-ajoute-par',    b.ajoute_par     || '—');
+    _afficherInfo(m, '#dprofil-date',          b.date_ajout     || '—');
+    _afficherInfo(m, '#dprofil-commentaire',   b.commentaire    || '—');
+
+    const canModif = Auth.hasRight('can_edit');
+    const btnModif = m.querySelector('#dprofil-btn-modifier');
+    if (btnModif) {
+      btnModif.style.display = canModif ? '' : 'none';
+      btnModif.onclick = () => { _fermerModale('m-detail-profil'); ouvrirModification(id); };
+    }
+    const btnUtiliser = m.querySelector('#dprofil-btn-utiliser');
+    if (btnUtiliser) {
+      const canUtiliser = canModif && b.statut === 'valide' && (b.longueur_m || 0) > 0;
+      btnUtiliser.style.display = canUtiliser ? '' : 'none';
+      btnUtiliser.onclick = () => { _fermerModale('m-detail-profil'); _ouvrirUtiliserBarre(id); };
+    }
+    const btnDemander = m.querySelector('#dprofil-btn-demander');
+    if (btnDemander) {
+      const demandeActif = _demandes.find(d => d.id_barre === b.id);
+      const canDemander = b.statut !== 'en_attente' && !demandeActif;
+      btnDemander.style.display = canDemander ? '' : 'none';
+      btnDemander.disabled = b.disponibilite !== 'disponible';
+      btnDemander.onclick = () => { _fermerModale('m-detail-profil'); ouvrirDemande(id); };
+    }
+
+    const zoneHist = m.querySelector('#dprofil-historique');
+    if (zoneHist) zoneHist.innerHTML = '<div style="padding:10px 0;text-align:center;color:#aaa;font-style:italic;font-size:12px">Chargement de l\'historique…</div>';
+    _ouvrirModale('m-detail-profil');
+    if (zoneHist) {
+      try {
+        const racineId = _trouverRacineTole(id);
+        const racine   = _parId(racineId);
+        const arbre    = _construireArbreTole(racineId);
+        const lignes   = await window.SB.lireHistoriqueParBarre(id);
+        zoneHist.innerHTML =
+          _htmlFamilleBarre(racine || { id: racineId }, arbre, id) +
+          `<div class="tole-journal-section">
+            <div class="tole-journal-titre">Journal des opérations — ${_e(id)}</div>
+            ${_htmlTableauHistorique(lignes)}
+          </div>`;
+      } catch {
+        zoneHist.innerHTML = '<div style="padding:10px 0;text-align:center;color:var(--rouge);font-size:12px">Impossible de charger l\'historique.</div>';
+      }
+    }
+  }
 
   /* ──────────────────────────────────────────────────────────────
      ACTIONS PUBLIQUES
@@ -9332,6 +9406,7 @@ ${hasT ? `
     ouvrirModification,
     ouvrirDemande,
     ouvrirDetailTole,
+    ouvrirDetailProfil,
     ouvrirSortieTole:      _ouvrirSortieTole,
     ouvrirUtiliserBarre:   _ouvrirUtiliserBarre,
     validerElement,

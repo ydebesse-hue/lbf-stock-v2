@@ -2868,8 +2868,88 @@
 
 
 
+
+
+
+
   <!-- ══════════════════════════════════════════════════════════════
-       MODALE 6 — FICHE SECTION (depuis bouton 🔍 sur profilé)
+       MODALE 5b — FICHE DÉTAIL PROFILÉ
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-detail-profil" class="modale-bg" role="dialog" aria-modal="true" aria-label="Fiche profilé">
+    <div class="modale modale-lg">
+      <div class="modale-titre">Fiche profilé</div>
+
+      <div id="dprofil-dispo" style="margin-bottom:10px"></div>
+
+      <div class="fiche-infos">
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Type</div>
+          <div class="fiche-info-val" id="dprofil-type">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Désignation</div>
+          <div class="fiche-info-val" id="dprofil-designation">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Longueur</div>
+          <div class="fiche-info-val" id="dprofil-longueur">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Poids</div>
+          <div class="fiche-info-val" id="dprofil-poids">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Classe acier</div>
+          <div class="fiche-info-val" id="dprofil-classe">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Chantier affecté</div>
+          <div class="fiche-info-val" id="dprofil-chantier-aff">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Chantier d'origine</div>
+          <div class="fiche-info-val" id="dprofil-chantier-orig">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Lieu de stockage</div>
+          <div class="fiche-info-val" id="dprofil-lieu">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Réf. commande</div>
+          <div class="fiche-info-val" id="dprofil-ref">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Fournisseur</div>
+          <div class="fiche-info-val" id="dprofil-fournisseur">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Ajouté par</div>
+          <div class="fiche-info-val" id="dprofil-ajoute-par">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Date</div>
+          <div class="fiche-info-val" id="dprofil-date">—</div>
+        </div>
+        <div class="fiche-info-item" style="grid-column:1/-1">
+          <div class="fiche-info-label">Commentaire</div>
+          <div class="fiche-info-val" id="dprofil-commentaire">—</div>
+        </div>
+      </div>
+
+      <!-- Historique chargé async -->
+      <div id="dprofil-historique" style="margin-top:4px"></div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-detail-profil').classList.remove('open')">Fermer</button>
+        <button id="dprofil-btn-modifier"  class="btn-modale btn-modale-vert"  style="display:none">Modifier</button>
+        <button id="dprofil-btn-utiliser"  class="btn-modale btn-modale-rouge" style="display:none">Utiliser</button>
+        <button id="dprofil-btn-demander"  class="btn-modale btn-modale-bleu"  style="display:none">Demander</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════════
        Affiche le schéma SVG + dimensions normalisées sans quitter le stock
        ══════════════════════════════════════════════════════════════ -->
   <div id="m-fiche-section" class="modale-bg" role="dialog" aria-modal="true" aria-label="Fiche section">
