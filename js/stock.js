@@ -3553,8 +3553,8 @@ ${hasT ? `
           const barreId  = el.dataset.barreId;
           const barreCat = el.dataset.barreCat;
           if (!barreId) return;
-          if (barreCat === 'tole') ouvrirDetailTole(barreId);
-          else ouvrirDetailProfil(barreId);
+          if (barreCat === 'tole') ouvrirDetailTole(barreId, { readOnly: true });
+          else ouvrirDetailProfil(barreId, { readOnly: true });
         } else if (action === 'voir-bilan-chantier') {
           if (!Auth.hasRight('can_validate')) return;
           _bilanChantier = el.dataset.synChantier;
@@ -5874,12 +5874,15 @@ ${hasT ? `
    * Ouvre la fiche détail d'une tôle
    * @param {string} id
    */
-  async function ouvrirDetailTole(id) {
+  async function ouvrirDetailTole(id, opts = {}) {
     _selection = _parId(id);
     if (!_selection) return;
     const m = document.getElementById('m-detail-tole');
     if (!m) return;
     const t = _selection;
+
+    // Reset all fiche-info-item visibility
+    m.querySelectorAll('.fiche-info-item').forEach(el => el.style.display = '');
 
     // Titre
     const titre = m.querySelector('.modale-titre');
@@ -5914,14 +5917,24 @@ ${hasT ? `
     const canModif = Auth.hasRight('can_edit');
     const btnModif = m.querySelector('#dtole-btn-modifier');
     if (btnModif) {
-      btnModif.style.display = canModif ? '' : 'none';
+      btnModif.style.display = (!opts.readOnly && canModif) ? '' : 'none';
       btnModif.onclick = () => { _fermerModale('m-detail-tole'); ouvrirModification(id); };
     }
     const btnSortie = m.querySelector('#dtole-btn-sortie');
     if (btnSortie) {
-      const canSortie = canModif && (t.quantite ?? 0) > 0;
+      const canSortie = !opts.readOnly && canModif && (t.quantite ?? 0) > 0;
       btnSortie.style.display = canSortie ? '' : 'none';
       btnSortie.onclick = () => { _fermerModale('m-detail-tole'); _ouvrirSortieTole(id); };
+    }
+
+    // Champs conditionnels en mode lecture seule (depuis bilan)
+    if (opts.readOnly) {
+      if (t.statut === 'archivee') {
+        const lieuEl = m.querySelector('#dtole-lieu');
+        if (lieuEl) lieuEl.closest('.fiche-info-item').style.display = 'none';
+        const chAffEl = m.querySelector('#dtole-chantier-aff');
+        if (chAffEl) chAffEl.closest('.fiche-info-item').style.display = 'none';
+      }
     }
 
     // Ouvre la modale et charge l'historique en bas
@@ -5943,12 +5956,15 @@ ${hasT ? `
   }
 
 
-  async function ouvrirDetailProfil(id) {
+  async function ouvrirDetailProfil(id, opts = {}) {
     _selection = _parId(id);
     if (!_selection) return;
     const m = document.getElementById('m-detail-profil');
     if (!m) return;
     const b = _selection;
+
+    // Reset all fiche-info-item visibility
+    m.querySelectorAll('.fiche-info-item').forEach(el => el.style.display = '');
 
     const titre = m.querySelector('.modale-titre');
     if (titre) titre.textContent = `Fiche profilé — ${b.id}`;
@@ -6027,22 +6043,32 @@ ${hasT ? `
     const canModif = Auth.hasRight('can_edit');
     const btnModif = m.querySelector('#dprofil-btn-modifier');
     if (btnModif) {
-      btnModif.style.display = canModif ? '' : 'none';
+      btnModif.style.display = (!opts.readOnly && canModif) ? '' : 'none';
       btnModif.onclick = () => { _fermerModale('m-detail-profil'); ouvrirModification(id); };
     }
     const btnUtiliser = m.querySelector('#dprofil-btn-utiliser');
     if (btnUtiliser) {
-      const canUtiliser = canModif && b.statut === 'valide' && (b.longueur_m || 0) > 0;
+      const canUtiliser = !opts.readOnly && canModif && b.statut === 'valide' && (b.longueur_m || 0) > 0;
       btnUtiliser.style.display = canUtiliser ? '' : 'none';
       btnUtiliser.onclick = () => { _fermerModale('m-detail-profil'); _ouvrirUtiliserBarre(id); };
     }
     const btnDemander = m.querySelector('#dprofil-btn-demander');
     if (btnDemander) {
       const demandeActif = _demandes.find(d => d.id_barre === b.id);
-      const canDemander = b.statut !== 'en_attente' && !demandeActif;
+      const canDemander = !opts.readOnly && b.statut !== 'en_attente' && !demandeActif;
       btnDemander.style.display = canDemander ? '' : 'none';
       btnDemander.disabled = b.disponibilite !== 'disponible';
       btnDemander.onclick = () => { _fermerModale('m-detail-profil'); ouvrirDemande(id); };
+    }
+
+    // Champs conditionnels en mode lecture seule (depuis bilan)
+    if (opts.readOnly) {
+      if (b.statut === 'archivee') {
+        const lieuEl = m.querySelector('#dprofil-lieu');
+        if (lieuEl) lieuEl.closest('.fiche-info-item').style.display = 'none';
+        const chAffEl = m.querySelector('#dprofil-chantier-aff');
+        if (chAffEl) chAffEl.closest('.fiche-info-item').style.display = 'none';
+      }
     }
 
     const zoneHist = m.querySelector('#dprofil-historique');
