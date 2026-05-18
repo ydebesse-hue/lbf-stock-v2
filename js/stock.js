@@ -2036,14 +2036,13 @@ const Stock = (() => {
         const hasT = chTAff.length + chTArc.length > 0;
 
         return `
-          <div class="bilan-retour" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="bilan-retour" style="margin-bottom:12px">
             <span class="syn-lien" data-syn-action="retour-bilan">← Tous les chantiers</span>
-            <span class="syn-scope-btn" data-syn-action="export-bilan-pdf" title="Exporter en PDF">📄 PDF</span>
           </div>
           <div class="syn-card syn-card-tbl" style="margin-bottom:16px">
             <table class="syn-table">
               <thead>
-                <tr class="syn-table-title-row"><th colspan="11">${_e(titre)}</th></tr>
+                <tr class="syn-table-title-row"><th colspan="11">${_e(titre)}<span class="syn-scope-btn" data-syn-action="export-bilan-pdf" title="Exporter en PDF" style="margin-left:8px">📄 PDF</span></th></tr>
                 <tr class="bilan-group-hdr">
                   <th colspan="2" class="r bilan-grp-sep">Profilés utilisés</th>
                   <th colspan="2" class="r bilan-th-aff bilan-grp-sep">Profilés affectés</th>
