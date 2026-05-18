@@ -1938,7 +1938,7 @@ const Stock = (() => {
                 const isAff = b.statut !== 'archivee';
                 const ml = b.longueur_m || 0;
                 const po = _poidsEffectifProfil(b);
-                return `<tr class="bilan-bar-row${isAff ? ' bilan-bar-aff' : ''}">
+                return `<tr class="bilan-bar-row${isAff ? ' bilan-bar-aff' : ''}" data-syn-action="voir-barre-bilan" data-barre-id="${_e(b.id)}" data-barre-cat="profil" style="cursor:pointer" title="Voir la fiche">
                   <td class="bilan-bar-cell"><span class="bilan-bar-id">${_e(b.id)}</span></td>
                   <td class="r">${!isAff ? fmt(ml)+' m' : nilD}</td>
                   <td class="r">${!isAff ? fmtT(po) : nilD}</td>
@@ -2000,7 +2000,7 @@ const Stock = (() => {
                   const su = _surfTole(b);
                   const po = _poidsTole(b);
                   const dims = b.largeur_mm && b.longueur_mm ? `${b.largeur_mm}×${b.longueur_mm} mm` : '';
-                  return `<tr class="bilan-bar-row${isAff ? ' bilan-bar-aff' : ''}">
+                  return `<tr class="bilan-bar-row${isAff ? ' bilan-bar-aff' : ''}" data-syn-action="voir-barre-bilan" data-barre-id="${_e(b.id)}" data-barre-cat="tole" style="cursor:pointer" title="Voir la fiche">
                     <td class="bilan-bar-cell"><span class="bilan-bar-id">${_e(b.id)}</span>${dims ? ` <span style="color:#aaa;font-size:10px">${dims}</span>` : ''}</td>
                     <td class="r">${!isAff ? fmt(su)+' m²' : nilD}</td>
                     <td class="r">${!isAff ? fmtT(po) : nilD}</td>
@@ -3549,6 +3549,12 @@ ${hasT ? `
           if (ty) { _filtresT.type.clear(); _filtresT.type.add(ty); }
           if (ep) { _filtresT.epaisseur.clear(); _filtresT.epaisseur.add(ep); }
           _filtrer();
+        } else if (action === 'voir-barre-bilan') {
+          const barreId  = el.dataset.barreId;
+          const barreCat = el.dataset.barreCat;
+          if (!barreId) return;
+          if (barreCat === 'tole') ouvrirDetailTole(barreId);
+          else ouvrirDetailProfil(barreId);
         } else if (action === 'voir-bilan-chantier') {
           if (!Auth.hasRight('can_validate')) return;
           _bilanChantier = el.dataset.synChantier;
