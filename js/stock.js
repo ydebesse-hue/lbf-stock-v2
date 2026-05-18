@@ -2212,7 +2212,7 @@ const Stock = (() => {
         `<tr class="${adminBilan ? 'bilan-ch-row' : ''}" data-bilan-ch="${_e(ch)}"
             data-v="${mlUtil},${pProf},${mlAff},${pProfAff},${surfUtil},${pTole},${surfAff},${pToleAff}"
             ${adminBilan ? `data-syn-action="voir-bilan-chantier" data-syn-chantier="${_e(ch)}" title="Voir le détail"` : ''}>
-          <td onclick="event.stopPropagation()" style="width:1px;text-align:center;padding:2px 4px;white-space:nowrap">
+          <td onclick="event.stopPropagation()" style="width:1px;text-align:center;padding:0 2px;white-space:nowrap">
             <input type="checkbox" class="bilan-ch-check" data-ch="${_e(ch)}">
           </td>
           <td>${meta ? `<span class="bilan-meta">${_e(meta)}</span><br>` : ''}<strong>${_e(ch)}</strong></td>
@@ -2263,13 +2263,12 @@ const Stock = (() => {
             <thead>
               <tr class="syn-table-title-row">
                 <th colspan="13">
-                  Consommation par chantier
                   <span class="syn-scope-btn" data-syn-action="print-bilan-selection"
                         title="Imprimer tous les chantiers ou la sélection cochée">📄 PDF</span>
                 </th>
               </tr>
               <tr class="bilan-group-hdr">
-                <th rowspan="2" style="width:1px;text-align:center;padding:2px 4px;white-space:nowrap">
+                <th rowspan="2" style="width:1px;text-align:center;padding:0 2px;white-space:nowrap">
                   <input type="checkbox" id="bilan-check-all" title="Tout sélectionner / désélectionner">
                 </th>
                 <th rowspan="2" class="bilan-sort-th" data-syn-action="bilan-sort" data-bilan-col="chantier">
