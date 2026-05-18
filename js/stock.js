@@ -1218,9 +1218,10 @@ const Stock = (() => {
     const modif = Auth.hasRight('can_edit');
     const vis   = _chargerColsVisToles();
     const colsVis = COLS_TOLES.filter(c => vis[c.key]);
-    const nbCols  = colsVis.length + 1; // +actions
+    const nbCols  = colsVis.length + (modif ? 2 : 1); // +check(si modif) +actions
 
-    let h = '<table class="table-toles"><thead><tr>';
+    let h = `<table class="table-toles${modif ? '' : ' no-check'}"><thead><tr>`;
+    if (modif) h += '<th class="col-t-check"><input type="checkbox" id="chk-select-all-toles" title="Tout sélectionner"></th>';
     colsVis.forEach(c => {
       const actif  = _tri.col === c.tri;
       const ind    = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : (c.tri ? '⇅' : '');
@@ -1275,7 +1276,9 @@ const Stock = (() => {
         const attente    = t.statut === 'en_attente';
         const stockBas   = !attente && _epSousSeuil.has(`${t.type_tole || '?'}|${t.epaisseur_mm}`);
         const rowClass   = attente ? 'ligne-attente' : stockBas ? 'ligne-stock-bas' : t.is_chute ? 'ligne-chute' : '';
-        h += `<tr${rowClass ? ` class="${rowClass}"` : ''} data-id="${_e(t.id)}">`;
+        const selectee = modif && _selectionIds.has(t.id);
+        h += `<tr${rowClass || selectee ? ` class="${[rowClass, selectee ? 'ligne-selectee' : ''].filter(Boolean).join(' ')}"` : ''} data-id="${_e(t.id)}">`;
+        if (modif) h += `<td class="col-t-check" onclick="event.stopPropagation()"><input type="checkbox" class="chk-barre" data-id="${_e(t.id)}"${selectee ? ' checked' : ''}></td>`;
         colsVis.forEach(c => {
           const editable = modif && COLS_EDITABLES_TOLE.has(c.key);
           const cls = `col-t-${c.key}${editable ? ' cell-editable' : ''}`;
@@ -3296,12 +3299,14 @@ ${hasT ? `
       barre.classList.remove('visible');
     }
     // Sync case "tout sélectionner"
-    const chkAll = document.getElementById('chk-select-all-profils');
-    if (chkAll) {
-      const total = document.querySelectorAll('.chk-barre').length;
-      chkAll.checked       = total > 0 && n === total;
-      chkAll.indeterminate = n > 0 && n < total;
-    }
+    const total = document.querySelectorAll('.chk-barre').length;
+    ['chk-select-all-profils', 'chk-select-all-toles'].forEach(id => {
+      const chkAll = document.getElementById(id);
+      if (chkAll) {
+        chkAll.checked       = total > 0 && n === total;
+        chkAll.indeterminate = n > 0 && n < total;
+      }
+    });
   }
 
   function _ouvrirActionGroupee(type) {
@@ -3844,7 +3849,7 @@ ${hasT ? `
           return;
         }
         // Case "tout sélectionner"
-        if (e.target.id === 'chk-select-all-profils') {
+        if (e.target.id === 'chk-select-all-profils' || e.target.id === 'chk-select-all-toles') {
           const cases = zoneTab.querySelectorAll('.chk-barre');
           cases.forEach(cb => {
             cb.checked = e.target.checked;
@@ -3872,8 +3877,10 @@ ${hasT ? `
         const tr = cb.closest('tr');
         if (tr) tr.classList.remove('ligne-selectee');
       });
-      const chkAll = document.getElementById('chk-select-all-profils');
-      if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+      ['chk-select-all-profils', 'chk-select-all-toles'].forEach(id => {
+        const chkAll = document.getElementById(id);
+        if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+      });
       _majBarreSelection();
     });
 
