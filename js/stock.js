@@ -902,7 +902,7 @@ const Stock = (() => {
     const admin = Auth.hasRight('can_validate');
     const modif = Auth.hasRight('can_edit');
     const vis   = _chargerColsVis();
-    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + (modif ? 3 : 2); // +check(si modif) +hist +actions
+    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + (modif ? 2 : 1); // +check(si modif) +actions
 
     let h = `<table class="table-profils${modif ? '' : ' no-check'}"><thead><tr>`;
     if (modif) {
@@ -952,7 +952,7 @@ const Stock = (() => {
       }
       h += `<th class="${cls}${actif ? ' tri-actif' : ''}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
-    h += '<th class="col-p-hist">Hist.</th><th class="col-p-actions">Actions</th></tr></thead><tbody>';
+    h += '<th class="col-p-actions">Actions</th></tr></thead><tbody>';
 
     if (!data.length) {
       h += `<tr><td colspan="${nbCols}" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
@@ -972,7 +972,6 @@ const Stock = (() => {
           const ed = modif && COLS_EDITABLES_PROFIL.has(c.key);
           h += `<td class="col-p-${c.key}${ed ? ' cell-editable' : ''}"${ed ? ` data-field="${c.key}"` : ''}>${_cellProfil(c.key, b)}</td>`;
         });
-        h += `<td class="col-p-hist"><button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Historique">📋</button></td>`;
         h += `<td class="col-p-actions">${_actionsLigneProfil(b, modif, admin)}</td>`;
         h += '</tr>';
       });
@@ -1218,7 +1217,7 @@ const Stock = (() => {
     const modif = Auth.hasRight('can_edit');
     const vis   = _chargerColsVisToles();
     const colsVis = COLS_TOLES.filter(c => vis[c.key]);
-    const nbCols  = colsVis.length + 2; // +hist +actions
+    const nbCols  = colsVis.length + 1; // +actions
 
     let h = '<table class="table-toles"><thead><tr>';
     colsVis.forEach(c => {
@@ -1252,7 +1251,7 @@ const Stock = (() => {
       }
       h += `<th class="col-t-${c.key}${clsTri}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
-    h += '<th class="col-t-hist">Hist.</th><th>Action</th></tr></thead><tbody>';
+    h += '<th>Action</th></tr></thead><tbody>';
 
     // Combinaisons type+épaisseur dont la surface est sous le seuil configuré
     const _epSousSeuil = new Set();
@@ -1282,7 +1281,6 @@ const Stock = (() => {
           const dataField = editable ? ` data-field="${c.key}"` : '';
           h += `<td class="${cls}"${dataField}>${_cellTole(c.key, t, modif)}</td>`;
         });
-        h += `<td class="col-t-hist" style="text-align:center"><button class="btn-historique" onclick="Stock.ouvrirHistoriqueTole('${_e(t.id)}')" title="Historique">📋</button></td>`;
         h += `<td class="td-actions">${_actionsLigneTole(t, modif, admin)}</td>`;
         h += `</tr>`;
       });
