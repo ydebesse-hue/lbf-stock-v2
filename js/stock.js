@@ -2258,13 +2258,13 @@ const Stock = (() => {
 
       return `
         <div class="syn-card syn-card-tbl">
+          <div class="syn-table-title-row"><div style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:#f7f7f7;border-bottom:1px solid #e8e8e8;font-size:12px;font-weight:bold;color:#444">
+            Bilan chantiers
+            <span class="syn-scope-btn" data-syn-action="print-bilan-selection"
+                  title="Imprimer tous les chantiers ou la sélection cochée">📄 PDF</span>
+          </div></div>
           <table class="syn-table">
             <thead>
-              <tr class="syn-table-title-row">
-                <th colspan="13">Bilan chantiers<span class="syn-scope-btn" data-syn-action="print-bilan-selection"
-                        title="Imprimer tous les chantiers ou la sélection cochée" style="margin-left:8px">📄 PDF</span>
-                </th>
-              </tr>
               <tr class="bilan-group-hdr">
                 <th rowspan="2" style="width:1px;text-align:center;padding:0 2px;white-space:nowrap">
                   <input type="checkbox" id="bilan-check-all" title="Tout sélectionner / désélectionner">
