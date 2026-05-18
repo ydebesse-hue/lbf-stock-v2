@@ -2261,9 +2261,8 @@ const Stock = (() => {
           <table class="syn-table">
             <thead>
               <tr class="syn-table-title-row">
-                <th colspan="13">
-                  <span class="syn-scope-btn" data-syn-action="print-bilan-selection"
-                        title="Imprimer tous les chantiers ou la sélection cochée">📄 PDF</span>
+                <th colspan="13">Bilan chantiers<span class="syn-scope-btn" data-syn-action="print-bilan-selection"
+                        title="Imprimer tous les chantiers ou la sélection cochée" style="margin-left:8px">📄 PDF</span>
                 </th>
               </tr>
               <tr class="bilan-group-hdr">
