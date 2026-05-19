@@ -1616,6 +1616,7 @@ const Stock = (() => {
               <td class="r syn-sous-val">${sd.nb}</td>
               <td class="r syn-sous-val">${fmt(sd.ml)} m</td>
               <td class="r syn-sous-val">${fmtT(sd.poids)}</td>
+              <td></td>
             </tr>`).join('');
         return `<tr class="syn-type-row">
           <td>
@@ -1625,6 +1626,7 @@ const Stock = (() => {
           <td class="r">${d.nb}</td>
           <td class="r">${fmt(d.ml)} m</td>
           <td class="r">${fmtT(d.poids)}</td>
+          <td class="syn-bar-td"><div class="syn-bar-wrap"><div class="syn-bar-fill" style="width:${pct}%"></div></div></td>
         </tr>${sousLignes}`;
       }).join('');
 
@@ -1633,7 +1635,7 @@ const Stock = (() => {
       const poidsTotal2 = sourceType.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
       const totalRow = lignesType.length > 1 ? `<tr class="syn-total">
         <td>Total</td><td class="r">${nbTotal2}</td>
-        <td class="r">${fmt(mlTotal2)} m</td><td class="r">${fmtT(poidsTotal2)}</td>
+        <td class="r">${fmt(mlTotal2)} m</td><td class="r">${fmtT(poidsTotal2)}</td><td></td>
       </tr>` : '';
 
       const scopeLabel = _synProfilsTous ? 'Tous' : 'Disponibles';
@@ -1648,17 +1650,25 @@ const Stock = (() => {
             <span class="syn-scope-btn" data-syn-action="print-syn-profils"
                   title="Imprimer la synthèse profilés">📄 PDF</span>
           </div></div>
-          <table class="syn-table" style="width:auto">
+          <table class="syn-table" style="width:100%;table-layout:fixed">
+            <colgroup>
+              <col style="width:130px">
+              <col style="width:58px">
+              <col style="width:88px">
+              <col style="width:78px">
+              <col>
+            </colgroup>
             <thead>
               <tr>
-                <th style="white-space:nowrap">Type</th>
+                <th style="white-space:nowrap;overflow:hidden">Type</th>
                 <th class="r" style="white-space:nowrap">Barres</th>
                 <th class="r" style="white-space:nowrap">ML</th>
                 <th class="r" style="white-space:nowrap">Poids</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              ${rowsType || `<tr><td colspan="4" style="color:#aaa;text-align:center;padding:14px">Aucun profilé ${_synProfilsTous ? '' : 'disponible'}</td></tr>`}
+              ${rowsType || `<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">Aucun profilé ${_synProfilsTous ? '' : 'disponible'}</td></tr>`}
               ${totalRow}
             </tbody>
           </table>
@@ -1693,8 +1703,10 @@ const Stock = (() => {
         parType[ty].eps[ep].poids   += b.poids_total_kg || 0;
       });
       const lignesType = Object.entries(parType).sort((a, b) => b[1].surface - a[1].surface);
+      const surfMax = lignesType.length ? lignesType[0][1].surface : 1;
 
       const rowsType = lignesType.map(([type, d]) => {
+        const pct = Math.round((d.surface / surfMax) * 100);
         const epsEntries = Object.entries(d.eps).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
         const typeHasAlert = epsEntries.some(([ep, sd]) => {
           const s = _seuils[ep] || 0;
@@ -1731,6 +1743,7 @@ const Stock = (() => {
                 ${seuilInput}
               </td>
               <td class="r syn-sous-val">${fmtT(sd.poids)}</td>
+              <td></td>
             </tr>`;
         }).join('');
         return `<tr class="syn-type-row">
@@ -1743,6 +1756,7 @@ const Stock = (() => {
           <td class="r">${d.nb}</td>
           <td class="r">${fmt(d.surface)} m²${typeHasAlert ? ' <span style="color:#c0392b;font-weight:700">⚠</span>' : ''}</td>
           <td class="r">${fmtT(d.poids)}</td>
+          <td class="syn-bar-td"><div class="syn-bar-wrap"><div class="syn-bar-fill" style="width:${pct}%"></div></div></td>
         </tr>${sousLignes}`;
       }).join('');
 
@@ -1754,6 +1768,7 @@ const Stock = (() => {
         <td class="r">${nbTot}</td>
         <td class="r">${fmt(surfTot)} m²</td>
         <td class="r">${fmtT(poidsTot)}</td>
+        <td></td>
       </tr>` : '';
 
       // Bannière réappro — par combinaison type+épaisseur (chaque type est indépendant)
@@ -1825,17 +1840,25 @@ const Stock = (() => {
             <span class="syn-scope-btn" data-syn-action="print-syn-toles"
                   title="Imprimer la synthèse tôles">📄 PDF</span>
           </div></div>
-          <table class="syn-table" style="width:auto">
+          <table class="syn-table" style="width:100%;table-layout:fixed">
+            <colgroup>
+              <col style="width:130px">
+              <col style="width:58px">
+              <col style="width:88px">
+              <col style="width:78px">
+              <col>
+            </colgroup>
             <thead>
               <tr>
-                <th style="white-space:nowrap">Type</th>
+                <th style="white-space:nowrap;overflow:hidden">Type</th>
                 <th class="r" style="white-space:nowrap">Tôles</th>
                 <th class="r" style="white-space:nowrap">Surface</th>
                 <th class="r" style="white-space:nowrap">Poids</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              ${rowsType || '<tr><td colspan="4" style="color:#aaa;text-align:center;padding:14px">Aucune tôle active</td></tr>'}
+              ${rowsType || '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">Aucune tôle active</td></tr>'}
               ${totalRow}
             </tbody>
           </table>
