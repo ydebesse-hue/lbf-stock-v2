@@ -2956,13 +2956,41 @@
       <!-- Historique chargé async -->
       <div id="dprofil-historique" style="margin-top:4px"></div>
 
+      <!-- Zone Utiliser (injectée à la demande) -->
+      <div id="dprofil-utiliser-zone" style="display:none">
+        <div id="dprofil-ub-info" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:12px;"></div>
+        <div class="modale-champ">
+          <div class="ub-toggle">
+            <label class="ub-toggle-opt"><input type="radio" name="dprofil-ub-mode" value="utilisee" checked> Longueur utilisée</label>
+            <label class="ub-toggle-opt"><input type="radio" name="dprofil-ub-mode" value="restante"> Longueur restante</label>
+          </div>
+        </div>
+        <div class="modale-champ" style="display:flex;gap:8px;align-items:center">
+          <input type="number" id="dprofil-ub-longueur" min="0" step="0.01" placeholder="0.00" style="flex:1" class="modale-input">
+          <span style="color:#888">m</span>
+        </div>
+        <div id="dprofil-ub-preview" class="ub-preview"></div>
+        <div id="dprofil-ub-zone-chantier" class="modale-champ" style="display:none">
+          <label class="modale-label">Chantier d'utilisation <span class="requis">*</span></label>
+          <div id="dprofil-ub-chantier-picker"></div>
+        </div>
+        <div id="dprofil-ub-zone-chute" class="modale-champ" style="display:none">
+          <label class="modale-label">Chute — disposition</label>
+          <div class="ub-chute-options">
+            <label class="ub-toggle-opt"><input type="radio" name="dprofil-ub-chute" value="chantier" checked> Garder pour le chantier (<span id="dprofil-ub-chantier-nom"></span>)</label>
+            <label class="ub-toggle-opt"><input type="radio" name="dprofil-ub-chute" value="dispo"> Remettre disponible</label>
+          </div>
+        </div>
+      </div>
+
       <div class="modale-footer">
-        <button id="dprofil-btn-fermer"      class="btn-modale btn-modale-gris"  onclick="document.getElementById('m-detail-profil').classList.remove('open')">Fermer</button>
-        <button id="dprofil-btn-modifier"    class="btn-modale btn-modale-vert"  style="display:none">Modifier</button>
-        <button id="dprofil-btn-utiliser"    class="btn-modale btn-modale-rouge" style="display:none">Utiliser</button>
-        <button id="dprofil-btn-demander"    class="btn-modale btn-modale-bleu"  style="display:none">Demander</button>
-        <button id="dprofil-btn-annuler"     class="btn-modale btn-modale-gris"  style="display:none">Annuler</button>
-        <button id="dprofil-btn-enregistrer" class="btn-modale btn-modale-vert"  style="display:none">Enregistrer</button>
+        <button id="dprofil-btn-fermer"      class="btn-modale btn-modale-gris"    onclick="document.getElementById('m-detail-profil').classList.remove('open')">Fermer</button>
+        <button id="dprofil-btn-modifier"    class="btn-modale btn-modale-vert"    style="display:none">Modifier</button>
+        <button id="dprofil-btn-utiliser"    class="btn-modale btn-modale-rouge"   style="display:none">Utiliser</button>
+        <button id="dprofil-btn-demander"    class="btn-modale btn-modale-bleu"    style="display:none">Demander</button>
+        <button id="dprofil-btn-annuler"     class="btn-modale btn-modale-gris"    style="display:none">Annuler</button>
+        <button id="dprofil-btn-enregistrer" class="btn-modale btn-modale-vert"    style="display:none">Enregistrer</button>
+        <button id="dprofil-btn-valider"     class="btn-modale btn-modale-valider" style="display:none">Valider</button>
       </div>
     </div>
   </div>

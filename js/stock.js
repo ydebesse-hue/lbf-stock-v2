@@ -5962,6 +5962,12 @@ ${hasT ? `
 
     // Reset all fiche-info-item visibility
     m.querySelectorAll('.fiche-info-item').forEach(el => el.style.display = '');
+    // Reset display from edit/utiliser modes
+    ['#dprofil-dispo', '.fiche-infos', '#dprofil-historique'].forEach(sel => {
+      const el = m.querySelector(sel); if (el) el.style.display = '';
+    });
+    const ubZone = m.querySelector('#dprofil-utiliser-zone');
+    if (ubZone) ubZone.style.display = 'none';
 
     const titre = m.querySelector('.modale-titre');
     if (titre) titre.textContent = `Fiche profilé — ${b.id}`;
@@ -6047,8 +6053,10 @@ ${hasT ? `
     if (btnUtiliser) {
       const canUtiliser = !opts.readOnly && canModif && b.statut === 'valide' && (b.longueur_m || 0) > 0;
       btnUtiliser.style.display = canUtiliser ? '' : 'none';
-      btnUtiliser.onclick = () => { _fermerModale('m-detail-profil'); _ouvrirUtiliserBarre(id); };
+      btnUtiliser.onclick = () => _entrerModeUtiliserFicheProfil(id, m);
     }
+    const btnValider = m.querySelector('#dprofil-btn-valider');
+    if (btnValider) btnValider.style.display = 'none';
     const btnDemander = m.querySelector('#dprofil-btn-demander');
     if (btnDemander) {
       const demandeActif = _demandes.find(d => d.id_barre === b.id);
@@ -6199,6 +6207,167 @@ ${hasT ? `
     _majBanniereRecents();
     _notif((estArch ? 'Barre archivée' : 'Modification enregistrée') + (enLigne ? '' : ' — ⚠ hors ligne'), enLigne ? 'succes' : 'alerte');
     ouvrirDetailProfil(id); // Repasse en mode affichage
+  }
+
+
+  /* ──────────────────────────────────────────────────────────────
+     UTILISER BARRE DEPUIS LA FICHE PROFILÉ (inline)
+     ────────────────────────────────────────────────────────────── */
+
+  function _entrerModeUtiliserFicheProfil(id, m) {
+    const b = _parId(id);
+    if (!b) return;
+
+    // Masquer le contenu fiche, afficher la zone utiliser
+    ['.fiche-infos', '#dprofil-dispo', '#dprofil-toggle-schema', '#dprofil-schema', '#dprofil-historique']
+      .forEach(sel => { const el = m.querySelector(sel); if (el) el.style.display = 'none'; });
+    const ubZone = m.querySelector('#dprofil-utiliser-zone');
+    if (ubZone) ubZone.style.display = '';
+
+    // Boutons
+    ['dprofil-btn-fermer', 'dprofil-btn-modifier', 'dprofil-btn-utiliser',
+      'dprofil-btn-demander', 'dprofil-btn-enregistrer']
+      .forEach(bid => { const el = m.querySelector('#' + bid); if (el) el.style.display = 'none'; });
+    const btnAnn = m.querySelector('#dprofil-btn-annuler');
+    const btnVal = m.querySelector('#dprofil-btn-valider');
+    if (btnAnn) { btnAnn.style.display = ''; btnAnn.onclick = () => ouvrirDetailProfil(id); }
+    if (btnVal) { btnVal.style.display = ''; btnVal.onclick = () => _confirmerUtiliserFicheProfil(id, m); }
+
+    // Titre
+    const titre = m.querySelector('.modale-titre');
+    if (titre) titre.textContent = `Utiliser — ${b.section_type} ${b.designation}`;
+
+    // Chips info
+    const infoEl = m.querySelector('#dprofil-ub-info');
+    if (infoEl) {
+      const chips = [
+        `<span class="mod-meta-chip"><strong>Longueur :</strong>&nbsp;${b.longueur_m.toFixed(2)} m</span>`,
+        b.lieu_stockage ? `<span class="mod-meta-chip"><strong>Lieu :</strong>&nbsp;${_e(b.lieu_stockage)}</span>` : '',
+        `<span class="mod-meta-chip"><strong>Statut :</strong>&nbsp;${b.disponibilite === 'disponible' ? 'Disponible' : 'Affectée'}</span>`,
+        b.disponibilite === 'affecte' && b.chantier_affectation
+          ? `<span class="mod-meta-chip"><strong>Chantier :</strong>&nbsp;${_e(_labelChantier(b.chantier_affectation))}</span>` : '',
+      ];
+      infoEl.innerHTML = chips.filter(Boolean).join('');
+    }
+
+    // Reset radio + input
+    const radUtilisee = m.querySelector('input[name="dprofil-ub-mode"][value="utilisee"]');
+    if (radUtilisee) radUtilisee.checked = true;
+    const inpLong = m.querySelector('#dprofil-ub-longueur');
+    if (inpLong) {
+      inpLong.value = '';
+      inpLong.oninput = () => _majPreviewUtiliserFiche(id, m);
+    }
+    m.querySelectorAll('input[name="dprofil-ub-mode"]').forEach(r => {
+      r.onchange = () => _majPreviewUtiliserFiche(id, m);
+    });
+
+    // Preview initial
+    const previewEl = m.querySelector('#dprofil-ub-preview');
+    if (previewEl) {
+      previewEl.textContent = `Barre actuelle : ${b.longueur_m.toFixed(2)} m — saisissez une longueur`;
+      previewEl.style.color = '#555';
+    }
+
+    // Zone chantier ou chute
+    const zoneChantier = m.querySelector('#dprofil-ub-zone-chantier');
+    const zoneChute    = m.querySelector('#dprofil-ub-zone-chute');
+    if (b.disponibilite === 'disponible') {
+      if (zoneChantier) zoneChantier.style.display = '';
+      if (zoneChute)    zoneChute.style.display    = 'none';
+      _monterPickerChantier('dprofil-ub-chantier-picker', 'dprofil-ub-chantier');
+    } else {
+      if (zoneChantier) zoneChantier.style.display = 'none';
+      if (zoneChute)    zoneChute.style.display    = '';
+      const nomEl = m.querySelector('#dprofil-ub-chantier-nom');
+      if (nomEl) nomEl.textContent = _labelChantier(b.chantier_affectation) || b.chantier_affectation || '';
+      const radChantier = m.querySelector('input[name="dprofil-ub-chute"][value="chantier"]');
+      if (radChantier) radChantier.checked = true;
+    }
+  }
+
+  function _majPreviewUtiliserFiche(id, m) {
+    const barre = _parId(id);
+    const previewEl = m.querySelector('#dprofil-ub-preview');
+    if (!barre || !previewEl) return;
+    const mode = m.querySelector('input[name="dprofil-ub-mode"]:checked')?.value || 'utilisee';
+    const raw  = m.querySelector('#dprofil-ub-longueur')?.value;
+    const val  = parseFloat(raw);
+    if (!raw || isNaN(val)) {
+      previewEl.textContent = `Barre actuelle : ${barre.longueur_m.toFixed(2)} m — saisissez une longueur`;
+      previewEl.style.color = '#555';
+      return;
+    }
+    const utilisee = mode === 'utilisee' ? val : barre.longueur_m - val;
+    const restante = barre.longueur_m - utilisee;
+    if (utilisee <= 0 || restante < 0) {
+      previewEl.textContent = `⚠ Valeur invalide (max ${barre.longueur_m.toFixed(2)} m, min > 0 utilisé)`;
+      previewEl.style.color = 'var(--rouge)';
+    } else if (restante === 0) {
+      previewEl.textContent = `Utilisé : ${utilisee.toFixed(2)} m → Reste : 0 m (barre archivée)`;
+      previewEl.style.color = '#555';
+    } else {
+      previewEl.textContent = `Utilisé : ${utilisee.toFixed(2)} m → Reste : ${restante.toFixed(2)} m`;
+      previewEl.style.color = '#555';
+    }
+  }
+
+  async function _confirmerUtiliserFicheProfil(id, m) {
+    const barre = _parId(id);
+    if (!barre) return;
+    const mode = m.querySelector('input[name="dprofil-ub-mode"]:checked')?.value || 'utilisee';
+    const val  = parseFloat(m.querySelector('#dprofil-ub-longueur')?.value);
+    if (isNaN(val) || val < 0) return _signalerErreur(m, '#dprofil-ub-longueur', 'Longueur invalide');
+    const utilisee = mode === 'utilisee' ? val : barre.longueur_m - val;
+    const restante = barre.longueur_m - utilisee;
+    if (utilisee <= 0) return _signalerErreur(m, '#dprofil-ub-longueur', 'La longueur utilisée doit être > 0');
+    if (restante < 0)  return _signalerErreur(m, '#dprofil-ub-longueur', `Longueur max : ${barre.longueur_m} m`);
+
+    const session   = Auth.getSession();
+    const operateur = session?.identifiant || null;
+    let chantier = null, chuteDispo = 'disponible', chuteAffectation = null;
+    if (barre.disponibilite === 'disponible') {
+      chantier = m.querySelector('#dprofil-ub-chantier')?.value?.trim();
+      if (!chantier) { _notif('Le chantier est requis', 'erreur'); return; }
+    } else {
+      chantier = barre.chantier_affectation;
+      if ((m.querySelector('input[name="dprofil-ub-chute"]:checked')?.value || 'chantier') === 'chantier') {
+        chuteDispo = 'affecte'; chuteAffectation = barre.chantier_affectation;
+      }
+    }
+
+    const estArchivage = restante === 0;
+    const poidsml    = barre.poids_ml || 0;
+    const poidsChute = poidsml > 0 ? Math.round(restante * poidsml * 10) / 10 : barre.poids_barre_kg;
+    const poidsUti   = poidsml > 0 ? Math.round(utilisee * poidsml * 10) / 10 : null;
+
+    if (estArchivage) {
+      await _persisterElement({ ...barre, longueur_m: utilisee, disponibilite: 'disponible',
+        chantier_affectation: chantier, statut: 'archivee',
+        date_modif: _dateAujourdhui(), modifie_par: operateur || 'inconnu' });
+      await _enregistrerHistorique(barre.id, 'ARCHIVAGE', barre.longueur_m, 0, chantier, operateur, null,
+        `Utilisé entièrement ${utilisee.toFixed(2)} m`, barre.lieu_stockage || null);
+    } else {
+      const consId = _genererIdPortion(barre.id);
+      await _persisterElement({ ...barre, longueur_m: restante, poids_barre_kg: poidsChute,
+        disponibilite: chuteDispo, chantier_affectation: chuteAffectation, statut: 'valide',
+        valide_par: operateur, date_validation: _dateAujourdhui(),
+        date_modif: _dateAujourdhui(), modifie_par: operateur || 'inconnu' });
+      await _persisterElement({ ...barre, id: consId, longueur_m: utilisee, poids_barre_kg: poidsUti,
+        disponibilite: 'disponible', chantier_affectation: chantier, statut: 'archivee',
+        date_modif: _dateAujourdhui(), modifie_par: operateur || 'inconnu' });
+      await _enregistrerHistorique(barre.id, 'SORTIE', barre.longueur_m, restante, chantier, operateur, null,
+        `Utilisé ${utilisee.toFixed(2)} m → portion archivée sous ${consId}`, barre.lieu_stockage || null);
+      await _enregistrerHistorique(consId, 'ARCHIVAGE', utilisee, 0, chantier, operateur, null,
+        `Issu de ${barre.id} — ${utilisee.toFixed(2)} m consommés`, barre.lieu_stockage || null);
+    }
+
+    _fermerModale('m-detail-profil');
+    _peuplerFiltres();
+    _filtrer();
+    _majBanniereRecents();
+    _notif(estArchivage ? 'Barre utilisée entièrement — archivée'
+      : `${utilisee.toFixed(2)} m utilisés — chute de ${restante.toFixed(2)} m`, 'succes');
   }
 
 
