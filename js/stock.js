@@ -1640,29 +1640,21 @@ const Stock = (() => {
       return `
         ${cartes}
         <div class="syn-card syn-card-tbl">
-          <table class="syn-table">
-            <colgroup>
-              <col style="width:auto">
-              <col style="width:58px">
-              <col style="width:88px">
-              <col style="width:78px">
-            </colgroup>
+          <div class="syn-table-title-row"><div style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:#f7f7f7;border-bottom:1px solid #e8e8e8;font-size:12px;font-weight:bold;color:#444">
+            <span class="syn-scope-btn" data-syn-action="toggle-all-types"
+                  id="syn-btn-expand-all" title="Déployer ou réduire tous les types">▼ Déployer</span>
+            <span class="syn-scope-btn" data-syn-action="toggle-profils-scope"
+                  title="Basculer le périmètre">${scopeLabel} ▾</span>
+            <span class="syn-scope-btn" data-syn-action="print-syn-profils"
+                  title="Imprimer la synthèse profilés">📄 PDF</span>
+          </div></div>
+          <table class="syn-table" style="width:auto">
             <thead>
-              <tr class="syn-table-title-row">
-                <th colspan="4">
-                  <span class="syn-scope-btn" data-syn-action="toggle-all-types"
-                        id="syn-btn-expand-all" title="Déployer ou réduire tous les types">▼ Déployer</span>
-                  <span class="syn-scope-btn" data-syn-action="toggle-profils-scope"
-                        title="Basculer le périmètre">${scopeLabel} ▾</span>
-                  <span class="syn-scope-btn" data-syn-action="print-syn-profils"
-                        title="Imprimer la synthèse profilés">📄 PDF</span>
-                </th>
-              </tr>
               <tr>
-                <th>Type</th>
-                <th class="r">Barres</th>
-                <th class="r">ML</th>
-                <th class="r">Poids</th>
+                <th style="white-space:nowrap">Type</th>
+                <th class="r" style="white-space:nowrap">Barres</th>
+                <th class="r" style="white-space:nowrap">ML</th>
+                <th class="r" style="white-space:nowrap">Poids</th>
               </tr>
             </thead>
             <tbody>
