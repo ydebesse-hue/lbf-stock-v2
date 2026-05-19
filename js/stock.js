@@ -903,7 +903,7 @@ const Stock = (() => {
     const admin = Auth.hasRight('can_validate');
     const modif = Auth.hasRight('can_edit');
     const vis   = _chargerColsVis();
-    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + (modif ? 2 : 1); // +check(si modif) +actions
+    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + (modif ? 1 : 0); // +check si modif
 
     let h = `<table class="table-profils${modif ? '' : ' no-check'}"><thead><tr>`;
     if (modif) {
@@ -953,7 +953,7 @@ const Stock = (() => {
       }
       h += `<th class="${cls}${actif ? ' tri-actif' : ''}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
-    h += '<th class="col-p-actions">Actions</th></tr></thead><tbody>';
+    h += '</tr></thead><tbody>';
 
     if (!data.length) {
       h += `<tr><td colspan="${nbCols}" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
@@ -973,7 +973,6 @@ const Stock = (() => {
           const ed = modif && COLS_EDITABLES_PROFIL.has(c.key);
           h += `<td class="col-p-${c.key}${ed ? ' cell-editable' : ''}"${ed ? ` data-field="${c.key}"` : ''}>${_cellProfil(c.key, b)}</td>`;
         });
-        h += `<td class="col-p-actions">${_actionsLigneProfil(b, modif, admin)}</td>`;
         h += '</tr>';
       });
     }
@@ -6053,7 +6052,7 @@ ${hasT ? `
     const btnDemander = m.querySelector('#dprofil-btn-demander');
     if (btnDemander) {
       const demandeActif = _demandes.find(d => d.id_barre === b.id);
-      const canDemander = !opts.readOnly && b.statut !== 'en_attente' && !demandeActif;
+      const canDemander = !opts.readOnly && !canModif && b.statut !== 'en_attente' && !demandeActif;
       btnDemander.style.display = canDemander ? '' : 'none';
       btnDemander.disabled = b.disponibilite !== 'disponible';
       btnDemander.onclick = () => { _fermerModale('m-detail-profil'); ouvrirDemande(id); };
