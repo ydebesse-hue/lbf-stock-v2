@@ -6041,7 +6041,7 @@ ${hasT ? `
     const btnModif = m.querySelector('#dprofil-btn-modifier');
     if (btnModif) {
       btnModif.style.display = (!opts.readOnly && canModif) ? '' : 'none';
-      btnModif.onclick = () => { _fermerModale('m-detail-profil'); ouvrirModification(id); };
+      btnModif.onclick = () => _entrerEditionFicheProfil(id, m);
     }
     const btnUtiliser = m.querySelector('#dprofil-btn-utiliser');
     if (btnUtiliser) {
@@ -6057,6 +6057,11 @@ ${hasT ? `
       btnDemander.disabled = b.disponibilite !== 'disponible';
       btnDemander.onclick = () => { _fermerModale('m-detail-profil'); ouvrirDemande(id); };
     }
+    // Boutons mode édition (toujours cachés à l'ouverture)
+    ['dprofil-btn-annuler', 'dprofil-btn-enregistrer'].forEach(bid => {
+      const el = m.querySelector('#' + bid);
+      if (el) el.style.display = 'none';
+    });
 
     // Champs conditionnels en mode lecture seule (depuis bilan)
     if (opts.readOnly) {
@@ -6088,6 +6093,114 @@ ${hasT ? `
       }
     }
   }
+
+  /* ──────────────────────────────────────────────────────────────
+     ÉDITION INLINE FICHE PROFILÉ
+     ────────────────────────────────────────────────────────────── */
+
+  function _entrerEditionFicheProfil(id, m) {
+    const b = _parId(id);
+    if (!b) return;
+
+    // Passer les boutons en mode édition
+    ['dprofil-btn-fermer', 'dprofil-btn-modifier', 'dprofil-btn-utiliser', 'dprofil-btn-demander']
+      .forEach(bid => { const el = m.querySelector('#' + bid); if (el) el.style.display = 'none'; });
+    const btnEnreg = m.querySelector('#dprofil-btn-enregistrer');
+    const btnAnn   = m.querySelector('#dprofil-btn-annuler');
+    if (btnEnreg) { btnEnreg.style.display = ''; btnEnreg.onclick = () => _enregistrerEditionFicheProfil(id, m); }
+    if (btnAnn)   { btnAnn.style.display   = ''; btnAnn.onclick   = () => ouvrirDetailProfil(id); }
+
+    // Longueur → input number
+    const longEl = m.querySelector('#dprofil-longueur');
+    if (longEl) longEl.innerHTML = `<input type="number" min="0" step="0.01" value="${b.longueur_m ?? ''}"
+      style="width:100%;padding:4px 6px;border:1px solid #bbb;border-radius:3px;font-size:13px;box-sizing:border-box">`;
+
+    // Lieu stockage → sélecteurs cascade
+    const lieuEl = m.querySelector('#dprofil-lieu');
+    if (lieuEl) {
+      lieuEl.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.className = 'lieu-cascade';
+      lieuEl.appendChild(wrap);
+      _monterSelecteurLieu(wrap, b.lieu_stockage || '');
+      m._editLieuWrap = wrap;
+    }
+
+    // Chantier affecté → select
+    const chAffEl = m.querySelector('#dprofil-chantier-aff');
+    if (chAffEl) {
+      const sel = document.createElement('select');
+      sel.style.cssText = 'width:100%;padding:4px 6px;border:1px solid #bbb;border-radius:3px;font-size:13px';
+      chAffEl.innerHTML = '';
+      chAffEl.appendChild(sel);
+      _peuplerSelectAffectation(sel, b.chantier_affectation || '');
+    }
+
+    // Commentaire → textarea
+    const commEl = m.querySelector('#dprofil-commentaire');
+    if (commEl) commEl.innerHTML = `<textarea style="width:100%;padding:4px 6px;border:1px solid #bbb;border-radius:3px;resize:vertical;min-height:52px;font-size:13px;box-sizing:border-box;font-family:inherit">${_e(b.commentaire || '')}</textarea>`;
+  }
+
+  async function _enregistrerEditionFicheProfil(id, m) {
+    const original = _parId(id);
+    if (!original) return;
+
+    const longueur    = parseFloat(m.querySelector('#dprofil-longueur input')?.value);
+    const lieu        = _lireLieu(m._editLieuWrap);
+    const chAff       = (m.querySelector('#dprofil-chantier-aff select')?.value || '').trim() || null;
+    const commentaire = (m.querySelector('#dprofil-commentaire textarea')?.value || '').trim();
+    const dispo       = chAff ? 'affecte' : 'disponible';
+
+    if (isNaN(longueur) || longueur < 0) {
+      const inp = m.querySelector('#dprofil-longueur input');
+      if (inp) { inp.style.outline = '2px solid var(--rouge)'; inp.focus(); }
+      return;
+    }
+
+    const session    = Auth.getSession();
+    const poidsml    = original.poids_ml || 0;
+    const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : original.poids_barre_kg;
+    const estArch    = longueur === 0;
+    const longAvant  = original.longueur_m;
+    const op         = session?.identifiant || null;
+
+    const modif = {
+      ...original,
+      longueur_m: longueur, poids_barre_kg: poidsBarre,
+      lieu_stockage: lieu, disponibilite: dispo, chantier_affectation: chAff,
+      commentaire,
+      statut: estArch ? 'archivee' : 'valide',
+      valide_par: op, date_validation: _dateAujourdhui(),
+      date_modif: _dateAujourdhui(), modifie_par: op || 'inconnu',
+    };
+
+    const enLigne = await _persisterElement(modif);
+
+    if (estArch) {
+      await _enregistrerHistorique(id, 'ARCHIVAGE', longAvant, 0,
+        chAff || original.chantier_origine || null, op, null, commentaire || null, lieu || null);
+    } else if (longueur !== longAvant) {
+      await _enregistrerHistorique(id, longueur < longAvant ? 'RETOUR' : 'MODIFICATION', longAvant, longueur,
+        chAff || original.chantier_affectation || null, op, null, 'Correction longueur', lieu || null);
+    } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
+      await _enregistrerHistorique(id, 'AFFECTATION', longAvant, longueur,
+        chAff, op, null, commentaire || null, lieu || null);
+    } else if (dispo === 'disponible' && original.disponibilite === 'affecte') {
+      await _enregistrerHistorique(id, 'RETOUR', longAvant, longueur,
+        original.chantier_affectation, op, null, commentaire || null, lieu || null);
+    } else if (lieu !== original.lieu_stockage || commentaire !== original.commentaire) {
+      await _enregistrerHistorique(id, 'MODIFICATION', longAvant, longueur,
+        chAff || original.chantier_affectation || null, op, null,
+        commentaire || `Lieu → ${lieu || 'Aucun'}`, lieu || null);
+    }
+
+    _peuplerFiltres();
+    _filtrer();
+    _majBanniereRecents();
+    _notif((estArch ? 'Barre archivée' : 'Modification enregistrée') + (enLigne ? '' : ' — ⚠ hors ligne'), enLigne ? 'succes' : 'alerte');
+    ouvrirDetailProfil(id); // Repasse en mode affichage
+  }
+
 
   /* ──────────────────────────────────────────────────────────────
      ACTIONS PUBLIQUES
