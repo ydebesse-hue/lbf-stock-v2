@@ -4899,7 +4899,22 @@ ${hasT ? `
     if (tdId) {
       const pret = type && desig && !isNaN(long) && long > 0;
       if (pret) {
-        if (!tr.dataset.idPrevu) tr.dataset.idPrevu = _genererIdBarre();
+        if (!tr.dataset.idPrevu) {
+          // Inclure les IDs déjà réservés par les autres lignes du même tableau
+          const tbody = tr.closest('tbody');
+          const dejaPris = tbody
+            ? [...tbody.querySelectorAll('tr.inv-ligne')].map(r => r.dataset.idPrevu).filter(Boolean)
+            : [];
+          const numsExist = _data.barres
+            .filter(b => b.id && /^P\d/.test(b.id))
+            .map(b => parseInt(b.id.slice(1).split('-')[0], 10))
+            .filter(n => !isNaN(n));
+          const numsPris = dejaPris
+            .map(id => parseInt(id.slice(1).split('-')[0], 10))
+            .filter(n => !isNaN(n));
+          const max = Math.max(0, ...numsExist, ...numsPris);
+          tr.dataset.idPrevu = `P${String(max + 1).padStart(4, '0')}`;
+        }
         tdId.innerHTML = `<span class="inv-id-chip">${tr.dataset.idPrevu}</span>`;
       } else {
         delete tr.dataset.idPrevu;
