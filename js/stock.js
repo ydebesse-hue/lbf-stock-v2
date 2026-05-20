@@ -3951,14 +3951,6 @@ ${hasT ? `
     // ── Modale ajout profilé ──────────────────────────────────
     const mAP = document.getElementById('m-ajout-profil');
     if (mAP) {
-      const selType  = mAP.querySelector('#ap-type');
-      const selDesig = mAP.querySelector('#ap-desig');
-      const inpLong  = mAP.querySelector('#ap-longueur');
-
-      if (selType)  selType.addEventListener('change',  () => _apMajDesig(mAP));
-      if (selDesig) selDesig.addEventListener('change', () => _apMajSchema(mAP));
-      if (inpLong)  inpLong.addEventListener('input',   () => _apMajPoids(mAP));
-
       // Tabs inventaire / commande
       mAP.querySelectorAll('.mode-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -3974,21 +3966,28 @@ ${hasT ? `
         });
       });
 
-      // Bouton toggle schéma
-      const btnToggleSchemaAP = mAP.querySelector('#ap-toggle-schema');
-      if (btnToggleSchemaAP) {
-        btnToggleSchemaAP.addEventListener('click', () => {
-          const zoneSchema = mAP.querySelector('#ap-schema');
-          if (!zoneSchema) return;
-          const open = zoneSchema.style.display !== 'none';
-          zoneSchema.style.display = open ? 'none' : 'flex';
-          btnToggleSchemaAP.textContent = open
-            ? '▶ Voir schéma et caractéristiques'
-            : '▼ Masquer schéma et caractéristiques';
+      // Bouton "+ Ajouter une barre" (inventaire)
+      const btnAjLigneInv = mAP.querySelector('#ap-inv-ajouter-ligne');
+      if (btnAjLigneInv) btnAjLigneInv.addEventListener('click', () => {
+        _ajouterLigneInventaire(mAP.querySelector('#ap-inv-tbody'));
+      });
+
+      // Délégation sur les lignes inventaire
+      const tbodyInv = mAP.querySelector('#ap-inv-tbody');
+      if (tbodyInv) {
+        tbodyInv.addEventListener('change', e => {
+          const tr = e.target.closest('tr.inv-ligne');
+          if (!tr) return;
+          if (e.target.classList.contains('inv-type')) _apMajDesigLigneInv(tr);
+          else if (e.target.classList.contains('inv-desig')) _majPoidsLigneInv(tr);
+        });
+        tbodyInv.addEventListener('input', e => {
+          const tr = e.target.closest('tr.inv-ligne');
+          if (tr && e.target.classList.contains('inv-long')) _majPoidsLigneInv(tr);
         });
       }
 
-      // Bouton "+ Ajouter une référence"
+      // Bouton "+ Ajouter une référence" (commande)
       const btnAjLigne = mAP.querySelector('#ap-cmd-ajouter-ligne');
       if (btnAjLigne) btnAjLigne.addEventListener('click', () => {
         _ajouterLigneCommande(mAP.querySelector('#ap-cmd-tbody'));
@@ -4274,25 +4273,11 @@ ${hasT ? `
     document.getElementById('ap-panel-commande').style.display   = 'none';
 
     // Réinitialiser le formulaire inventaire
-    m.querySelectorAll('#ap-panel-inventaire input:not([type=hidden]), #ap-panel-inventaire select, #ap-panel-inventaire textarea').forEach(el => {
-      if (el.tagName === 'SELECT') el.selectedIndex = 0;
-      else el.value = '';
-    });
-
-    // Remplir les selects
-    _remplirSelectType(m.querySelector('#ap-type'));
     _monterSelecteurLieu(m.querySelector('#ap-lieu'));
-
-    // Cacher le schéma et la zone ID
-    const schema = m.querySelector('#ap-schema');
-    if (schema) schema.style.display = 'none';
-    const zoneId = document.getElementById('ap-zone-id');
-    if (zoneId) zoneId.style.display = 'none';
-    delete m.dataset.idPrevu;
-
-    // Reset désignations
-    const selDesig = m.querySelector('#ap-desig');
-    if (selDesig) selDesig.innerHTML = '<option value="">— Choisir le type d\'abord —</option>';
+    const tbodyInv = m.querySelector('#ap-inv-tbody');
+    if (tbodyInv) { tbodyInv.innerHTML = ''; _ajouterLigneInventaire(tbodyInv); }
+    const commEl = m.querySelector('#ap-commentaire');
+    if (commEl) commEl.value = '';
 
     // Réinitialiser le panel commande
     m.querySelectorAll('#ap-panel-commande input').forEach(el => { el.value = ''; });
@@ -4484,56 +4469,78 @@ ${hasT ? `
       return _soumettreAjoutCommande(m);
     }
 
-    const type        = m.querySelector('#ap-type')?.value?.trim();
-    const desig       = m.querySelector('#ap-desig')?.value?.trim();
-    const longueur    = parseFloat(m.querySelector('#ap-longueur')?.value);
     const lieu        = _lireLieu(m.querySelector('#ap-lieu'));
-    const classe      = m.querySelector('#ap-classe')?.value?.trim() || '';
     const commentaire = m.querySelector('#ap-commentaire')?.value?.trim() || '';
+    const lignes      = [...m.querySelectorAll('#ap-inv-tbody .inv-ligne')];
 
-    // Validation
-    if (!type)    return _signalerErreur(m, '#ap-type',    'Le type de section est obligatoire');
-    if (!desig)   return _signalerErreur(m, '#ap-desig',   'La désignation est obligatoire');
-    if (!longueur || longueur <= 0) return _signalerErreur(m, '#ap-longueur', 'La longueur est obligatoire');
+    if (!lignes.length) return _notif('Ajoutez au moins une barre', 'erreur');
+
+    // Valider toutes les lignes avant de persister
+    for (const tr of lignes) {
+      const type    = tr.querySelector('.inv-type')?.value?.trim();
+      const desig   = tr.querySelector('.inv-desig')?.value?.trim();
+      const longueur = parseFloat(tr.querySelector('.inv-long')?.value);
+      if (!type)                        return _notif('Type manquant sur une ligne', 'erreur');
+      if (!desig)                       return _notif('Désignation manquante sur une ligne', 'erreur');
+      if (!longueur || longueur <= 0)   return _notif('Longueur invalide sur une ligne', 'erreur');
+    }
 
     const session = Auth.getSession();
+    let totalCreees = 0;
+    let dernierId   = null;
+    let toutEnLigne = true;
 
-    const poidsml    = parseFloat(m.dataset.poidsml) || 0;
-    const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
-    const nouvelleId = m.dataset.idPrevu || _genererIdBarre();
+    for (const tr of lignes) {
+      const type    = tr.querySelector('.inv-type')?.value?.trim();
+      const desig   = tr.querySelector('.inv-desig')?.value?.trim();
+      const longueur = parseFloat(tr.querySelector('.inv-long')?.value);
+      const classe  = tr.querySelector('.inv-classe')?.value?.trim() || '';
+      const qte     = Math.max(1, parseInt(tr.querySelector('.inv-qte')?.value) || 1);
+      const dims    = _getDims(type, desig);
+      const poidsml = dims?.pml || 0;
+      const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
 
-    const barre = {
-      id: nouvelleId,
-      categorie: 'profil',
-      section_type: type,
-      designation: desig,
-      longueur_m: longueur,
-      poids_ml: poidsml,
-      poids_barre_kg: poidsBarre,
-      chantier_origine: null,
-      lieu_stockage: lieu,
-      disponibilite: 'disponible',
-      chantier_affectation: null,
-      classe_acier: classe || null,
-      ref_commande: null,
-      fournisseur: null,
-      statut: 'valide',
-      date_ajout: _dateAujourdhui(),
-      ajoute_par: session?.identifiant || 'inconnu',
-      valide_par: session?.identifiant || null,
-      date_validation: _dateAujourdhui(),
-      commentaire,
-    };
-
-    const enLigne = await _persisterElement(barre);
-    await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null, barre.lieu_stockage || null);
+      for (let i = 0; i < qte; i++) {
+        const nouvelleId = _genererIdBarre();
+        dernierId = nouvelleId;
+        const barre = {
+          id: nouvelleId,
+          categorie: 'profil',
+          section_type: type,
+          designation: desig,
+          longueur_m: longueur,
+          poids_ml: poidsml,
+          poids_barre_kg: poidsBarre,
+          chantier_origine: null,
+          lieu_stockage: lieu,
+          disponibilite: 'disponible',
+          chantier_affectation: null,
+          classe_acier: classe || null,
+          ref_commande: null,
+          fournisseur: null,
+          statut: 'valide',
+          date_ajout: _dateAujourdhui(),
+          ajoute_par: session?.identifiant || 'inconnu',
+          valide_par: session?.identifiant || null,
+          date_validation: _dateAujourdhui(),
+          commentaire,
+        };
+        const enLigne = await _persisterElement(barre);
+        if (!enLigne) toutEnLigne = false;
+        await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null, lieu || null);
+        totalCreees++;
+      }
+    }
 
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
     _filtrer();
     _majBanniereRecents();
 
-    _notif(`Profilé ${type} ${desig} ajouté (${nouvelleId})` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
+    const msg = totalCreees === 1
+      ? `Profilé ajouté (${dernierId})`
+      : `${totalCreees} profilés ajoutés`;
+    _notif(msg + (toutEnLigne ? '' : ' — ⚠ mode hors ligne'), toutEnLigne ? 'succes' : 'alerte');
   }
 
   /**
@@ -4773,6 +4780,114 @@ ${hasT ? `
     });
   }
 
+
+  /* ──────────────────────────────────────────────────────────────
+     INVENTAIRE — LIGNE PAR LIGNE
+     ────────────────────────────────────────────────────────────── */
+
+  function _ajouterLigneInventaire(tbody) {
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.className = 'inv-ligne';
+
+    const selType = document.createElement('select');
+    selType.className = 'inv-type';
+    selType.innerHTML = '<option value="">— Type —</option>';
+    _remplirSelectType(selType);
+
+    const selDesig = document.createElement('select');
+    selDesig.className = 'inv-desig';
+    selDesig.innerHTML = '<option value="">— d\'abord le type —</option>';
+
+    const inpLong = document.createElement('input');
+    inpLong.type = 'number'; inpLong.className = 'inv-long';
+    inpLong.placeholder = '6.00'; inpLong.step = '0.01'; inpLong.min = '0.01';
+
+    const selClasse = document.createElement('select');
+    selClasse.className = 'inv-classe';
+    ['', 'S235', 'S275', 'S355', 'S420', 'S460', 'S690'].forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v || '—';
+      selClasse.appendChild(o);
+    });
+
+    const inpQte = document.createElement('input');
+    inpQte.type = 'number'; inpQte.className = 'inv-qte';
+    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
+
+    const tdPoids = document.createElement('td');
+    tdPoids.className = 'col-inv-poids inv-poids-cell';
+    tdPoids.textContent = '—';
+
+    const btnSchema = document.createElement('button');
+    btnSchema.type = 'button'; btnSchema.className = 'btn-inv-schema';
+    btnSchema.title = 'Voir schéma'; btnSchema.textContent = '🔍';
+    btnSchema.disabled = true;
+
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
+    btnDel.textContent = '✕';
+    btnDel.addEventListener('click', () => {
+      tr.remove();
+      if (!tbody.querySelector('.inv-ligne')) _ajouterLigneInventaire(tbody);
+    });
+
+    [selType, selDesig, inpLong, selClasse, inpQte].forEach(el => {
+      const td = document.createElement('td'); td.appendChild(el); tr.appendChild(td);
+    });
+    tr.appendChild(tdPoids);
+    const tdSch = document.createElement('td'); tdSch.appendChild(btnSchema); tr.appendChild(tdSch);
+    const tdDel = document.createElement('td'); tdDel.appendChild(btnDel); tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  }
+
+  function _apMajDesigLigneInv(tr) {
+    const type     = tr.querySelector('.inv-type')?.value;
+    const selDesig = tr.querySelector('.inv-desig');
+    if (!selDesig) return;
+    selDesig.innerHTML = '<option value="">— Choisir —</option>';
+    if (!type) { _majPoidsLigneInv(tr); return; }
+    let desigs = [];
+    if (_sections?.standard) {
+      _sections.standard.forEach(f => {
+        f.sections.forEach(s => {
+          if (s.serie === type) {
+            const t = s.desig.startsWith(type + ' ') ? s.desig.slice(type.length + 1) : s.desig;
+            if (!desigs.includes(t)) desigs.push(t);
+          }
+        });
+      });
+    }
+    if (!desigs.length) {
+      desigs = [...new Set(
+        _data.barres.filter(b => b.categorie === 'profil' && b.section_type === type).map(b => b.designation)
+      )].sort((a, b) => parseFloat(a) - parseFloat(b));
+    }
+    desigs.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; selDesig.appendChild(o); });
+    _majPoidsLigneInv(tr);
+  }
+
+  function _majPoidsLigneInv(tr) {
+    const type      = tr.querySelector('.inv-type')?.value;
+    const desig     = tr.querySelector('.inv-desig')?.value;
+    const long      = parseFloat(tr.querySelector('.inv-long')?.value);
+    const tdPoids   = tr.querySelector('.inv-poids-cell');
+    const btnSchema = tr.querySelector('.btn-inv-schema');
+    if (btnSchema) {
+      btnSchema.disabled = !(type && desig);
+      if (type && desig) btnSchema.onclick = () => Stock.ouvrirFicheSection(type, desig);
+    }
+    if (!tdPoids) return;
+    const pml = _getDims(type, desig)?.pml || 0;
+    if (pml > 0 && !isNaN(long) && long > 0) {
+      tdPoids.textContent = (long * pml).toFixed(1) + ' kg';
+      tdPoids.style.color = 'var(--vert)';
+    } else {
+      tdPoids.textContent = '—';
+      tdPoids.style.color = '#777';
+    }
+  }
 
   /* ──────────────────────────────────────────────────────────────
      MODALE AJOUT TÔLE

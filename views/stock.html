@@ -1294,6 +1294,23 @@
       margin-top: 2px;
     }
     .btn-ajouter-ligne:hover { background: #fff5f5; }
+    .table-lignes-inv-wrap { overflow-x: auto; margin: 8px 0 6px; }
+    .table-lignes-inv { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
+    .table-lignes-inv th { background: var(--gris-clair); padding: 6px 7px; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; }
+    .table-lignes-inv td { padding: 4px 4px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .table-lignes-inv select,
+    .table-lignes-inv input[type=number] { width: 100%; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; box-sizing: border-box; }
+    .col-inv-type   { width: 115px; }
+    .col-inv-desig  { width: 115px; }
+    .col-inv-long   { width: 82px; }
+    .col-inv-classe { width: 78px; }
+    .col-inv-qte    { width: 48px; }
+    .col-inv-poids  { color: #777; font-size: 12px; white-space: nowrap; }
+    .col-inv-schema { width: 30px; }
+    .col-inv-del    { width: 30px; }
+    .btn-inv-schema { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 4px; opacity: 0.4; transition: opacity .15s; }
+    .btn-inv-schema:not([disabled]) { opacity: 1; }
+    .btn-inv-schema[disabled] { cursor: default; }
     .btn-suppr-ligne {
       background: none;
       border: none;
@@ -2252,91 +2269,34 @@
 
       <!-- ── PANEL INVENTAIRE ────────────────────────────────── -->
       <div id="ap-panel-inventaire" class="ap-panel">
-        <div class="form-cols2">
-          <div class="fr">
-            <label>Type de section <span style="color:var(--rouge)">*</span></label>
-            <select id="ap-type">
-              <option value="">— Choisir —</option>
-            </select>
-          </div>
-          <div class="fr">
-            <label>Désignation <span style="color:var(--rouge)">*</span></label>
-            <select id="ap-desig">
-              <option value="">— Choisir le type d'abord —</option>
-            </select>
-          </div>
+
+        <div class="fr" style="margin-bottom:10px">
+          <label>Lieu de stockage</label>
+          <div id="ap-lieu" class="lieu-cascade"></div>
         </div>
 
-        <!-- Bouton toggle schéma (affiché dès qu'une désignation est choisie) -->
-        <button id="ap-toggle-schema" type="button" style="display:none; width:100%;
-          background:none; border:1px solid var(--gris-bord); border-radius:3px;
-          padding:7px 12px; cursor:pointer; font-size:12px; color:#555; text-align:left;
-          margin-bottom:4px;">
-          ▶ Voir schéma et caractéristiques
-        </button>
-
-        <!-- Schéma SVG + dimensions (masqué par défaut) -->
-        <div id="ap-schema" class="schema-zone" style="display:none; flex-direction:column; gap:10px;">
-          <div class="schema-titre" id="ap-schema-label">—</div>
-          <div id="ap-visuel" style="text-align:center;">
-            <img id="ap-img" src="" alt=""
-                 style="display:none; max-width:130px; max-height:130px; object-fit:contain;
-                        border:1px solid var(--gris-clair); border-radius:3px;
-                        background:#f7f7f7; cursor:zoom-in;">
-            <svg id="ap-svg" width="130" height="130" viewBox="0 0 130 130"></svg>
-          </div>
-          <div class="schema-dims" style="border-top:1px solid var(--gris-bord); padding-top:8px;">
-            <h4 style="margin-bottom:6px;">Caractéristiques</h4>
-            <div id="ap-dims-list">
-              <div style="color:#aaa;font-size:12px">Sélectionnez une désignation</div>
-            </div>
-          </div>
+        <div class="table-lignes-inv-wrap">
+          <table class="table-lignes-inv">
+            <thead>
+              <tr>
+                <th class="col-inv-type">Type <span style="color:var(--rouge)">*</span></th>
+                <th class="col-inv-desig">Désignation <span style="color:var(--rouge)">*</span></th>
+                <th class="col-inv-long">Long. (m) <span style="color:var(--rouge)">*</span></th>
+                <th class="col-inv-classe">Classe</th>
+                <th class="col-inv-qte">Qté</th>
+                <th class="col-inv-poids">Poids/u</th>
+                <th class="col-inv-schema"></th>
+                <th class="col-inv-del"></th>
+              </tr>
+            </thead>
+            <tbody id="ap-inv-tbody"></tbody>
+          </table>
         </div>
+        <button type="button" id="ap-inv-ajouter-ligne" class="btn-ajouter-ligne">+ Ajouter une barre</button>
 
-        <div class="form-cols3">
-          <div class="fr">
-            <label>Longueur (m) <span style="color:var(--rouge)">*</span></label>
-            <input type="number" id="ap-longueur" placeholder="ex : 6.00" step="0.01" min="0.1">
-            <div class="poids-calc-zone">
-              Poids estimé :&nbsp;<span class="poids-calc-val" id="ap-poids-calc">—</span>
-            </div>
-          </div>
-          <div class="fr">
-            <label>Classe acier</label>
-            <select id="ap-classe">
-              <option value="">— Inconnue —</option>
-              <option value="S235">S235</option>
-              <option value="S275">S275</option>
-              <option value="S355">S355</option>
-              <option value="S420">S420</option>
-              <option value="S460">S460</option>
-              <option value="S690">S690</option>
-            </select>
-          </div>
-          <div class="fr">
-            <label>Lieu de stockage</label>
-            <div id="ap-lieu" class="lieu-cascade"></div>
-          </div>
-        </div>
-
-        <div class="fr">
+        <div class="fr" style="margin-top:10px">
           <label>Commentaire</label>
           <textarea id="ap-commentaire" placeholder="Informations complémentaires (état, provenance…)"></textarea>
-        </div>
-
-        <!-- ID généré — affiché juste avant l'enregistrement -->
-        <div id="ap-zone-id" style="display:none; margin-top:10px;">
-          <div style="background:var(--noir); color:white; border-radius:3px;
-                      padding:10px 14px; display:flex; align-items:center; gap:12px;">
-            <span style="font-size:11px; color:#aaa; text-transform:uppercase;
-                         letter-spacing:.5px; white-space:nowrap;">ID barre</span>
-            <span id="ap-id-genere"
-                  style="font-family:Impact,sans-serif; font-size:22px;
-                         letter-spacing:2px; color:var(--rouge);">—</span>
-            <span style="font-size:11px; color:#888; margin-left:auto;">
-              📋 Notez cet ID sur l'étiquette de la barre
-            </span>
-          </div>
         </div>
 
         <div class="ap-note-statut note-statut note-statut-attente"></div>
