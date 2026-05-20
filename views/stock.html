@@ -1300,14 +1300,25 @@
     .table-lignes-inv td { padding: 4px 4px; border-bottom: 1px solid #eee; vertical-align: middle; }
     .table-lignes-inv select,
     .table-lignes-inv input[type=number] { width: 100%; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; box-sizing: border-box; }
-    .col-inv-type   { width: 115px; }
-    .col-inv-desig  { width: 115px; }
-    .col-inv-long   { width: 82px; }
-    .col-inv-classe { width: 78px; }
-    .col-inv-qte    { width: 48px; }
-    .col-inv-poids  { color: #777; font-size: 12px; white-space: nowrap; }
-    .col-inv-schema { width: 30px; }
-    .col-inv-del    { width: 30px; }
+    .col-inv-type   { width: 110px; }
+    .col-inv-desig  { width: 110px; }
+    .col-inv-schema { width: 28px; }
+    .col-inv-long   { width: 80px; }
+    .col-inv-classe { width: 76px; }
+    .col-inv-poids  { width: 70px; color: #777; font-size: 12px; white-space: nowrap; }
+    .col-inv-id     { width: 90px; }
+    .col-inv-del    { width: 28px; }
+    .inv-id-chip {
+      display: inline-block;
+      font-family: Impact, sans-serif;
+      font-size: 15px;
+      letter-spacing: 1.5px;
+      color: var(--rouge);
+      background: #1a1a1a;
+      padding: 2px 7px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
     .btn-inv-schema { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 4px; opacity: 0.4; transition: opacity .15s; }
     .btn-inv-schema:not([disabled]) { opacity: 1; }
     .btn-inv-schema[disabled] { cursor: default; }
@@ -2281,11 +2292,11 @@
               <tr>
                 <th class="col-inv-type">Type <span style="color:var(--rouge)">*</span></th>
                 <th class="col-inv-desig">Désignation <span style="color:var(--rouge)">*</span></th>
+                <th class="col-inv-schema"></th>
                 <th class="col-inv-long">Long. (m) <span style="color:var(--rouge)">*</span></th>
                 <th class="col-inv-classe">Classe</th>
-                <th class="col-inv-qte">Qté</th>
-                <th class="col-inv-poids">Poids/u</th>
-                <th class="col-inv-schema"></th>
+                <th class="col-inv-poids">Poids</th>
+                <th class="col-inv-id">ID</th>
                 <th class="col-inv-del"></th>
               </tr>
             </thead>

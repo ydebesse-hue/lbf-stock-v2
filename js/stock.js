@@ -4491,18 +4491,17 @@ ${hasT ? `
     let toutEnLigne = true;
 
     for (const tr of lignes) {
-      const type    = tr.querySelector('.inv-type')?.value?.trim();
-      const desig   = tr.querySelector('.inv-desig')?.value?.trim();
+      const type     = tr.querySelector('.inv-type')?.value?.trim();
+      const desig    = tr.querySelector('.inv-desig')?.value?.trim();
       const longueur = parseFloat(tr.querySelector('.inv-long')?.value);
-      const classe  = tr.querySelector('.inv-classe')?.value?.trim() || '';
-      const qte     = Math.max(1, parseInt(tr.querySelector('.inv-qte')?.value) || 1);
-      const dims    = _getDims(type, desig);
-      const poidsml = dims?.pml || 0;
+      const classe   = tr.querySelector('.inv-classe')?.value?.trim() || '';
+      const dims     = _getDims(type, desig);
+      const poidsml  = dims?.pml || 0;
       const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
+      const nouvelleId = tr.dataset.idPrevu || _genererIdBarre();
+      dernierId = nouvelleId;
 
-      for (let i = 0; i < qte; i++) {
-        const nouvelleId = _genererIdBarre();
-        dernierId = nouvelleId;
+      {
         const barre = {
           id: nouvelleId,
           categorie: 'profil',
@@ -4531,6 +4530,7 @@ ${hasT ? `
         totalCreees++;
       }
     }
+
 
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
@@ -4799,6 +4799,11 @@ ${hasT ? `
     selDesig.className = 'inv-desig';
     selDesig.innerHTML = '<option value="">— d\'abord le type —</option>';
 
+    const btnSchema = document.createElement('button');
+    btnSchema.type = 'button'; btnSchema.className = 'btn-inv-schema';
+    btnSchema.title = 'Voir schéma'; btnSchema.textContent = '🔍';
+    btnSchema.disabled = true;
+
     const inpLong = document.createElement('input');
     inpLong.type = 'number'; inpLong.className = 'inv-long';
     inpLong.placeholder = '6.00'; inpLong.step = '0.01'; inpLong.min = '0.01';
@@ -4811,18 +4816,12 @@ ${hasT ? `
       selClasse.appendChild(o);
     });
 
-    const inpQte = document.createElement('input');
-    inpQte.type = 'number'; inpQte.className = 'inv-qte';
-    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
-
     const tdPoids = document.createElement('td');
     tdPoids.className = 'col-inv-poids inv-poids-cell';
     tdPoids.textContent = '—';
 
-    const btnSchema = document.createElement('button');
-    btnSchema.type = 'button'; btnSchema.className = 'btn-inv-schema';
-    btnSchema.title = 'Voir schéma'; btnSchema.textContent = '🔍';
-    btnSchema.disabled = true;
+    const tdId = document.createElement('td');
+    tdId.className = 'col-inv-id inv-id-cell';
 
     const btnDel = document.createElement('button');
     btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
@@ -4832,12 +4831,15 @@ ${hasT ? `
       if (!tbody.querySelector('.inv-ligne')) _ajouterLigneInventaire(tbody);
     });
 
-    [selType, selDesig, inpLong, selClasse, inpQte].forEach(el => {
-      const td = document.createElement('td'); td.appendChild(el); tr.appendChild(td);
-    });
-    tr.appendChild(tdPoids);
-    const tdSch = document.createElement('td'); tdSch.appendChild(btnSchema); tr.appendChild(tdSch);
-    const tdDel = document.createElement('td'); tdDel.appendChild(btnDel); tr.appendChild(tdDel);
+    // Ordre des colonnes : Type | Desig | 🔍 | Long | Classe | Poids | ID | ✕
+    const tdType = document.createElement('td'); tdType.appendChild(selType);
+    const tdDesig = document.createElement('td'); tdDesig.appendChild(selDesig);
+    const tdSch = document.createElement('td'); tdSch.appendChild(btnSchema);
+    const tdLong = document.createElement('td'); tdLong.appendChild(inpLong);
+    const tdCls = document.createElement('td'); tdCls.appendChild(selClasse);
+    const tdDel = document.createElement('td'); tdDel.appendChild(btnDel);
+
+    [tdType, tdDesig, tdSch, tdLong, tdCls, tdPoids, tdId, tdDel].forEach(td => tr.appendChild(td));
 
     tbody.appendChild(tr);
   }
@@ -4873,19 +4875,36 @@ ${hasT ? `
     const desig     = tr.querySelector('.inv-desig')?.value;
     const long      = parseFloat(tr.querySelector('.inv-long')?.value);
     const tdPoids   = tr.querySelector('.inv-poids-cell');
+    const tdId      = tr.querySelector('.inv-id-cell');
     const btnSchema = tr.querySelector('.btn-inv-schema');
+
     if (btnSchema) {
       btnSchema.disabled = !(type && desig);
       if (type && desig) btnSchema.onclick = () => Stock.ouvrirFicheSection(type, desig);
     }
-    if (!tdPoids) return;
-    const pml = _getDims(type, desig)?.pml || 0;
-    if (pml > 0 && !isNaN(long) && long > 0) {
-      tdPoids.textContent = (long * pml).toFixed(1) + ' kg';
-      tdPoids.style.color = 'var(--vert)';
-    } else {
-      tdPoids.textContent = '—';
-      tdPoids.style.color = '#777';
+
+    // Poids
+    if (tdPoids) {
+      const pml = _getDims(type, desig)?.pml || 0;
+      if (pml > 0 && !isNaN(long) && long > 0) {
+        tdPoids.textContent = (long * pml).toFixed(1) + ' kg';
+        tdPoids.style.color = 'var(--vert)';
+      } else {
+        tdPoids.textContent = '—';
+        tdPoids.style.color = '#777';
+      }
+    }
+
+    // ID — généré dès que les 3 champs obligatoires sont remplis, mémorisé sur la ligne
+    if (tdId) {
+      const pret = type && desig && !isNaN(long) && long > 0;
+      if (pret) {
+        if (!tr.dataset.idPrevu) tr.dataset.idPrevu = _genererIdBarre();
+        tdId.innerHTML = `<span class="inv-id-chip">${tr.dataset.idPrevu}</span>`;
+      } else {
+        delete tr.dataset.idPrevu;
+        tdId.innerHTML = '';
+      }
     }
   }
 
