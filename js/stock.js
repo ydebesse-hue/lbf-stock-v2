@@ -4790,29 +4790,17 @@ ${hasT ? `
     const ligne = document.createElement('div');
     ligne.className = 'inv-ligne';
 
-    const mkField = (label, el, flex) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'inv-field';
-      if (flex) wrap.style.flex = flex;
-      const lbl = document.createElement('div');
-      lbl.className = 'inv-field-label';
-      lbl.textContent = label;
-      wrap.appendChild(lbl);
-      wrap.appendChild(el);
-      return wrap;
-    };
-
     // ── Ligne 1 : Type | Désig | 🔍 | Longueur | ✕ ──
     const row1 = document.createElement('div');
     row1.className = 'inv-row-1';
 
     const selType = document.createElement('select');
-    selType.className = 'inv-type inv-sel-type';
+    selType.className = 'inv-type inv-sel-type inv-ctrl';
     selType.innerHTML = '<option value="">— Type —</option>';
     _remplirSelectType(selType);
 
     const selDesig = document.createElement('select');
-    selDesig.className = 'inv-desig inv-sel-desig';
+    selDesig.className = 'inv-desig inv-sel-desig inv-ctrl';
     selDesig.innerHTML = '<option value="">— Désignation —</option>';
 
     const btnSchema = document.createElement('button');
@@ -4821,8 +4809,8 @@ ${hasT ? `
     btnSchema.disabled = true;
 
     const inpLong = document.createElement('input');
-    inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long';
-    inpLong.placeholder = 'm'; inpLong.step = '0.01'; inpLong.min = '0.01';
+    inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long inv-ctrl';
+    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.01'; inpLong.min = '0.01';
 
     const btnDel = document.createElement('button');
     btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
@@ -4832,14 +4820,7 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneInventaire(list);
     });
 
-    const wType = mkField('Type *', selType, '1.2'); wType.style.minWidth = '90px';
-    const wDesig = mkField('Désignation *', selDesig, '2'); wDesig.style.minWidth = '120px';
-    const wLong = mkField('Long. (m) *', inpLong); wLong.style.width = '80px'; wLong.style.flexShrink = '0';
-    row1.appendChild(wType);
-    row1.appendChild(wDesig);
-    row1.appendChild(btnSchema);
-    row1.appendChild(wLong);
-    row1.appendChild(btnDel);
+    [selType, selDesig, btnSchema, inpLong, btnDel].forEach(el => row1.appendChild(el));
 
     // ── Ligne 2 : ID prévu | Commentaire ──
     const row2 = document.createElement('div');
@@ -4849,18 +4830,17 @@ ${hasT ? `
     spanId.className = 'inv-id-cell';
 
     const inpComm = document.createElement('input');
-    inpComm.type = 'text'; inpComm.className = 'inv-commentaire';
+    inpComm.type = 'text'; inpComm.className = 'inv-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    row2.appendChild(mkField('ID prévu', spanId));
-    row2.appendChild(mkField('Commentaire', inpComm, '1'));
+    [spanId, inpComm].forEach(el => row2.appendChild(el));
 
     // ── Ligne 3 : Classe | Origine | Fournisseur | Réf. | Poids ──
     const row3 = document.createElement('div');
     row3.className = 'inv-row-3';
 
     const selClasse = document.createElement('select');
-    selClasse.className = 'inv-classe';
+    selClasse.className = 'inv-classe inv-ctrl';
     ['', 'S235', 'S275', 'S355', 'S420', 'S460', 'S690'].forEach(v => {
       const o = document.createElement('option');
       o.value = v; o.textContent = v || '— Classe —';
@@ -4868,29 +4848,25 @@ ${hasT ? `
     });
 
     const selFourn = document.createElement('select');
-    selFourn.className = 'inv-fournisseur';
+    selFourn.className = 'inv-fournisseur inv-ctrl';
     const fopts = `<option value="">— Fournisseur —</option>` +
       [..._fournisseurs].sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr', { sensitivity: 'base' }))
         .map(f => `<option value="${_e(f.nom)}">${_e(f.nom)}</option>`).join('');
     selFourn.innerHTML = fopts;
 
     const selOrigine = document.createElement('select');
-    selOrigine.className = 'inv-origine';
+    selOrigine.className = 'inv-origine inv-ctrl';
     _peuplerSelectAffectation(selOrigine, '');
     selOrigine.options[0].text = '— Origine —';
 
     const inpRef = document.createElement('input');
-    inpRef.type = 'text'; inpRef.className = 'inv-ref';
+    inpRef.type = 'text'; inpRef.className = 'inv-ref inv-ctrl';
     inpRef.placeholder = 'Réf. BL / commande';
 
     const spanPoids = document.createElement('span');
     spanPoids.className = 'inv-poids-cell';
 
-    row3.appendChild(mkField('Classe acier', selClasse));
-    row3.appendChild(mkField('Origine chantier', selOrigine, '1'));
-    row3.appendChild(mkField('Fournisseur', selFourn, '1'));
-    row3.appendChild(mkField('Réf. commande', inpRef, '1'));
-    row3.appendChild(mkField('Poids calc.', spanPoids));
+    [selClasse, selOrigine, selFourn, inpRef, spanPoids].forEach(el => row3.appendChild(el));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
@@ -4903,29 +4879,17 @@ ${hasT ? `
     const ligne = document.createElement('div');
     ligne.className = 'inv-ligne';
 
-    const mkField = (label, el, flex) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'inv-field';
-      if (flex) wrap.style.flex = flex;
-      const lbl = document.createElement('div');
-      lbl.className = 'inv-field-label';
-      lbl.textContent = label;
-      wrap.appendChild(lbl);
-      wrap.appendChild(el);
-      return wrap;
-    };
-
     // ── Ligne 1 : Type | Désig | 🔍 | Long (m) | ✕ ──
     const row1 = document.createElement('div');
     row1.className = 'inv-row-1';
 
     const selType = document.createElement('select');
-    selType.className = 'inv-type inv-sel-type';
+    selType.className = 'inv-type inv-sel-type inv-ctrl';
     selType.innerHTML = '<option value="">— Type —</option>';
     _remplirSelectType(selType);
 
     const selDesig = document.createElement('select');
-    selDesig.className = 'inv-desig inv-sel-desig';
+    selDesig.className = 'inv-desig inv-sel-desig inv-ctrl';
     selDesig.innerHTML = '<option value="">— Désignation —</option>';
 
     const btnSchema = document.createElement('button');
@@ -4934,8 +4898,8 @@ ${hasT ? `
     btnSchema.disabled = true;
 
     const inpLong = document.createElement('input');
-    inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long';
-    inpLong.placeholder = 'm'; inpLong.step = '0.01'; inpLong.min = '0.01';
+    inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long inv-ctrl';
+    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.01'; inpLong.min = '0.01';
 
     const btnDel = document.createElement('button');
     btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
@@ -4945,14 +4909,7 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneCommandeCard(list);
     });
 
-    const wType = mkField('Type *', selType, '1.2'); wType.style.minWidth = '90px';
-    const wDesig = mkField('Désignation *', selDesig, '2'); wDesig.style.minWidth = '120px';
-    const wLong = mkField('Long. (m) *', inpLong); wLong.style.width = '80px'; wLong.style.flexShrink = '0';
-    row1.appendChild(wType);
-    row1.appendChild(wDesig);
-    row1.appendChild(btnSchema);
-    row1.appendChild(wLong);
-    row1.appendChild(btnDel);
+    [selType, selDesig, btnSchema, inpLong, btnDel].forEach(el => row1.appendChild(el));
 
     // ── Ligne 2 : Lieu de stockage | Qté ──
     const row2 = document.createElement('div');
@@ -4963,37 +4920,34 @@ ${hasT ? `
     _monterSelecteurLieu(lieuDiv);
 
     const inpQte = document.createElement('input');
-    inpQte.type = 'number'; inpQte.className = 'cmd-qte';
+    inpQte.type = 'number'; inpQte.className = 'cmd-qte inv-ctrl';
     inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
-    inpQte.style.width = '60px';
+    inpQte.placeholder = 'Qté';
 
-    row2.appendChild(mkField('Lieu de stockage', lieuDiv, '1'));
-    row2.appendChild(mkField('Qté', inpQte));
+    [lieuDiv, inpQte].forEach(el => row2.appendChild(el));
 
     // ── Ligne 3 : Chantier destinataire | Classe acier | Commentaire ──
     const row3 = document.createElement('div');
     row3.className = 'inv-row-3';
 
     const selChantier = document.createElement('select');
-    selChantier.className = 'cmd-chantier';
+    selChantier.className = 'cmd-chantier inv-ctrl';
     _peuplerSelectAffectation(selChantier, '');
     selChantier.options[0].text = '— Chantier destinataire —';
 
     const selClasse = document.createElement('select');
-    selClasse.className = 'cmd-classe';
+    selClasse.className = 'cmd-classe inv-ctrl';
     ['', 'S235', 'S275', 'S355', 'S420', 'S460', 'S690'].forEach(v => {
       const o = document.createElement('option');
-      o.value = v; o.textContent = v || '— Classe —';
+      o.value = v; o.textContent = v || '— Classe acier —';
       selClasse.appendChild(o);
     });
 
     const inpComm = document.createElement('input');
-    inpComm.type = 'text'; inpComm.className = 'cmd-commentaire';
+    inpComm.type = 'text'; inpComm.className = 'cmd-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    row3.appendChild(mkField('Chantier destinataire', selChantier, '1'));
-    row3.appendChild(mkField('Classe acier', selClasse));
-    row3.appendChild(mkField('Commentaire', inpComm, '1'));
+    [selChantier, selClasse, inpComm].forEach(el => row3.appendChild(el));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
