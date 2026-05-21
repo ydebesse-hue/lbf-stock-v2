@@ -1294,34 +1294,26 @@
       margin-top: 2px;
     }
     .btn-ajouter-ligne:hover { background: #fff5f5; }
-    .table-lignes-inv-wrap { overflow-x: auto; margin: 8px 0 6px; }
-    .table-lignes-inv { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
-    .table-lignes-inv th { background: var(--gris-clair); padding: 6px 7px; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; }
-    .table-lignes-inv td { padding: 4px 4px; border-bottom: 1px solid #eee; vertical-align: middle; }
-    .table-lignes-inv select,
-    .table-lignes-inv input[type=number] { width: 100%; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; box-sizing: border-box; }
-    .col-inv-type   { width: 110px; }
-    .col-inv-desig  { width: 110px; }
-    .col-inv-schema { width: 28px; }
-    .col-inv-long   { width: 80px; }
-    .col-inv-classe { width: 76px; }
-    .col-inv-poids  { width: 70px; color: #777; font-size: 12px; white-space: nowrap; }
-    .col-inv-id     { width: 90px; }
-    .col-inv-del    { width: 28px; }
-    .inv-id-chip {
-      display: inline-block;
-      font-family: Impact, sans-serif;
-      font-size: 15px;
-      letter-spacing: 1.5px;
-      color: var(--rouge);
-      background: #1a1a1a;
-      padding: 2px 7px;
-      border-radius: 3px;
-      white-space: nowrap;
+    .inv-barres-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 4px; }
+    .inv-ligne { border: 1px solid #ddd; border-radius: 4px; background: #fff; }
+    .inv-row-1, .inv-row-2, .inv-row-3 { display: flex; gap: 5px; align-items: center; padding: 5px 8px; flex-wrap: nowrap; }
+    .inv-row-2 { border-top: 1px solid #ebebeb; background: #f8f8f8; }
+    .inv-row-3 { border-top: 1px solid #ebebeb; }
+    .inv-row-1 select, .inv-row-3 select {
+      padding: 4px 4px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; min-width: 0;
     }
-    .btn-inv-schema { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 4px; opacity: 0.4; transition: opacity .15s; }
+    .inv-sel-type  { flex: 1.2; }
+    .inv-sel-desig { flex: 2; }
+    .inv-inp-long  { width: 70px; flex-shrink: 0; padding: 4px 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; }
+    .inv-row-2 input[type=text] { flex: 1; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; min-width: 0; }
+    .btn-inv-schema { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 3px; opacity: 0.35; transition: opacity .15s; flex-shrink: 0; }
     .btn-inv-schema:not([disabled]) { opacity: 1; }
     .btn-inv-schema[disabled] { cursor: default; }
+    .btn-inv-plus { background: none; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; font-size: 13px; padding: 2px 7px; color: #666; flex-shrink: 0; line-height: 1; }
+    .btn-inv-plus:hover { background: #eee; }
+    .inv-id-cell { flex-shrink: 0; min-width: 72px; }
+    .inv-id-chip { display: inline-block; font-family: Impact, sans-serif; font-size: 15px; letter-spacing: 1.5px; color: var(--rouge); background: #1a1a1a; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+    .inv-poids-cell { font-size: 12px; color: #777; flex: 1; }
     .btn-suppr-ligne {
       background: none;
       border: none;
@@ -2286,29 +2278,8 @@
           <div id="ap-lieu" class="lieu-cascade"></div>
         </div>
 
-        <div class="table-lignes-inv-wrap">
-          <table class="table-lignes-inv">
-            <thead>
-              <tr>
-                <th class="col-inv-type">Type <span style="color:var(--rouge)">*</span></th>
-                <th class="col-inv-desig">Désignation <span style="color:var(--rouge)">*</span></th>
-                <th class="col-inv-schema"></th>
-                <th class="col-inv-long">Long. (m) <span style="color:var(--rouge)">*</span></th>
-                <th class="col-inv-classe">Classe</th>
-                <th class="col-inv-poids">Poids</th>
-                <th class="col-inv-id">ID</th>
-                <th class="col-inv-del"></th>
-              </tr>
-            </thead>
-            <tbody id="ap-inv-tbody"></tbody>
-          </table>
-        </div>
+        <div class="inv-barres-list" id="ap-inv-list"></div>
         <button type="button" id="ap-inv-ajouter-ligne" class="btn-ajouter-ligne">+ Ajouter une barre</button>
-
-        <div class="fr" style="margin-top:10px">
-          <label>Commentaire</label>
-          <textarea id="ap-commentaire" placeholder="Informations complémentaires (état, provenance…)"></textarea>
-        </div>
 
         <div class="ap-note-statut note-statut note-statut-attente"></div>
       </div>
