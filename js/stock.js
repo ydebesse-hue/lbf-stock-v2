@@ -4282,7 +4282,6 @@ ${hasT ? `
     // Réinitialiser le panel commande
     const refEl = m.querySelector('#ap-cmd-ref');
     if (refEl) refEl.value = '';
-    _monterPickerChantier('ap-cmd-chantier-picker', 'ap-cmd-chantier');
     _monterPickerFournisseur('ap-cmd-fournisseur-picker', 'ap-cmd-fournisseur');
     const cmdList = m.querySelector('#ap-cmd-list');
     if (cmdList) { cmdList.innerHTML = ''; _ajouterLigneCommandeCard(cmdList); }
@@ -4548,7 +4547,6 @@ ${hasT ? `
    * crée une barre individuelle pour chaque unité de chaque ligne.
    */
   async function _soumettreAjoutCommande(m) {
-    const chantier    = m.querySelector('#ap-cmd-chantier')?.value?.trim()    || '';
     const refCmd      = m.querySelector('#ap-cmd-ref')?.value?.trim()         || '';
     const fournisseur = m.querySelector('#ap-cmd-fournisseur')?.value?.trim() || '';
 
@@ -4576,6 +4574,7 @@ ${hasT ? `
       const type     = ligne.querySelector('.inv-type')?.value?.trim();
       const desig    = ligne.querySelector('.inv-desig')?.value?.trim();
       const classe   = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
+      const chantier = ligne.querySelector('.cmd-chantier')?.value?.trim() || '';
       const longueur = parseFloat(ligne.querySelector('.inv-long')?.value);
       const qte      = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
       const lieu     = _lireLieu(ligne.querySelector('.cmd-lieu')) || '';
@@ -4617,7 +4616,7 @@ ${hasT ? `
         idsLigne.push(nouvelleId);
       }
 
-      resumeLignes.push({ type, desig, classe, longueur, qte, ids: idsLigne });
+      resumeLignes.push({ type, desig, classe, chantier, longueur, qte, ids: idsLigne });
     }
 
     _fermerModale('m-ajout-profil');
@@ -4628,7 +4627,8 @@ ${hasT ? `
     if (!toutEnLigne) _notif('⚠ Sauvegarde en mode hors ligne — données non synchronisées', 'alerte');
 
     // Afficher le résumé interactif
-    _afficherResumeReception(resumeLignes, chantier, refCmd, fournisseur);
+    const chantiersPris = [...new Set(resumeLignes.map(l => l.chantier).filter(Boolean))];
+    _afficherResumeReception(resumeLignes, chantiersPris.join(', '), refCmd, fournisseur);
   }
 
   /**
@@ -4950,10 +4950,15 @@ ${hasT ? `
 
     [lieuDiv, qteWrap, btnPlus].forEach(el => row2.appendChild(el));
 
-    // ── Ligne 3 (masquée) : Classe acier | Commentaire ──
+    // ── Ligne 3 (masquée) : Chantier destinataire | Classe acier | Commentaire ──
     const row3 = document.createElement('div');
     row3.className = 'inv-row-3';
     row3.style.display = 'none';
+
+    const selChantier = document.createElement('select');
+    selChantier.className = 'cmd-chantier';
+    _peuplerSelectAffectation(selChantier, '');
+    selChantier.options[0].text = '— Chantier destinataire —';
 
     const selClasse = document.createElement('select');
     selClasse.className = 'cmd-classe';
@@ -4968,7 +4973,7 @@ ${hasT ? `
     inpComm.placeholder = 'Commentaire…';
     inpComm.style.cssText = 'flex:1;padding:4px 6px;border:1px solid #ccc;border-radius:3px;font-size:12px;min-width:0';
 
-    [selClasse, inpComm].forEach(el => row3.appendChild(el));
+    [selChantier, selClasse, inpComm].forEach(el => row3.appendChild(el));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
