@@ -4833,21 +4833,11 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'inv-commentaire';
     inpComm.placeholder = 'Commentaire…';
 
-    const btnPlus = document.createElement('button');
-    btnPlus.type = 'button'; btnPlus.className = 'btn-inv-plus';
-    btnPlus.title = 'Plus d\'infos'; btnPlus.textContent = '+';
-    btnPlus.addEventListener('click', () => {
-      const open = row3.style.display !== 'none';
-      row3.style.display = open ? 'none' : 'flex';
-      btnPlus.textContent = open ? '+' : '−';
-    });
+    [spanId, inpComm].forEach(el => row2.appendChild(el));
 
-    [spanId, inpComm, btnPlus].forEach(el => row2.appendChild(el));
-
-    // ── Ligne 3 (masquée) : Classe | Fournisseur | Origine | Réf. commande | Poids ──
+    // ── Ligne 3 : Classe | Fournisseur | Origine | Réf. commande | Poids ──
     const row3 = document.createElement('div');
     row3.className = 'inv-row-3';
-    row3.style.display = 'none';
 
     const selClasse = document.createElement('select');
     selClasse.className = 'inv-classe';
@@ -4939,21 +4929,11 @@ ${hasT ? `
     inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
     qteWrap.appendChild(lblQte); qteWrap.appendChild(inpQte);
 
-    const btnPlus = document.createElement('button');
-    btnPlus.type = 'button'; btnPlus.className = 'btn-inv-plus';
-    btnPlus.title = 'Plus d\'infos'; btnPlus.textContent = '+';
-    btnPlus.addEventListener('click', () => {
-      const open = row3.style.display !== 'none';
-      row3.style.display = open ? 'none' : 'flex';
-      btnPlus.textContent = open ? '+' : '−';
-    });
+    [lieuDiv, qteWrap].forEach(el => row2.appendChild(el));
 
-    [lieuDiv, qteWrap, btnPlus].forEach(el => row2.appendChild(el));
-
-    // ── Ligne 3 (masquée) : Chantier destinataire | Classe acier | Commentaire ──
+    // ── Ligne 3 : Chantier destinataire | Classe acier | Commentaire ──
     const row3 = document.createElement('div');
     row3.className = 'inv-row-3';
-    row3.style.display = 'none';
 
     const selChantier = document.createElement('select');
     selChantier.className = 'cmd-chantier';
