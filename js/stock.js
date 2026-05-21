@@ -4305,7 +4305,7 @@ ${hasT ? `
     if (!selType || !selDesig) return;
 
     const type = selType.value;
-    selDesig.innerHTML = '<option value="">— Choisir —</option>';
+    selDesig.innerHTML = '<option value="">— Désignation —</option>';
 
     if (!type) {
       const schema = m.querySelector('div[id$="-schema"]');
@@ -4756,7 +4756,7 @@ ${hasT ? `
     const selDesig = tr.querySelector('.cmd-desig');
     if (!selDesig) return;
 
-    selDesig.innerHTML = '<option value="">— Choisir —</option>';
+    selDesig.innerHTML = '<option value="">— Désignation —</option>';
     if (!type) return;
 
     let desigs = [];
@@ -4959,7 +4959,7 @@ ${hasT ? `
     const type     = ligne.querySelector('.inv-type')?.value;
     const selDesig = ligne.querySelector('.inv-desig');
     if (!selDesig) return;
-    selDesig.innerHTML = '<option value="">— Choisir —</option>';
+    selDesig.innerHTML = '<option value="">— Désignation —</option>';
     if (!type) { _majPoidsLigneInv(ligne); return; }
     let desigs = [];
     if (_sections?.standard) {
@@ -7611,7 +7611,7 @@ ${hasT ? `
    */
   function _remplirSelectType(sel) {
     if (!sel) return;
-    sel.innerHTML = '<option value="">— Choisir —</option>';
+    sel.innerHTML = '<option value="">— Type —</option>';
     let series = [];
 
     if (_sections?.standard) {
