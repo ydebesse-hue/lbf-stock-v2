@@ -7705,10 +7705,6 @@ ${hasT ? `
           }).join('');
     };
 
-    selRack.addEventListener('change', () => { nomAllee = ''; nomEtage = ''; majAllee(); majBtnCarte(); });
-    selAllee.addEventListener('change', () => { majEtage(); majBtnCarte(); });
-    selEtage.addEventListener('change', majBtnCarte);
-
     const btnCarte = document.createElement('button');
     btnCarte.type = 'button';
     btnCarte.className = 'lieu-btn-carte';
@@ -7724,6 +7720,10 @@ ${hasT ? `
       const lieu = _lireLieu(el);
       btnCarte.style.display = lieu ? '' : 'none';
     };
+
+    selRack.addEventListener('change', () => { nomAllee = ''; nomEtage = ''; majAllee(); majBtnCarte(); });
+    selAllee.addEventListener('change', () => { majEtage(); majBtnCarte(); });
+    selEtage.addEventListener('change', majBtnCarte);
 
     el.innerHTML = '';
     el.append(selRack, selAllee, selEtage, btnCarte);
