@@ -4867,7 +4867,7 @@ ${hasT ? `
     const spanPoids = document.createElement('span');
     spanPoids.className = 'inv-poids-cell';
 
-    [selClasse, selFourn, selOrigine, inpRef, spanPoids].forEach(el => row3.appendChild(el));
+    [selClasse, selOrigine, selFourn, inpRef, spanPoids].forEach(el => row3.appendChild(el));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
