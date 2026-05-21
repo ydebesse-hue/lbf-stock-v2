@@ -3990,17 +3990,19 @@ ${hasT ? `
       // Bouton "+ Ajouter une référence" (commande)
       const btnAjLigne = mAP.querySelector('#ap-cmd-ajouter-ligne');
       if (btnAjLigne) btnAjLigne.addEventListener('click', () => {
-        _ajouterLigneCommande(mAP.querySelector('#ap-cmd-tbody'));
+        _ajouterLigneCommandeCard(mAP.querySelector('#ap-cmd-list'));
       });
 
-      // Délégation type → désig sur les lignes commande
-      const tbody = mAP.querySelector('#ap-cmd-tbody');
-      if (tbody) tbody.addEventListener('change', e => {
-        if (e.target.classList.contains('cmd-type')) {
-          const tr = e.target.closest('tr');
-          if (tr) _apMajDesigLigne(tr);
-        }
-      });
+      // Délégation type → désig sur les cartes commande
+      const cmdList = mAP.querySelector('#ap-cmd-list');
+      if (cmdList) {
+        cmdList.addEventListener('change', e => {
+          const ligne = e.target.closest('.inv-ligne');
+          if (!ligne) return;
+          if (e.target.classList.contains('inv-type')) _apMajDesigLigneInv(ligne);
+          else if (e.target.classList.contains('inv-desig')) _majSchemaBtn(ligne);
+        });
+      }
 
       const btnSoumettre = mAP.querySelector('.btn-soumettre');
       if (btnSoumettre) btnSoumettre.addEventListener('click', () => _soumettreAjoutProfil(mAP));
@@ -4278,14 +4280,12 @@ ${hasT ? `
     if (invList) { invList.innerHTML = ''; _ajouterLigneInventaire(invList); }
 
     // Réinitialiser le panel commande
-    m.querySelectorAll('#ap-panel-commande input').forEach(el => { el.value = ''; });
+    const refEl = m.querySelector('#ap-cmd-ref');
+    if (refEl) refEl.value = '';
     _monterPickerChantier('ap-cmd-chantier-picker', 'ap-cmd-chantier');
     _monterPickerFournisseur('ap-cmd-fournisseur-picker', 'ap-cmd-fournisseur');
-    const tbody = m.querySelector('#ap-cmd-tbody');
-    if (tbody) {
-      tbody.innerHTML = '';
-      _ajouterLigneCommande(tbody); // une ligne vide par défaut
-    }
+    const cmdList = m.querySelector('#ap-cmd-list');
+    if (cmdList) { cmdList.innerHTML = ''; _ajouterLigneCommandeCard(cmdList); }
 
     // Note de statut
     _majNoteStatut(m, '.ap-note-statut');
@@ -4552,14 +4552,14 @@ ${hasT ? `
     const refCmd      = m.querySelector('#ap-cmd-ref')?.value?.trim()         || '';
     const fournisseur = m.querySelector('#ap-cmd-fournisseur')?.value?.trim() || '';
 
-    const lignes = [...m.querySelectorAll('#ap-cmd-tbody .cmd-ligne')];
+    const lignes = [...m.querySelectorAll('#ap-cmd-list .inv-ligne')];
     if (!lignes.length) return _notif('Ajoutez au moins une ligne', 'erreur');
 
     // Validation globale avant création
     for (const [i, ligne] of lignes.entries()) {
-      const type  = ligne.querySelector('.cmd-type')?.value?.trim();
-      const desig = ligne.querySelector('.cmd-desig')?.value?.trim();
-      const lng   = parseFloat(ligne.querySelector('.cmd-longueur')?.value);
+      const type  = ligne.querySelector('.inv-type')?.value?.trim();
+      const desig = ligne.querySelector('.inv-desig')?.value?.trim();
+      const lng   = parseFloat(ligne.querySelector('.inv-long')?.value);
       const qte   = parseInt(ligne.querySelector('.cmd-qte')?.value) || 0;
       if (!type || !desig) return _notif(`Ligne ${i+1} : type et désignation obligatoires`, 'erreur');
       if (!lng || lng <= 0) return _notif(`Ligne ${i+1} : longueur invalide`, 'erreur');
@@ -4573,12 +4573,12 @@ ${hasT ? `
     let toutEnLigne = true;
 
     for (const ligne of lignes) {
-      const type     = ligne.querySelector('.cmd-type')?.value?.trim();
-      const desig    = ligne.querySelector('.cmd-desig')?.value?.trim();
+      const type     = ligne.querySelector('.inv-type')?.value?.trim();
+      const desig    = ligne.querySelector('.inv-desig')?.value?.trim();
       const classe   = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
-      const longueur = parseFloat(ligne.querySelector('.cmd-longueur')?.value);
+      const longueur = parseFloat(ligne.querySelector('.inv-long')?.value);
       const qte      = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
-      const lieu     = _lireLieu(ligne.querySelector('.cmd-lieu-csc'))  || '';
+      const lieu     = _lireLieu(ligne.querySelector('.cmd-lieu')) || '';
 
       const dims    = _getDims(type, desig);
       const poidsml = dims?.pml || 0;
@@ -4885,6 +4885,97 @@ ${hasT ? `
     list.appendChild(ligne);
   }
 
+  function _ajouterLigneCommandeCard(list) {
+    if (!list) return;
+    const ligne = document.createElement('div');
+    ligne.className = 'inv-ligne';
+
+    // ── Ligne 1 : Type | Désig | 🔍 | Long (m) | ✕ ──
+    const row1 = document.createElement('div');
+    row1.className = 'inv-row-1';
+
+    const selType = document.createElement('select');
+    selType.className = 'inv-type inv-sel-type';
+    selType.innerHTML = '<option value="">— Type —</option>';
+    _remplirSelectType(selType);
+
+    const selDesig = document.createElement('select');
+    selDesig.className = 'inv-desig inv-sel-desig';
+    selDesig.innerHTML = '<option value="">— Désignation —</option>';
+
+    const btnSchema = document.createElement('button');
+    btnSchema.type = 'button'; btnSchema.className = 'btn-inv-schema';
+    btnSchema.title = 'Voir schéma'; btnSchema.textContent = '🔍';
+    btnSchema.disabled = true;
+
+    const inpLong = document.createElement('input');
+    inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long';
+    inpLong.placeholder = 'm'; inpLong.step = '0.01'; inpLong.min = '0.01';
+
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
+    btnDel.textContent = '✕';
+    btnDel.addEventListener('click', () => {
+      ligne.remove();
+      if (!list.querySelector('.inv-ligne')) _ajouterLigneCommandeCard(list);
+    });
+
+    [selType, selDesig, btnSchema, inpLong, btnDel].forEach(el => row1.appendChild(el));
+
+    // ── Ligne 2 : Lieu de stockage | Qté | + ──
+    const row2 = document.createElement('div');
+    row2.className = 'inv-row-2';
+
+    const lieuDiv = document.createElement('div');
+    lieuDiv.className = 'lieu-cascade cmd-lieu';
+    _monterSelecteurLieu(lieuDiv);
+
+    const qteWrap = document.createElement('div');
+    qteWrap.className = 'cmd-qte-wrap';
+    const lblQte = document.createElement('span');
+    lblQte.textContent = 'Qté :';
+    const inpQte = document.createElement('input');
+    inpQte.type = 'number'; inpQte.className = 'cmd-qte';
+    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
+    qteWrap.appendChild(lblQte); qteWrap.appendChild(inpQte);
+
+    const btnPlus = document.createElement('button');
+    btnPlus.type = 'button'; btnPlus.className = 'btn-inv-plus';
+    btnPlus.title = 'Plus d\'infos'; btnPlus.textContent = '+';
+    btnPlus.addEventListener('click', () => {
+      const open = row3.style.display !== 'none';
+      row3.style.display = open ? 'none' : 'flex';
+      btnPlus.textContent = open ? '+' : '−';
+    });
+
+    [lieuDiv, qteWrap, btnPlus].forEach(el => row2.appendChild(el));
+
+    // ── Ligne 3 (masquée) : Classe acier | Commentaire ──
+    const row3 = document.createElement('div');
+    row3.className = 'inv-row-3';
+    row3.style.display = 'none';
+
+    const selClasse = document.createElement('select');
+    selClasse.className = 'cmd-classe';
+    ['', 'S235', 'S275', 'S355', 'S420', 'S460', 'S690'].forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v || '— Classe —';
+      selClasse.appendChild(o);
+    });
+
+    const inpComm = document.createElement('input');
+    inpComm.type = 'text'; inpComm.className = 'cmd-commentaire';
+    inpComm.placeholder = 'Commentaire…';
+    inpComm.style.cssText = 'flex:1;padding:4px 6px;border:1px solid #ccc;border-radius:3px;font-size:12px;min-width:0';
+
+    [selClasse, inpComm].forEach(el => row3.appendChild(el));
+
+    ligne.appendChild(row1);
+    ligne.appendChild(row2);
+    ligne.appendChild(row3);
+    list.appendChild(ligne);
+  }
+
   function _apMajDesigLigneInv(ligne) {
     const type     = ligne.querySelector('.inv-type')?.value;
     const selDesig = ligne.querySelector('.inv-desig');
@@ -4961,6 +5052,15 @@ ${hasT ? `
         spanId.innerHTML = '';
       }
     }
+  }
+
+  function _majSchemaBtn(ligne) {
+    const type  = ligne.querySelector('.inv-type')?.value;
+    const desig = ligne.querySelector('.inv-desig')?.value;
+    const btn   = ligne.querySelector('.btn-inv-schema');
+    if (!btn) return;
+    btn.disabled = !(type && desig);
+    if (type && desig) btn.onclick = () => Stock.ouvrirFicheSection(type, desig);
   }
 
   /* ──────────────────────────────────────────────────────────────

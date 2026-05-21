@@ -1315,6 +1315,10 @@
     .inv-id-cell { flex-shrink: 0; min-width: 72px; }
     .inv-id-chip { display: inline-block; font-family: Impact, sans-serif; font-size: 15px; letter-spacing: 1.5px; color: var(--rouge); background: #1a1a1a; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
     .inv-poids-cell { font-size: 12px; color: #777; flex: 1; }
+    .cmd-header-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-bottom: 10px; }
+    .inv-row-2 .cmd-lieu { flex: 1; min-width: 0; }
+    .cmd-qte-wrap { display: flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 12px; color: #555; }
+    .cmd-qte-wrap input { width: 46px; padding: 4px 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; }
     .btn-suppr-ligne {
       background: none;
       border: none;
@@ -2287,37 +2291,23 @@
 
       <!-- ── PANEL RÉCEPTION COMMANDE ────────────────────────── -->
       <div id="ap-panel-commande" class="ap-panel" style="display:none">
-        <div class="form-cols3">
+
+        <div class="cmd-header-fields">
           <div class="fr">
-            <label>Chantier destinataire</label>
-            <div id="ap-cmd-chantier-picker"></div>
+            <label>Fournisseur</label>
+            <div id="ap-cmd-fournisseur-picker"></div>
           </div>
           <div class="fr">
             <label>Réf. commande / BL</label>
             <input type="text" id="ap-cmd-ref" placeholder="N° bon de commande">
           </div>
           <div class="fr">
-            <label>Fournisseur</label>
-            <div id="ap-cmd-fournisseur-picker"></div>
+            <label>Chantier destinataire</label>
+            <div id="ap-cmd-chantier-picker"></div>
           </div>
         </div>
 
-        <div class="table-lignes-cmd-wrap">
-          <table class="table-lignes-cmd">
-            <thead>
-              <tr>
-                <th class="col-cmd-type">Type</th>
-                <th class="col-cmd-desig">Désignation</th>
-                <th class="col-cmd-classe">Classe acier</th>
-                <th class="col-cmd-long">Longueur (m)</th>
-                <th class="col-cmd-qte">Qté</th>
-                <th class="col-cmd-lieu">Lieu stockage</th>
-                <th class="col-cmd-del"></th>
-              </tr>
-            </thead>
-            <tbody id="ap-cmd-tbody"></tbody>
-          </table>
-        </div>
+        <div class="inv-barres-list" id="ap-cmd-list"></div>
         <button type="button" id="ap-cmd-ajouter-ligne" class="btn-ajouter-ligne">+ Ajouter une référence</button>
 
         <div class="ap-note-statut ap-note-statut-cmd note-statut note-statut-attente" style="margin-top:10px"></div>
