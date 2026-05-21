@@ -7705,12 +7705,30 @@ ${hasT ? `
           }).join('');
     };
 
-    selRack.addEventListener('change', () => { nomAllee = ''; nomEtage = ''; majAllee(); });
-    selAllee.addEventListener('change', majEtage);
+    selRack.addEventListener('change', () => { nomAllee = ''; nomEtage = ''; majAllee(); majBtnCarte(); });
+    selAllee.addEventListener('change', () => { majEtage(); majBtnCarte(); });
+    selEtage.addEventListener('change', majBtnCarte);
+
+    const btnCarte = document.createElement('button');
+    btnCarte.type = 'button';
+    btnCarte.className = 'lieu-btn-carte';
+    btnCarte.title = 'Voir sur le plan';
+    btnCarte.textContent = '📍';
+    btnCarte.style.display = 'none';
+    btnCarte.addEventListener('click', () => {
+      const lieu = _lireLieu(el);
+      if (lieu) _ouvrirCarte(lieu);
+    });
+
+    const majBtnCarte = () => {
+      const lieu = _lireLieu(el);
+      btnCarte.style.display = lieu ? '' : 'none';
+    };
 
     el.innerHTML = '';
-    el.append(selRack, selAllee, selEtage);
+    el.append(selRack, selAllee, selEtage, btnCarte);
     majAllee();
+    majBtnCarte();
   }
 
   /** Lit la valeur depuis un conteneur lieu-cascade.
