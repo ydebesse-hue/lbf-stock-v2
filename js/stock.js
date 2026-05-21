@@ -3960,9 +3960,6 @@ ${hasT ? `
           mAP.dataset.modeAjout = mode;
           document.getElementById('ap-panel-inventaire').style.display = mode === 'inventaire' ? '' : 'none';
           document.getElementById('ap-panel-commande').style.display   = mode === 'commande'   ? '' : 'none';
-          // Note de statut sur les deux panels
-          _majNoteStatut(mAP, '.ap-note-statut');
-          _majNoteStatut(mAP, '.ap-note-statut-cmd');
         });
       });
 
@@ -3993,14 +3990,18 @@ ${hasT ? `
         _ajouterLigneCommandeCard(mAP.querySelector('#ap-cmd-list'));
       });
 
-      // Délégation type → désig sur les cartes commande
+      // Délégation type/désig/long sur les cartes commande
       const cmdList = mAP.querySelector('#ap-cmd-list');
       if (cmdList) {
         cmdList.addEventListener('change', e => {
           const ligne = e.target.closest('.inv-ligne');
           if (!ligne) return;
           if (e.target.classList.contains('inv-type')) _apMajDesigLigneInv(ligne);
-          else if (e.target.classList.contains('inv-desig')) _majSchemaBtn(ligne);
+          else if (e.target.classList.contains('inv-desig')) _majPoidsLigneInv(ligne);
+        });
+        cmdList.addEventListener('input', e => {
+          const ligne = e.target.closest('.inv-ligne');
+          if (ligne && e.target.classList.contains('inv-long')) _majPoidsLigneInv(ligne);
         });
       }
 
@@ -4287,9 +4288,6 @@ ${hasT ? `
     if (cmdList) { cmdList.innerHTML = ''; _ajouterLigneCommandeCard(cmdList); }
 
     // Note de statut
-    _majNoteStatut(m, '.ap-note-statut');
-    _majNoteStatut(m, '.ap-note-statut-cmd');
-
     _ouvrirModale('m-ajout-profil');
   }
 
@@ -4915,6 +4913,9 @@ ${hasT ? `
     const row2 = document.createElement('div');
     row2.className = 'inv-row-2';
 
+    const spanId = document.createElement('span');
+    spanId.className = 'inv-id-cell';
+
     const lieuDiv = document.createElement('div');
     lieuDiv.className = 'lieu-cascade cmd-lieu';
     _monterSelecteurLieu(lieuDiv);
@@ -4924,7 +4925,7 @@ ${hasT ? `
     inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
     inpQte.placeholder = 'Qté';
 
-    [lieuDiv, inpQte].forEach(el => row2.appendChild(el));
+    [spanId, lieuDiv, inpQte].forEach(el => row2.appendChild(el));
 
     // ── Ligne 3 : Chantier destinataire | Classe acier | Commentaire ──
     const row3 = document.createElement('div');
