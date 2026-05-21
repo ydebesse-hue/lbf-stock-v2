@@ -4491,7 +4491,10 @@ ${hasT ? `
       const type       = l.querySelector('.inv-type')?.value?.trim();
       const desig      = l.querySelector('.inv-desig')?.value?.trim();
       const longueur   = parseFloat(l.querySelector('.inv-long')?.value);
-      const classe     = l.querySelector('.inv-classe')?.value?.trim() || '';
+      const classe      = l.querySelector('.inv-classe')?.value?.trim() || '';
+      const fournisseur = l.querySelector('.inv-fournisseur')?.value?.trim() || null;
+      const origine     = l.querySelector('.inv-origine')?.value?.trim() || null;
+      const refCmd      = l.querySelector('.inv-ref')?.value?.trim() || null;
       const commentaire = l.querySelector('.inv-commentaire')?.value?.trim() || '';
       const dims       = _getDims(type, desig);
       const poidsml    = dims?.pml || 0;
@@ -4507,13 +4510,13 @@ ${hasT ? `
           longueur_m: longueur,
           poids_ml: poidsml,
           poids_barre_kg: poidsBarre,
-          chantier_origine: null,
+          chantier_origine: origine,
           lieu_stockage: lieu,
           disponibilite: 'disponible',
           chantier_affectation: null,
           classe_acier: classe || null,
-          ref_commande: null,
-          fournisseur: null,
+          ref_commande: refCmd,
+          fournisseur: fournisseur,
           statut: 'valide',
           date_ajout: _dateAujourdhui(),
           ajoute_par: session?.identifiant || 'inconnu',
@@ -4841,7 +4844,7 @@ ${hasT ? `
 
     [spanId, inpComm, btnPlus].forEach(el => row2.appendChild(el));
 
-    // ── Ligne 3 (masquée) : Classe acier | Poids calculé ──
+    // ── Ligne 3 (masquée) : Classe | Fournisseur | Origine | Réf. commande | Poids ──
     const row3 = document.createElement('div');
     row3.className = 'inv-row-3';
     row3.style.display = 'none';
@@ -4854,10 +4857,27 @@ ${hasT ? `
       selClasse.appendChild(o);
     });
 
+    const selFourn = document.createElement('select');
+    selFourn.className = 'inv-fournisseur';
+    const fopts = `<option value="">— Fournisseur —</option>` +
+      [..._fournisseurs].sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr', { sensitivity: 'base' }))
+        .map(f => `<option value="${_e(f.nom)}">${_e(f.nom)}</option>`).join('');
+    selFourn.innerHTML = fopts;
+
+    const selOrigine = document.createElement('select');
+    selOrigine.className = 'inv-origine';
+    _peuplerSelectAffectation(selOrigine, '');
+    selOrigine.options[0].text = '— Origine —';
+
+    const inpRef = document.createElement('input');
+    inpRef.type = 'text'; inpRef.className = 'inv-ref';
+    inpRef.placeholder = 'Réf. commande / BL';
+    inpRef.style.cssText = 'flex:1;padding:4px 6px;border:1px solid #ccc;border-radius:3px;font-size:12px;min-width:0';
+
     const spanPoids = document.createElement('span');
     spanPoids.className = 'inv-poids-cell';
 
-    [selClasse, spanPoids].forEach(el => row3.appendChild(el));
+    [selClasse, selFourn, selOrigine, inpRef, spanPoids].forEach(el => row3.appendChild(el));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
