@@ -4790,6 +4790,18 @@ ${hasT ? `
     const ligne = document.createElement('div');
     ligne.className = 'inv-ligne';
 
+    const mkField = (label, el, flex) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'inv-field';
+      if (flex) wrap.style.flex = flex;
+      const lbl = document.createElement('div');
+      lbl.className = 'inv-field-label';
+      lbl.textContent = label;
+      wrap.appendChild(lbl);
+      wrap.appendChild(el);
+      return wrap;
+    };
+
     // ── Ligne 1 : Type | Désig | 🔍 | Longueur | ✕ ──
     const row1 = document.createElement('div');
     row1.className = 'inv-row-1';
@@ -4820,9 +4832,16 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneInventaire(list);
     });
 
-    [selType, selDesig, btnSchema, inpLong, btnDel].forEach(el => row1.appendChild(el));
+    const wType = mkField('Type *', selType, '1.2'); wType.style.minWidth = '90px';
+    const wDesig = mkField('Désignation *', selDesig, '2'); wDesig.style.minWidth = '120px';
+    const wLong = mkField('Long. (m) *', inpLong); wLong.style.width = '80px'; wLong.style.flexShrink = '0';
+    row1.appendChild(wType);
+    row1.appendChild(wDesig);
+    row1.appendChild(btnSchema);
+    row1.appendChild(wLong);
+    row1.appendChild(btnDel);
 
-    // ── Ligne 2 : ID chip | Commentaire | + ──
+    // ── Ligne 2 : ID prévu | Commentaire ──
     const row2 = document.createElement('div');
     row2.className = 'inv-row-2';
 
@@ -4833,9 +4852,10 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'inv-commentaire';
     inpComm.placeholder = 'Commentaire…';
 
-    [spanId, inpComm].forEach(el => row2.appendChild(el));
+    row2.appendChild(mkField('ID prévu', spanId));
+    row2.appendChild(mkField('Commentaire', inpComm, '1'));
 
-    // ── Ligne 3 : Classe | Fournisseur | Origine | Réf. commande | Poids ──
+    // ── Ligne 3 : Classe | Origine | Fournisseur | Réf. | Poids ──
     const row3 = document.createElement('div');
     row3.className = 'inv-row-3';
 
@@ -4861,13 +4881,16 @@ ${hasT ? `
 
     const inpRef = document.createElement('input');
     inpRef.type = 'text'; inpRef.className = 'inv-ref';
-    inpRef.placeholder = 'Réf. commande / BL';
-    inpRef.style.cssText = 'flex:1;padding:4px 6px;border:1px solid #ccc;border-radius:3px;font-size:12px;min-width:0';
+    inpRef.placeholder = 'Réf. BL / commande';
 
     const spanPoids = document.createElement('span');
     spanPoids.className = 'inv-poids-cell';
 
-    [selClasse, selOrigine, selFourn, inpRef, spanPoids].forEach(el => row3.appendChild(el));
+    row3.appendChild(mkField('Classe acier', selClasse));
+    row3.appendChild(mkField('Origine chantier', selOrigine, '1'));
+    row3.appendChild(mkField('Fournisseur', selFourn, '1'));
+    row3.appendChild(mkField('Réf. commande', inpRef, '1'));
+    row3.appendChild(mkField('Poids calc.', spanPoids));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
@@ -4879,6 +4902,18 @@ ${hasT ? `
     if (!list) return;
     const ligne = document.createElement('div');
     ligne.className = 'inv-ligne';
+
+    const mkField = (label, el, flex) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'inv-field';
+      if (flex) wrap.style.flex = flex;
+      const lbl = document.createElement('div');
+      lbl.className = 'inv-field-label';
+      lbl.textContent = label;
+      wrap.appendChild(lbl);
+      wrap.appendChild(el);
+      return wrap;
+    };
 
     // ── Ligne 1 : Type | Désig | 🔍 | Long (m) | ✕ ──
     const row1 = document.createElement('div');
@@ -4910,9 +4945,16 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneCommandeCard(list);
     });
 
-    [selType, selDesig, btnSchema, inpLong, btnDel].forEach(el => row1.appendChild(el));
+    const wType = mkField('Type *', selType, '1.2'); wType.style.minWidth = '90px';
+    const wDesig = mkField('Désignation *', selDesig, '2'); wDesig.style.minWidth = '120px';
+    const wLong = mkField('Long. (m) *', inpLong); wLong.style.width = '80px'; wLong.style.flexShrink = '0';
+    row1.appendChild(wType);
+    row1.appendChild(wDesig);
+    row1.appendChild(btnSchema);
+    row1.appendChild(wLong);
+    row1.appendChild(btnDel);
 
-    // ── Ligne 2 : Lieu de stockage | Qté | + ──
+    // ── Ligne 2 : Lieu de stockage | Qté ──
     const row2 = document.createElement('div');
     row2.className = 'inv-row-2';
 
@@ -4920,16 +4962,13 @@ ${hasT ? `
     lieuDiv.className = 'lieu-cascade cmd-lieu';
     _monterSelecteurLieu(lieuDiv);
 
-    const qteWrap = document.createElement('div');
-    qteWrap.className = 'cmd-qte-wrap';
-    const lblQte = document.createElement('span');
-    lblQte.textContent = 'Qté :';
     const inpQte = document.createElement('input');
     inpQte.type = 'number'; inpQte.className = 'cmd-qte';
     inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
-    qteWrap.appendChild(lblQte); qteWrap.appendChild(inpQte);
+    inpQte.style.width = '60px';
 
-    [lieuDiv, qteWrap].forEach(el => row2.appendChild(el));
+    row2.appendChild(mkField('Lieu de stockage', lieuDiv, '1'));
+    row2.appendChild(mkField('Qté', inpQte));
 
     // ── Ligne 3 : Chantier destinataire | Classe acier | Commentaire ──
     const row3 = document.createElement('div');
@@ -4951,9 +4990,10 @@ ${hasT ? `
     const inpComm = document.createElement('input');
     inpComm.type = 'text'; inpComm.className = 'cmd-commentaire';
     inpComm.placeholder = 'Commentaire…';
-    inpComm.style.cssText = 'flex:1;padding:4px 6px;border:1px solid #ccc;border-radius:3px;font-size:12px;min-width:0';
 
-    [selChantier, selClasse, inpComm].forEach(el => row3.appendChild(el));
+    row3.appendChild(mkField('Chantier destinataire', selChantier, '1'));
+    row3.appendChild(mkField('Classe acier', selClasse));
+    row3.appendChild(mkField('Commentaire', inpComm, '1'));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);

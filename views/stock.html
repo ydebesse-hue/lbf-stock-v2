@@ -1296,17 +1296,17 @@
     .btn-ajouter-ligne:hover { background: #fff5f5; }
     .inv-barres-list { display: flex; flex-direction: column; gap: 0; margin: 8px 0 4px; }
     .inv-ligne { border-top: 2px solid var(--rouge); border-bottom: 1px solid #e0e0e0; background: #fff; margin-bottom: 10px; border-radius: 0 0 4px 4px; }
-    .inv-row-1, .inv-row-2, .inv-row-3 { display: flex; gap: 5px; align-items: center; padding: 5px 8px; flex-wrap: nowrap; }
+    .inv-row-1, .inv-row-2, .inv-row-3 { display: flex; gap: 6px; align-items: flex-end; padding: 6px 8px; flex-wrap: wrap; }
     .inv-row-2 { border-top: 1px solid #ebebeb; background: #f8f8f8; }
-    .inv-row-3 { border-top: 1px solid #ebebeb; flex-wrap: wrap; gap: 5px; }
-    .inv-row-3 select { padding: 4px 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; min-width: 0; flex: 1; }
-    .inv-row-1 select, .inv-row-3 select {
-      padding: 4px 4px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; min-width: 0;
+    .inv-row-3 { border-top: 1px solid #ebebeb; flex-wrap: wrap; gap: 6px; }
+    .inv-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .inv-field-label { font-size: 10px; font-weight: 600; color: #777; letter-spacing: .3px; white-space: normal; line-height: 1.2; }
+    .inv-field > select, .inv-field > input[type=number], .inv-field > input[type=text] {
+      padding: 4px 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; width: 100%; box-sizing: border-box;
     }
-    .inv-sel-type  { flex: 1.2; }
-    .inv-sel-desig { flex: 2; }
-    .inv-inp-long  { width: 70px; flex-shrink: 0; padding: 4px 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; }
-    .inv-row-2 input[type=text] { flex: 1; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; min-width: 0; }
+    .inv-sel-type  { flex: 1.2; min-width: 90px; }
+    .inv-sel-desig { flex: 2;   min-width: 120px; }
+    .inv-inp-long  { width: 70px; flex-shrink: 0; }
     .lieu-btn-carte { background: var(--rouge); border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; line-height: 1; }
     .lieu-btn-carte:hover { opacity: .8; }
     .btn-inv-schema { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 3px; opacity: 0.35; transition: opacity .15s; flex-shrink: 0; }
