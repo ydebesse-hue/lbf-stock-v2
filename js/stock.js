@@ -2435,7 +2435,7 @@ const Stock = (() => {
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
-  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px">
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px;background:#111;padding:4px 8px;border-radius:3px">
        <div style="font-size:10px;color:#888">Synthèse Stock Profilés</div></div>
   <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}<br>Périmètre : ${perimetre}</div>
 </div>
@@ -2531,7 +2531,7 @@ const Stock = (() => {
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
-  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px">
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px;background:#111;padding:4px 8px;border-radius:3px">
        <div style="font-size:10px;color:#888">Synthèse Stock Tôles</div></div>
   <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}</div>
 </div>
@@ -2775,7 +2775,7 @@ const Stock = (() => {
   @media print{body{padding:10px 16px}@page{size:landscape;margin:1cm}}
 </style></head><body>
 <div class="hdr">
-  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px">
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px;background:#111;padding:4px 8px;border-radius:3px">
        <div style="font-size:10px;color:#888">Bilan de consommation matière</div></div>
   <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}</div>
 </div>
@@ -2934,7 +2934,7 @@ ${sections}
 </style>
 </head><body>
 <div class="header">
-  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px"><div style="font-size:10px;color:#888">Bilan de consommation</div></div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px;background:#111;padding:4px 8px;border-radius:3px"><div style="font-size:10px;color:#888">Bilan de consommation</div></div>
   <div class="date">Édité le ${date}</div>
 </div>
 
@@ -8831,7 +8831,7 @@ ${hasT ? `
 <body>
   <div class="entete">
     <div>
-      <img src="${logoUrl}" alt="LBF" style="height:36px;object-fit:contain;display:block;margin-bottom:4px">
+      <img src="${logoUrl}" alt="LBF" style="height:36px;object-fit:contain;display:block;margin-bottom:4px;background:#111;padding:4px 8px;border-radius:3px">
       <h1>Stock Métallerie · ${titreOnglet}</h1>
       <div class="meta">${resultats.length} élément(s) · Imprimé le ${dateStr}</div>
       ${filtresActifs.length ? `<div class="filtres">Filtres : ${filtresActifs.join(' · ')}</div>` : ''}
