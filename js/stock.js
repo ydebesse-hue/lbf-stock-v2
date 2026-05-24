@@ -5442,8 +5442,8 @@ ${hasT ? `
     if (zoneCh)   zoneCh.style.display = 'none';
     const cLrg = m.querySelector('#st-chute-lrg');
     const cLng = m.querySelector('#st-chute-lng');
-    if (cLrg) cLrg.value = '';
-    if (cLng) cLng.value = '';
+    if (cLrg) { cLrg.value = ''; cLrg.max = tole.largeur_mm;   cLrg.placeholder = `max ${tole.largeur_mm} mm`; }
+    if (cLng) { cLng.value = ''; cLng.max = tole.longueur_mm;  cLng.placeholder = `max ${tole.longueur_mm} mm`; }
 
     // Chantier
     _monterPickerChantier('st-chantier-picker', 'st-chantier');
@@ -5470,6 +5470,8 @@ ${hasT ? `
     if (avecChute) {
       if (isNaN(chuteLrg) || chuteLrg <= 0) return _signalerErreur(m, '#st-chute-lrg', 'Largeur chute requise');
       if (isNaN(chuteLng) || chuteLng <= 0) return _signalerErreur(m, '#st-chute-lng', 'Longueur chute requise');
+      if (chuteLrg > tole.largeur_mm)  return _signalerErreur(m, '#st-chute-lrg', `Largeur max : ${tole.largeur_mm} mm (tôle d'origine)`);
+      if (chuteLng > tole.longueur_mm) return _signalerErreur(m, '#st-chute-lng', `Longueur max : ${tole.longueur_mm} mm (tôle d'origine)`);
     }
 
     const session = Auth.getSession();
