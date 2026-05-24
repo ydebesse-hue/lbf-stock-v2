@@ -2433,13 +2433,15 @@ const Stock = (() => {
   .kpi-tot td{font-weight:bold;background:#f9f9f9;border-top:2px solid #ccc}
   .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:3px solid #d22323;padding-bottom:10px}
   .hdr>div{flex:1}
-  .hdr>div:nth-child(2){text-align:center;font-size:14px;font-weight:bold;color:#222}
+  .hdr>div:nth-child(2){text-align:center}
+  .hdr>div:nth-child(2) .hdr-titre{font-size:15px;font-weight:bold;color:#222}
+  .hdr>div:nth-child(2) .hdr-sous{font-size:11px;color:#666;margin-top:2px}
   .hdr>div:last-child{text-align:right;font-size:10px;color:#888}
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
   <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block"></div>
-  <div>Synthèse Stock Profilés<br><span style="font-size:11px;font-weight:normal;color:#666">${perimetre}</span></div>
+  <div><div class="hdr-titre">Stock Métallerie</div><div class="hdr-sous">Synthèse Profilés · ${perimetre}</div></div>
   <div>Imprimé le<br>${date}</div>
 </div>
 <h2>Récapitulatif</h2>
@@ -2532,13 +2534,15 @@ const Stock = (() => {
   .kpi-tot td{font-weight:bold;background:#f9f9f9;border-top:2px solid #ccc}
   .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:3px solid #d22323;padding-bottom:10px}
   .hdr>div{flex:1}
-  .hdr>div:nth-child(2){text-align:center;font-size:14px;font-weight:bold;color:#222}
+  .hdr>div:nth-child(2){text-align:center}
+  .hdr>div:nth-child(2) .hdr-titre{font-size:15px;font-weight:bold;color:#222}
+  .hdr>div:nth-child(2) .hdr-sous{font-size:11px;color:#666;margin-top:2px}
   .hdr>div:last-child{text-align:right;font-size:10px;color:#888}
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
   <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block"></div>
-  <div>Synthèse Stock Tôles</div>
+  <div><div class="hdr-titre">Stock Métallerie</div><div class="hdr-sous">Synthèse Tôles</div></div>
   <div>Imprimé le<br>${date}</div>
 </div>
 <h2>Récapitulatif</h2>
@@ -2779,13 +2783,15 @@ const Stock = (() => {
   body{font-family:Arial,sans-serif;font-size:12px;color:#222;padding:20px 28px}
   .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:3px solid #d22323;padding-bottom:10px}
   .hdr>div{flex:1}
-  .hdr>div:nth-child(2){text-align:center;font-size:14px;font-weight:bold;color:#222}
+  .hdr>div:nth-child(2){text-align:center}
+  .hdr>div:nth-child(2) .hdr-titre{font-size:15px;font-weight:bold;color:#222}
+  .hdr>div:nth-child(2) .hdr-sous{font-size:11px;color:#666;margin-top:2px}
   .hdr>div:last-child{text-align:right;font-size:10px;color:#888}
   @media print{body{padding:10px 16px}@page{size:landscape;margin:1cm}}
 </style></head><body>
 <div class="hdr">
   <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block"></div>
-  <div>Bilan de consommation matière</div>
+  <div><div class="hdr-titre">Stock Métallerie</div><div class="hdr-sous">Bilan consommation matière</div></div>
   <div>Imprimé le<br>${date}</div>
 </div>
 
@@ -2939,14 +2945,16 @@ ${sections}
   .kpi-total td { font-weight: bold; background: #f9f9f9; border-top: 2px solid #ccc; }
   .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 3px solid #d22323; padding-bottom: 10px; }
   .header>div { flex: 1; }
-  .header>div:nth-child(2) { text-align: center; font-size: 14px; font-weight: bold; color: #222; }
+  .header>div:nth-child(2) { text-align: center; }
+  .hdr-titre { font-size: 15px; font-weight: bold; color: #222; }
+  .hdr-sous  { font-size: 11px; color: #666; margin-top: 2px; }
   .date { font-size: 10px; color: #888; text-align: right; }
   @media print { body { padding: 10px 16px; } @page { margin: 1cm; } }
 </style>
 </head><body>
 <div class="header">
   <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block"></div>
-  <div>Bilan de consommation</div>
+  <div><div class="hdr-titre">Stock Métallerie</div><div class="hdr-sous">Bilan de consommation</div></div>
   <div class="date">Imprimé le<br>${date}</div>
 </div>
 
@@ -8830,9 +8838,9 @@ ${hasT ? `
     .entete { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 3px solid #d22323; padding-bottom: 10px; }
     .entete > div { flex: 1; }
     .entete > div:nth-child(2) { text-align: center; }
-    .entete h1 { font-size: 14px; font-weight: bold; color: #222; margin-bottom: 4px; }
-    .entete .meta { font-size: 10px; color: #666; }
-    .entete .filtres { font-size: 10px; color: #888; font-style: italic; }
+    .entete .hdr-titre { font-size: 15px; font-weight: bold; color: #222; }
+    .entete .hdr-sous  { font-size: 11px; color: #666; margin-top: 2px; }
+    .entete .meta { font-size: 10px; color: #888; margin-top: 2px; }
     .entete .edate { font-size: 10px; color: #888; text-align: right; }
     table { width: 100%; border-collapse: collapse; }
     th { background: #222; color: white; padding: 5px 6px; text-align: left; font-size: 10px; white-space: nowrap; }
@@ -8847,7 +8855,8 @@ ${hasT ? `
   <div class="entete">
     <div><img src="${logoUrl}" alt="LBF" style="height:36px;object-fit:contain;display:block"></div>
     <div>
-      <h1>Stock Métallerie · ${titreOnglet}</h1>
+      <div class="hdr-titre">Stock Métallerie</div>
+      <div class="hdr-sous">${titreOnglet}</div>
       <div class="meta">${resultats.length} élément(s)${filtresActifs.length ? ` · Filtres : ${filtresActifs.join(' · ')}` : ''}</div>
     </div>
     <div class="edate">Imprimé le<br>${dateStr}</div>
