@@ -2431,13 +2431,13 @@ const Stock = (() => {
   th.r{text-align:right}
   td{padding:4px 8px;border:1px solid #eee;vertical-align:middle}
   .kpi-tot td{font-weight:bold;background:#f9f9f9;border-top:2px solid #ccc}
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;background:#111;color:#fff;padding:12px 16px;border-radius:2px}
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
   <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px">
-       <div style="font-size:10px;color:#888">Synthèse Stock Profilés</div></div>
-  <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}<br>Périmètre : ${perimetre}</div>
+       <div style="font-size:10px;color:rgba(255,255,255,.65)">Synthèse Stock Profilés</div></div>
+  <div style="font-size:10px;color:rgba(255,255,255,.65);text-align:right">Édité le ${date}<br>Périmètre : ${perimetre}</div>
 </div>
 <h2>Récapitulatif</h2>
 <table>
@@ -2527,13 +2527,13 @@ const Stock = (() => {
   th.r{text-align:right}
   td{padding:4px 8px;border:1px solid #eee;vertical-align:middle}
   .kpi-tot td{font-weight:bold;background:#f9f9f9;border-top:2px solid #ccc}
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;background:#111;color:#fff;padding:12px 16px;border-radius:2px}
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
   <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px">
-       <div style="font-size:10px;color:#888">Synthèse Stock Tôles</div></div>
-  <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}</div>
+       <div style="font-size:10px;color:rgba(255,255,255,.65)">Synthèse Stock Tôles</div></div>
+  <div style="font-size:10px;color:rgba(255,255,255,.65);text-align:right">Édité le ${date}</div>
 </div>
 <h2>Récapitulatif</h2>
 <table>
@@ -2771,13 +2771,13 @@ const Stock = (() => {
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Arial,sans-serif;font-size:12px;color:#222;padding:20px 28px}
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;background:#111;color:#fff;padding:12px 16px;border-radius:2px}
   @media print{body{padding:10px 16px}@page{size:landscape;margin:1cm}}
 </style></head><body>
 <div class="hdr">
   <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px">
-       <div style="font-size:10px;color:#888">Bilan de consommation matière</div></div>
-  <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}</div>
+       <div style="font-size:10px;color:rgba(255,255,255,.65)">Bilan de consommation matière</div></div>
+  <div style="font-size:10px;color:rgba(255,255,255,.65);text-align:right">Édité le ${date}</div>
 </div>
 
 ${chantiersList.length > 1 ? `
@@ -2928,13 +2928,13 @@ ${sections}
   td { padding: 4px 8px; border: 1px solid #eee; vertical-align: middle; }
   td.r { text-align: right; }
   .kpi-total td { font-weight: bold; background: #f9f9f9; border-top: 2px solid #ccc; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 2px solid #222; padding-bottom: 10px; }
-  .date { font-size: 10px; color: #888; text-align: right; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; background: #111; color: #fff; padding: 12px 16px; border-radius: 2px; }
+  .date { font-size: 10px; color: rgba(255,255,255,.65); text-align: right; }
   @media print { body { padding: 10px 16px; } @page { margin: 1cm; } }
 </style>
 </head><body>
 <div class="header">
-  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px"><div style="font-size:10px;color:#888">Bilan de consommation</div></div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px"><div style="font-size:10px;color:rgba(255,255,255,.65)">Bilan de consommation</div></div>
   <div class="date">Édité le ${date}</div>
 </div>
 
@@ -8813,10 +8813,10 @@ ${hasT ? `
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 11px; color: #222; padding: 16px; }
-    .entete { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; border-bottom: 2px solid #d22323; padding-bottom: 10px; }
-    .entete h1 { font-size: 14px; color: #d22323; margin-bottom: 4px; }
-    .entete .meta { font-size: 11px; color: #555; margin-bottom: 3px; }
-    .entete .filtres { font-size: 10px; color: #888; font-style: italic; }
+    .entete { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; background: #111; color: #fff; padding: 12px 16px; border-radius: 2px; }
+    .entete h1 { font-size: 14px; color: #fff; margin-bottom: 4px; }
+    .entete .meta { font-size: 11px; color: rgba(255,255,255,.65); margin-bottom: 3px; }
+    .entete .filtres { font-size: 10px; color: rgba(255,255,255,.5); font-style: italic; }
     table { width: 100%; border-collapse: collapse; }
     th { background: #222; color: white; padding: 5px 6px; text-align: left; font-size: 10px; white-space: nowrap; }
     td { padding: 4px 6px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
