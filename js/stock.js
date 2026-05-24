@@ -2366,6 +2366,7 @@ const Stock = (() => {
      ────────────────────────────────────────────────────────────── */
 
   function _imprimerSynProfils() {
+    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
     const barres   = _data.barres || [];
     const dispo    = barres.filter(b => b.categorie === 'profil' && b.statut === 'valide' && b.disponibilite === 'disponible');
     const affectes = barres.filter(b => b.categorie === 'profil' && b.statut === 'valide' && b.disponibilite === 'affecte');
@@ -2434,7 +2435,7 @@ const Stock = (() => {
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
-  <div><div style="font-size:18px;font-weight:bold;letter-spacing:2px">LBF</div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px">
        <div style="font-size:10px;color:#888">Synthèse Stock Profilés</div></div>
   <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}<br>Périmètre : ${perimetre}</div>
 </div>
@@ -2464,6 +2465,7 @@ const Stock = (() => {
   }
 
   function _imprimerSynToles() {
+    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
     const barres   = _data.barres || [];
     const dispo    = barres.filter(b => b.categorie === 'tole' && b.statut === 'valide' && b.disponibilite === 'disponible');
     const affectes = barres.filter(b => b.categorie === 'tole' && b.statut === 'valide' && b.disponibilite === 'affecte');
@@ -2529,7 +2531,7 @@ const Stock = (() => {
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
-  <div><div style="font-size:18px;font-weight:bold;letter-spacing:2px">LBF</div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px">
        <div style="font-size:10px;color:#888">Synthèse Stock Tôles</div></div>
   <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}</div>
 </div>
@@ -2568,6 +2570,7 @@ const Stock = (() => {
 
   function _imprimerBilanChantiers(chantiersList) {
     if (!chantiersList || !chantiersList.length) return;
+    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
 
     const barres    = _data.barres || [];
     const profils   = barres.filter(b => b.categorie === 'profil');
@@ -2772,7 +2775,7 @@ const Stock = (() => {
   @media print{body{padding:10px 16px}@page{size:landscape;margin:1cm}}
 </style></head><body>
 <div class="hdr">
-  <div><div style="font-size:18px;font-weight:bold;letter-spacing:2px">LBF</div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px">
        <div style="font-size:10px;color:#888">Bilan de consommation matière</div></div>
   <div style="font-size:10px;color:#888;text-align:right">Édité le ${date}</div>
 </div>
@@ -2824,6 +2827,7 @@ ${sections}
 
   function _exporterBilanPDF() {
     if (!_bilanChantier) return;
+    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
 
     const barres    = _data.barres;
     const profils   = barres.filter(b => b.categorie === 'profil');
@@ -2925,13 +2929,12 @@ ${sections}
   td.r { text-align: right; }
   .kpi-total td { font-weight: bold; background: #f9f9f9; border-top: 2px solid #ccc; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 2px solid #222; padding-bottom: 10px; }
-  .logo { font-size: 18px; font-weight: bold; letter-spacing: 2px; color: #111; }
   .date { font-size: 10px; color: #888; text-align: right; }
   @media print { body { padding: 10px 16px; } @page { margin: 1cm; } }
 </style>
 </head><body>
 <div class="header">
-  <div><div class="logo">LBF</div><div style="font-size:10px;color:#888">Bilan de consommation</div></div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;margin-bottom:4px"><div style="font-size:10px;color:#888">Bilan de consommation</div></div>
   <div class="date">Édité le ${date}</div>
 </div>
 
@@ -8670,6 +8673,7 @@ ${hasT ? `
 
   function _imprimerListe() {
     if (!_data) return;
+    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
 
     // Recalculer les données filtrées courantes
     const session   = window.Auth ? window.Auth.getSession() : null;
@@ -8809,8 +8813,8 @@ ${hasT ? `
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 11px; color: #222; padding: 16px; }
-    .entete { margin-bottom: 14px; border-bottom: 2px solid #d22323; padding-bottom: 10px; }
-    .entete h1 { font-size: 16px; color: #d22323; margin-bottom: 4px; }
+    .entete { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; border-bottom: 2px solid #d22323; padding-bottom: 10px; }
+    .entete h1 { font-size: 14px; color: #d22323; margin-bottom: 4px; }
     .entete .meta { font-size: 11px; color: #555; margin-bottom: 3px; }
     .entete .filtres { font-size: 10px; color: #888; font-style: italic; }
     table { width: 100%; border-collapse: collapse; }
@@ -8824,9 +8828,12 @@ ${hasT ? `
 </head>
 <body>
   <div class="entete">
-    <h1>Le Bras Frères — Stock Métallerie · ${titreOnglet}</h1>
-    <div class="meta">${resultats.length} élément(s) · Imprimé le ${dateStr}</div>
-    ${filtresActifs.length ? `<div class="filtres">Filtres : ${filtresActifs.join(' · ')}</div>` : ''}
+    <div>
+      <img src="${logoUrl}" alt="LBF" style="height:36px;object-fit:contain;display:block;margin-bottom:4px">
+      <h1>Stock Métallerie · ${titreOnglet}</h1>
+      <div class="meta">${resultats.length} élément(s) · Imprimé le ${dateStr}</div>
+      ${filtresActifs.length ? `<div class="filtres">Filtres : ${filtresActifs.join(' · ')}</div>` : ''}
+    </div>
   </div>
   <table>
     <thead>${enTetes}</thead>
