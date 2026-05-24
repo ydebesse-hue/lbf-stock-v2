@@ -2366,7 +2366,7 @@ const Stock = (() => {
      ────────────────────────────────────────────────────────────── */
 
   function _imprimerSynProfils() {
-    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
+    const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
     const barres   = _data.barres || [];
     const dispo    = barres.filter(b => b.categorie === 'profil' && b.statut === 'valide' && b.disponibilite === 'disponible');
     const affectes = barres.filter(b => b.categorie === 'profil' && b.statut === 'valide' && b.disponibilite === 'affecte');
@@ -2438,7 +2438,7 @@ const Stock = (() => {
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
-  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;background:#111;padding:4px 8px;border-radius:3px"></div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block"></div>
   <div>Synthèse Stock Profilés<br><span style="font-size:11px;font-weight:normal;color:#666">${perimetre}</span></div>
   <div>Imprimé le<br>${date}</div>
 </div>
@@ -2468,7 +2468,7 @@ const Stock = (() => {
   }
 
   function _imprimerSynToles() {
-    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
+    const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
     const barres   = _data.barres || [];
     const dispo    = barres.filter(b => b.categorie === 'tole' && b.statut === 'valide' && b.disponibilite === 'disponible');
     const affectes = barres.filter(b => b.categorie === 'tole' && b.statut === 'valide' && b.disponibilite === 'affecte');
@@ -2537,7 +2537,7 @@ const Stock = (() => {
   @media print{body{padding:10px 16px}@page{margin:1cm}}
 </style></head><body>
 <div class="hdr">
-  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;background:#111;padding:4px 8px;border-radius:3px"></div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block"></div>
   <div>Synthèse Stock Tôles</div>
   <div>Imprimé le<br>${date}</div>
 </div>
@@ -2576,7 +2576,7 @@ const Stock = (() => {
 
   function _imprimerBilanChantiers(chantiersList) {
     if (!chantiersList || !chantiersList.length) return;
-    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
+    const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
 
     const barres    = _data.barres || [];
     const profils   = barres.filter(b => b.categorie === 'profil');
@@ -2784,7 +2784,7 @@ const Stock = (() => {
   @media print{body{padding:10px 16px}@page{size:landscape;margin:1cm}}
 </style></head><body>
 <div class="hdr">
-  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;background:#111;padding:4px 8px;border-radius:3px"></div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block"></div>
   <div>Bilan de consommation matière</div>
   <div>Imprimé le<br>${date}</div>
 </div>
@@ -2836,7 +2836,7 @@ ${sections}
 
   function _exporterBilanPDF() {
     if (!_bilanChantier) return;
-    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
+    const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
 
     const barres    = _data.barres;
     const profils   = barres.filter(b => b.categorie === 'profil');
@@ -2945,7 +2945,7 @@ ${sections}
 </style>
 </head><body>
 <div class="header">
-  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block;background:#111;padding:4px 8px;border-radius:3px"></div>
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block"></div>
   <div>Bilan de consommation</div>
   <div class="date">Imprimé le<br>${date}</div>
 </div>
@@ -8687,7 +8687,7 @@ ${hasT ? `
 
   function _imprimerListe() {
     if (!_data) return;
-    const logoUrl = new URL('../assets/Logo_LBF2.png', window.location.href).href;
+    const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
 
     // Recalculer les données filtrées courantes
     const session   = window.Auth ? window.Auth.getSession() : null;
@@ -8845,7 +8845,7 @@ ${hasT ? `
 </head>
 <body>
   <div class="entete">
-    <div><img src="${logoUrl}" alt="LBF" style="height:36px;object-fit:contain;display:block;background:#111;padding:4px 8px;border-radius:3px"></div>
+    <div><img src="${logoUrl}" alt="LBF" style="height:36px;object-fit:contain;display:block"></div>
     <div>
       <h1>Stock Métallerie · ${titreOnglet}</h1>
       <div class="meta">${resultats.length} élément(s)${filtresActifs.length ? ` · Filtres : ${filtresActifs.join(' · ')}` : ''}</div>
