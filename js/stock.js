@@ -8846,7 +8846,6 @@ ${hasT ? `
     th { background: #222; color: white; padding: 5px 6px; text-align: left; font-size: 10px; white-space: nowrap; }
     td { padding: 4px 6px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
     tr:nth-child(even) td { background: #f7f7f7; }
-    .pied { margin-top: 12px; font-size: 10px; color: #aaa; text-align: right; }
     @page { margin: 1.2cm; }
     @media print { body { padding: 0; } }
   </style>
@@ -8865,7 +8864,6 @@ ${hasT ? `
     <thead>${enTetes}</thead>
     <tbody>${lignes || '<tr><td colspan="10" style="text-align:center;padding:12px;color:#aaa">Aucun élément</td></tr>'}</tbody>
   </table>
-  <div class="pied">LBF Stock v2 — ${dateStr}</div>
   <script>window.onload = () => { window.print(); };<\/script>
 </body>
 </html>`;
