@@ -1217,7 +1217,7 @@ const Stock = (() => {
     const modif = Auth.hasRight('can_edit');
     const vis   = _chargerColsVisToles();
     const colsVis = COLS_TOLES.filter(c => vis[c.key]);
-    const nbCols  = colsVis.length + (modif ? 2 : 1); // +check(si modif) +actions
+    const nbCols  = colsVis.length + (modif ? 1 : 0); // +check si modif
 
     let h = `<table class="table-toles${modif ? '' : ' no-check'}"><thead><tr>`;
     if (modif) h += '<th class="col-t-check"><input type="checkbox" id="chk-select-all-toles" title="Tout sélectionner"></th>';
@@ -1252,7 +1252,7 @@ const Stock = (() => {
       }
       h += `<th class="col-t-${c.key}${clsTri}"${c.tri ? ` data-col="${c.tri}"` : ''}>${label}${filtre}</th>`;
     });
-    h += '<th class="col-t-actions">Action</th></tr></thead><tbody>';
+    h += '</tr></thead><tbody>';
 
     // Combinaisons type+épaisseur dont la surface est sous le seuil configuré
     const _epSousSeuil = new Set();
@@ -1284,7 +1284,6 @@ const Stock = (() => {
           const dataField = editable ? ` data-field="${c.key}"` : '';
           h += `<td class="${cls}"${dataField}>${_cellTole(c.key, t, modif)}</td>`;
         });
-        h += `<td class="col-t-actions td-actions">${_actionsLigneTole(t, modif, admin)}</td>`;
         h += `</tr>`;
       });
     }
