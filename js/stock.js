@@ -1043,7 +1043,7 @@ const Stock = (() => {
     ];
     const nbCols = cols.length + 1;
 
-    let h = '<table><thead><tr>';
+    let h = '<table class="table-arc-profils"><thead><tr>';
     cols.forEach(c => {
       const actif = _tri.col === c.col;
       const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
@@ -1060,7 +1060,7 @@ const Stock = (() => {
           ? new Date(b.date_modif).toLocaleDateString('fr-FR')
           : (b.date_ajout ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—');
         const chantier  = _labelChantier(b.chantier_affectation) || '—';
-        h += `<tr>
+        h += `<tr data-id="${_e(b.id)}">
           <td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>
           <td><strong>${_e(b.section_type || '—')}</strong></td>
           <td>${_e(b.designation || '—')}</td>
@@ -1098,7 +1098,7 @@ const Stock = (() => {
     ];
     const nbCols = cols.length + 1;
 
-    let h = '<table><thead><tr>';
+    let h = '<table class="table-arc-toles"><thead><tr>';
     cols.forEach(c => {
       const actif = _tri.col === c.col;
       const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
@@ -1117,7 +1117,7 @@ const Stock = (() => {
           ? new Date(b.date_modif).toLocaleDateString('fr-FR')
           : (b.date_ajout ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—');
         const chantier = _labelChantier(b.chantier_affectation) || '—';
-        h += `<tr>
+        h += `<tr data-id="${_e(b.id)}">
           <td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>
           <td>${_badgeTypeTole(b.type_tole)}${b.is_chute ? ' <span class="chip-chute">chute</span>' : ''}</td>
           <td><strong>${b.epaisseur_mm} mm</strong></td>
@@ -3714,6 +3714,9 @@ ${hasT ? `
         if (tr.closest('.table-toles') && tr.dataset.id) ouvrirDetailTole(tr.dataset.id);
         // Ligne profilé → ouvre la fiche détail
         if (tr.closest('.table-profils') && tr.dataset.id) ouvrirDetailProfil(tr.dataset.id);
+        // Archives → ouvre l'historique
+        if (tr.closest('.table-arc-profils') && tr.dataset.id) ouvrirHistoriqueBarre(tr.dataset.id);
+        if (tr.closest('.table-arc-toles') && tr.dataset.id) ouvrirHistoriqueTole(tr.dataset.id);
       });
     }
 
