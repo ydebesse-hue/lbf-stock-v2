@@ -134,6 +134,129 @@ CREATE POLICY "historique_insert_anon" ON lbf_barres_historique
 -- Pas de UPDATE ni DELETE : l'historique est en écriture seule
 
 
+-- ═══════════════════════════════════════════════════════════════
+--  TABLE : chantiers
+--  Référentiel modifiable : CRUD complet (ajout, renommage, suppression)
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE chantiers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "chantiers_select_anon" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_insert_anon" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_update_anon" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_delete_anon" ON chantiers;
+
+CREATE POLICY "chantiers_select_anon" ON chantiers
+  FOR SELECT TO anon USING (true);
+
+CREATE POLICY "chantiers_insert_anon" ON chantiers
+  FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "chantiers_update_anon" ON chantiers
+  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "chantiers_delete_anon" ON chantiers
+  FOR DELETE TO anon USING (true);
+
+
+-- ═══════════════════════════════════════════════════════════════
+--  TABLE : demandeurs
+--  Référentiel modifiable : CRUD complet
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE demandeurs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "demandeurs_select_anon" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_insert_anon" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_update_anon" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_delete_anon" ON demandeurs;
+
+CREATE POLICY "demandeurs_select_anon" ON demandeurs
+  FOR SELECT TO anon USING (true);
+
+CREATE POLICY "demandeurs_insert_anon" ON demandeurs
+  FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "demandeurs_update_anon" ON demandeurs
+  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "demandeurs_delete_anon" ON demandeurs
+  FOR DELETE TO anon USING (true);
+
+
+-- ═══════════════════════════════════════════════════════════════
+--  TABLE : fournisseurs
+--  Référentiel modifiable : CRUD complet
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE fournisseurs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "fournisseurs_select_anon" ON fournisseurs;
+DROP POLICY IF EXISTS "fournisseurs_insert_anon" ON fournisseurs;
+DROP POLICY IF EXISTS "fournisseurs_update_anon" ON fournisseurs;
+DROP POLICY IF EXISTS "fournisseurs_delete_anon" ON fournisseurs;
+
+CREATE POLICY "fournisseurs_select_anon" ON fournisseurs
+  FOR SELECT TO anon USING (true);
+
+CREATE POLICY "fournisseurs_insert_anon" ON fournisseurs
+  FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "fournisseurs_update_anon" ON fournisseurs
+  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "fournisseurs_delete_anon" ON fournisseurs
+  FOR DELETE TO anon USING (true);
+
+
+-- ═══════════════════════════════════════════════════════════════
+--  TABLE : racks
+--  Référentiel modifiable : CRUD complet
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE racks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "racks_select_anon" ON racks;
+DROP POLICY IF EXISTS "racks_insert_anon" ON racks;
+DROP POLICY IF EXISTS "racks_update_anon" ON racks;
+DROP POLICY IF EXISTS "racks_delete_anon" ON racks;
+
+CREATE POLICY "racks_select_anon" ON racks
+  FOR SELECT TO anon USING (true);
+
+CREATE POLICY "racks_insert_anon" ON racks
+  FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "racks_update_anon" ON racks
+  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "racks_delete_anon" ON racks
+  FOR DELETE TO anon USING (true);
+
+
+-- ═══════════════════════════════════════════════════════════════
+--  TABLE : config
+--  Paramètres applicatifs (plan d'atelier, etc.) — lecture + upsert
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "config_select_anon" ON config;
+DROP POLICY IF EXISTS "config_insert_anon" ON config;
+DROP POLICY IF EXISTS "config_update_anon" ON config;
+
+CREATE POLICY "config_select_anon" ON config
+  FOR SELECT TO anon USING (true);
+
+CREATE POLICY "config_insert_anon" ON config
+  FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "config_update_anon" ON config
+  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+-- Pas de DELETE : les clés de config ne sont pas supprimées
+
+
 -- ════════════════════════════════════════════════════════════════
 --  VÉRIFICATION — lancer après exécution
 --  Doit retourner une ligne par politique créée ci-dessus
@@ -147,7 +270,7 @@ SELECT
   roles
 FROM pg_policies
 WHERE tablename IN ('users','stock','demandes','sections','lbf_barres_historique',
-                    'racks','chantiers','fournisseurs','demandeurs')
+                    'racks','chantiers','fournisseurs','demandeurs','config')
 ORDER BY tablename, cmd;
 
 
