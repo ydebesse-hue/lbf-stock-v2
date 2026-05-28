@@ -1349,8 +1349,8 @@ const Stock = (() => {
 
     if (b.statut === 'en_attente' && admin) {
       // Admin : boutons valider / refuser sur ajout en attente
-      h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${b.id}')" title="Valider">✔</button>`;
-      h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${b.id}')" title="Refuser">✘</button>`;
+      h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(b.id)}')" title="Valider">✔</button>`;
+      h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(b.id)}')" title="Refuser">✘</button>`;
     } else {
       // Vérifier si une demande d'attribution est en attente sur cette barre
       const demandeEnCours = _demandes.find(d => d.id_barre === b.id);
@@ -1360,10 +1360,10 @@ const Stock = (() => {
         h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(demandeEnCours.id)}')" title="Refuser la demande">✘</button>`;
       } else if (modif) {
         // Gestion / Admin : modifier
-        h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${b.id}')" title="Modifier">Modifier</button>`;
+        h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${_e(b.id)}')" title="Modifier">Modifier</button>`;
         // Utiliser : barre validée avec longueur > 0
         if (b.statut === 'valide' && b.longueur_m > 0) {
-          h += ` <button class="btn-ligne btn-utiliser" onclick="Stock.ouvrirUtiliserBarre('${b.id}')" title="Utiliser">Utiliser</button>`;
+          h += ` <button class="btn-ligne btn-utiliser" onclick="Stock.ouvrirUtiliserBarre('${_e(b.id)}')" title="Utiliser">Utiliser</button>`;
         }
       }
     }
@@ -1372,7 +1372,7 @@ const Stock = (() => {
     const demandeActifP = _demandes.find(d => d.id_barre === b.id);
     if (b.statut !== 'en_attente' && !demandeActifP) {
       const dis = b.disponibilite !== 'disponible' ? ' disabled' : '';
-      h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirDemande('${b.id}')" title="Demander l'attribution">Demander</button>`;
+      h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirDemande('${_e(b.id)}')" title="Demander l'attribution">Demander</button>`;
     }
 
     return h;
@@ -1382,15 +1382,15 @@ const Stock = (() => {
     let h = '';
 
     if (t.statut === 'en_attente' && admin) {
-      h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${t.id}')" title="Valider">✔</button>`;
-      h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${t.id}')" title="Refuser">✘</button>`;
+      h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(t.id)}')" title="Valider">✔</button>`;
+      h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(t.id)}')" title="Refuser">✘</button>`;
     } else {
       const demandeEnCours = _demandes.find(d => d.id_barre === t.id);
       if (demandeEnCours && admin) {
         h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(demandeEnCours.id)}')" title="Valider la demande">✔</button>`;
         h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(demandeEnCours.id)}')" title="Refuser la demande">✘</button>`;
       } else if (modif) {
-        h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${t.id}')" title="Modifier">Modifier</button>`;
+        h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${_e(t.id)}')" title="Modifier">Modifier</button>`;
         const dis = t.quantite <= 0 ? ' disabled' : '';
         h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirSortieTole('${_e(t.id)}')" title="Sortie chantier">Sortie</button>`;
       }
@@ -9044,7 +9044,7 @@ ${hasT ? `
         m.querySelector('#import-btn-confirmer').style.display = '';
 
       } catch (ex) {
-        afficherErreur('Erreur lors de la lecture : ' + ex.message);
+        afficherErreur('Erreur lors de la lecture : ' + _e(ex.message));
       }
     };
     reader.readAsText(fi.files[0], 'UTF-8');
@@ -10107,7 +10107,6 @@ ${hasT ? `
     ouvrirAdminChantiers,
     exporterCSV: _exporterCSV,
     ouvrirImport: _ouvrirImport,
-    ouvrirUtiliserBarre: _ouvrirUtiliserBarre,
     migrerIds: _migrerIds,
   };
 
