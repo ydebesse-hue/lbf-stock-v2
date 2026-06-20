@@ -33,8 +33,130 @@ const Stock = (() => {
   /** Densité acier (kg/dm³) pour calcul poids tôle */
   const DENSITE_ACIER = 7.85;
 
-  /** Lieux de stockage disponibles */
-  const LIEUX = ['Rack 1', 'Rack 2', 'Rack 3', 'Rack 4', 'Extérieur', 'Autre'];
+  /** Lieux de stockage — chargés depuis Supabase, fallback codé en dur */
+  const LIEUX_DEFAUT = ['Rack 1', 'Rack 2', 'Rack 3', 'Rack 4', 'Extérieur', 'Autre'];
+
+  /** Classes acier disponibles */
+  const CLASSES_ACIER = ['S235', 'S275', 'S355', 'S420', 'S460', 'S690'];
+
+  /** Clé localStorage pour la visibilité des colonnes profilés */
+  const CLE_COLS_PROFILS = 'lbf-stock-cols-profils';
+
+  /** Définition des colonnes du tableau profilés */
+  const COLS_PROFILS = [
+    { key: 'id',          label: 'ID',              tri: 'id',          defaut: true  },
+    { key: 'type',        label: 'Type',            tri: 'type',        defaut: true  },
+    { key: 'designation', label: 'Désignation',     tri: 'designation', defaut: true  },
+    { key: 'longueur',    label: 'Longueur (m)',    tri: 'longueur',    defaut: true  },
+    { key: 'poids',       label: 'Poids (kg)',      tri: 'poids',       defaut: true  },
+    { key: 'classe',      label: 'Classe',          tri: null,          defaut: true  },
+    { key: 'dispo',       label: 'Statut',          tri: 'dispo',       defaut: true  },
+    { key: 'date',        label: 'Dernière modif.', tri: 'date',        defaut: true  },
+    { key: 'chantier',    label: 'Chantier',        tri: 'chantier',    defaut: true  },
+    { key: 'lieu',        label: 'Stockage',        tri: 'lieu',        defaut: true  },
+    { key: 'origine',     label: 'Origine',         tri: null,          defaut: false },
+    { key: 'ref_cmd',     label: 'Réf. commande',   tri: null,          defaut: false },
+    { key: 'fournisseur', label: 'Fournisseur',     tri: null,          defaut: false },
+    { key: 'ajoute_par',  label: 'Ajouté par',      tri: null,          defaut: false },
+    { key: 'commentaire', label: 'Commentaire',     tri: null,          defaut: false },
+  ];
+
+  /** Colonnes visibles en mode "Essentiel" */
+  const COLS_ESSENTIELLES = new Set(['id','type','designation','longueur','dispo','chantier','lieu']);
+
+  /** Colonnes éditables inline dans le tableau profilés */
+  const COLS_EDITABLES_PROFIL = new Set(['longueur', 'lieu', 'dispo', 'chantier', 'commentaire']);
+
+  /** Clé localStorage pour le mode de vue du tableau profilés */
+  const CLE_VUE_PROFILS = 'lbf-stock-vue-profils';
+
+  /** Clé localStorage pour l'image du plan de stockage (base64) */
+  const CLE_PLAN_IMG = 'lbf_plan_image';
+
+  // ── Configuration email (EmailJS) ───────────────────────────────
+  // Renseigner ces valeurs après création d'un compte sur emailjs.com
+  const EMAILJS_PUBLIC_KEY       = '';  // clé publique EmailJS
+  const EMAILJS_SERVICE_ID       = '';  // ID du service (ex. 'service_abc123')
+  const EMAILJS_TPL_ACCEPTATION  = '';  // ID template acceptation
+  const EMAILJS_TPL_REFUS        = '';  // ID template refus
+
+  /** Clé localStorage pour les positions des racks sur le plan { rackId: {x,y} } */
+  const CLE_PLAN_POS = 'lbf_plan_positions';
+
+  /** Plan provisoire embarqué en data URL — indépendant du serveur de fichiers */
+  const PLAN_PROVISOIRE_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Tahoma,Geneva,sans-serif">
+  <rect width="820" height="520" fill="#f0f0f0"/>
+  <rect x="14" y="14" width="792" height="492" fill="white" stroke="#b0b0b0" stroke-width="2.5" stroke-dasharray="10,5" rx="6"/>
+  <text x="410" y="44" text-anchor="middle" font-size="12" fill="#999" font-weight="bold" letter-spacing="3">PLAN PROVISOIRE — ATELIER LBF</text>
+  <g transform="translate(30,145)">
+    <text x="0" y="0" font-size="22" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="0" y="18" font-size="11" fill="#2d5f32">allée</text>
+    <line x1="26" y1="-9" x2="58" y2="-9" stroke="#2d5f32" stroke-width="2.5"/>
+    <polygon points="58,-13 68,-9 58,-5" fill="#2d5f32"/>
+  </g>
+  <g transform="translate(100,75)">
+    <rect width="170" height="150" rx="5" fill="#e8f5ea" stroke="#2d5f32" stroke-width="2.5"/>
+    <line x1="10" y1="50" x2="160" y2="50" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <line x1="10" y1="100" x2="160" y2="100" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <rect x="0" y="0" width="22" height="150" rx="3" fill="#2d5f32" fill-opacity=".12"/>
+    <text x="11" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="96" y="80" text-anchor="middle" font-size="18" font-weight="bold" fill="#2d5f32">RACK 1</text>
+    <text x="158" y="30" text-anchor="end" font-size="10" fill="#888">ét. 1</text>
+    <text x="158" y="80" text-anchor="end" font-size="10" fill="#888">ét. 2</text>
+    <text x="158" y="130" text-anchor="end" font-size="10" fill="#888">ét. 3</text>
+  </g>
+  <g transform="translate(320,75)">
+    <rect width="170" height="150" rx="5" fill="#e8f5ea" stroke="#2d5f32" stroke-width="2.5"/>
+    <line x1="10" y1="50" x2="160" y2="50" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <line x1="10" y1="100" x2="160" y2="100" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <rect x="0" y="0" width="22" height="150" rx="3" fill="#2d5f32" fill-opacity=".12"/>
+    <text x="11" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="96" y="80" text-anchor="middle" font-size="18" font-weight="bold" fill="#2d5f32">RACK 2</text>
+    <text x="158" y="30" text-anchor="end" font-size="10" fill="#888">ét. 1</text>
+    <text x="158" y="80" text-anchor="end" font-size="10" fill="#888">ét. 2</text>
+    <text x="158" y="130" text-anchor="end" font-size="10" fill="#888">ét. 3</text>
+  </g>
+  <g transform="translate(540,75)">
+    <rect width="170" height="150" rx="5" fill="#e8f5ea" stroke="#2d5f32" stroke-width="2.5"/>
+    <line x1="10" y1="50" x2="160" y2="50" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <line x1="10" y1="100" x2="160" y2="100" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <rect x="0" y="0" width="22" height="150" rx="3" fill="#2d5f32" fill-opacity=".12"/>
+    <text x="11" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="96" y="80" text-anchor="middle" font-size="18" font-weight="bold" fill="#2d5f32">RACK 3</text>
+    <text x="158" y="30" text-anchor="end" font-size="10" fill="#888">ét. 1</text>
+    <text x="158" y="80" text-anchor="end" font-size="10" fill="#888">ét. 2</text>
+    <text x="158" y="130" text-anchor="end" font-size="10" fill="#888">ét. 3</text>
+  </g>
+  <line x1="40" y1="262" x2="780" y2="262" stroke="#ccc" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="410" y="277" text-anchor="middle" font-size="10" fill="#bbb" letter-spacing="2">ZONE EXTÉRIEURE</text>
+  <g transform="translate(100,292)">
+    <rect width="245" height="90" rx="5" fill="#fff3e0" stroke="#e65100" stroke-width="2.5"/>
+    <line x1="0" y1="0" x2="30" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="40" y1="0" x2="70" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="80" y1="0" x2="110" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="120" y1="0" x2="150" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="160" y1="0" x2="190" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="200" y1="0" x2="230" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <text x="122" y="52" text-anchor="middle" font-size="20" font-weight="bold" fill="#e65100">EXT 1</text>
+  </g>
+  <g transform="translate(400,292)">
+    <rect width="245" height="90" rx="5" fill="#fff3e0" stroke="#e65100" stroke-width="2.5"/>
+    <line x1="0" y1="0" x2="30" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="40" y1="0" x2="70" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="80" y1="0" x2="110" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="120" y1="0" x2="150" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="160" y1="0" x2="190" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="200" y1="0" x2="230" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <text x="122" y="52" text-anchor="middle" font-size="20" font-weight="bold" fill="#e65100">EXT 2</text>
+  </g>
+  <g transform="translate(40,425)">
+    <rect width="14" height="14" rx="2" fill="#e8f5ea" stroke="#2d5f32" stroke-width="1.5"/>
+    <text x="20" y="11" font-size="11" fill="#555">Rack (stockage intérieur)</text>
+    <rect x="200" width="14" height="14" rx="2" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+    <text x="220" y="11" font-size="11" fill="#555">Zone extérieure</text>
+  </g>
+  <text x="410" y="500" text-anchor="middle" font-size="10" fill="#bbb" font-style="italic">Plan provisoire — remplacer par le plan réel dans Administration › Stockage</text>
+</svg>`);
 
 
   /* ──────────────────────────────────────────────────────────────
@@ -43,7 +165,16 @@ const Stock = (() => {
 
   let _data      = null;        // données fusionnées (stock.json + localStorage)
   let _sections  = null;        // données de sections.json (pour les modales)
-  let _onglet    = 'profils';   // onglet actif
+  let _sectionActive = 'stock';  // 'stock' | 'admin'
+  let _ongletAdmin   = 'stockage';
+  let _onglet        = 'synthese';
+  let _synTab        = 'profils';
+  let _synProfilsTous = false;
+  let _racks     = [];  // { id, nom, nb_allees, nb_etages } depuis Supabase
+  let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
+  let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
+  let _fournisseurs = [];  // { id, nom } depuis Supabase
+  let _demandeurs   = [];  // { id, nom, prenom, email } depuis Supabase
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis localStorage (Conv. 6)
@@ -79,11 +210,27 @@ const Stock = (() => {
       const compteur = nums.length ? Math.max(...nums) : 0;
       _data = { barres, compteur };
 
-      // Charger les sections (pour cascades dans les modales)
+      // Charger les sections — sections.json toujours en base, Supabase complète
+      let sectionsJson = null;
       try {
         const repSec = await fetch('../data/sections.json');
-        if (repSec.ok) _sections = await repSec.json();
-      } catch(e) { /* sections optionnelles */ }
+        if (repSec.ok) sectionsJson = await repSec.json();
+      } catch(e2) { /* ignoré */ }
+
+      try {
+        const rows = await window.SB.lire('sections', { order: 'sort_order' });
+        _sections = _sectionsFromRows(rows);
+        // Ajouter les familles absentes de Supabase depuis sections.json
+        if (sectionsJson) {
+          sectionsJson.standard.forEach(famJson => {
+            if (!_sections.standard.find(f => f.famille === famJson.famille)) {
+              _sections.standard.push(famJson);
+            }
+          });
+        }
+      } catch(e) {
+        _sections = sectionsJson || { standard: [], custom: [] };
+      }
 
       // Charger les demandes en attente depuis Supabase
       try {
@@ -93,6 +240,25 @@ const Stock = (() => {
         _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
       }
 
+      // Charger les référentiels administrables
+      try {
+        const rows = await window.SB.lire('racks', { order: 'created_at' });
+        _racks = rows.filter(r => r.actif);
+        if (_racks.length) _lieux = _majLieux();
+      } catch(e) { /* garde LIEUX_DEFAUT */ }
+      try {
+        const rows = await window.SB.lire('chantiers', { order: 'nom' });
+        _chantiers = rows.filter(c => c.actif);
+      } catch(e) {}
+      try {
+        const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
+        _fournisseurs = rows.filter(f => f.actif);
+      } catch(e) {}
+      try {
+        const rows = await window.SB.lire('demandeurs', { order: 'nom' });
+        _demandeurs = rows.filter(d => d.actif);
+      } catch(e) {}
+
     } catch (err) {
       _erreurChargement(err.message);
       return;
@@ -101,8 +267,25 @@ const Stock = (() => {
     _peuplerFiltres();
     _filtrer();
     _majAlerteAttente();
+    _majDatalistChantiers();
     _attacherEvenements();
     _initialiserModales();
+
+    // Rafraîchissement automatique des demandes pour les admins
+    if (Auth.hasRight('can_validate')) {
+      setInterval(async () => {
+        try {
+          const demandes = await window.SB.lire('demandes');
+          const nouvelles = demandes.filter(d => d.statut === 'en_attente');
+          const avant = _demandes.length;
+          _demandes = nouvelles;
+          if (nouvelles.length !== avant) {
+            _filtrer();
+            _majAlerteAttente();
+          }
+        } catch(e) {}
+      }, 30000);
+    }
   }
 
 
@@ -209,6 +392,7 @@ const Stock = (() => {
     // Persister dans Supabase
     try {
       await window.SB.upsert('stock', element);
+      return true; // ✅ sauvegardé en base
     } catch(e) {
       console.warn('[Stock] Supabase indisponible, fallback localStorage :', e);
       // Fallback localStorage
@@ -216,6 +400,7 @@ const Stock = (() => {
       const idx = local.barres.findIndex(b => b.id === element.id);
       if (idx !== -1) { local.barres[idx] = element; } else { local.barres.push(element); }
       _sauvegarderLocal(local);
+      return false; // ⚠ sauvegardé localement uniquement
     }
   }
 
@@ -240,15 +425,53 @@ const Stock = (() => {
   async function _persisterDemande(demande) {
     try {
       await window.SB.upsert('demandes', demande);
+      return true; // ✅ sauvegardé en base
     } catch(e) {
       console.warn('[Stock] Supabase indisponible, fallback localStorage demande :', e);
       const store = _chargerDemandes();
       store.demandes.push(demande);
       store.compteur = (store.compteur || 0) + 1;
       try { localStorage.setItem(CLE_DEMANDES, JSON.stringify(store)); } catch {}
+      return false; // ⚠ sauvegardé localement uniquement
     }
   }
 
+
+  /* ──────────────────────────────────────────────────────────────
+     VISIBILITÉ DES COLONNES
+     ────────────────────────────────────────────────────────────── */
+
+  function _getModeVue() {
+    try { return localStorage.getItem(CLE_VUE_PROFILS) || 'essentiel'; } catch(e) { return 'essentiel'; }
+  }
+
+  function _setModeVue(mode) {
+    try { localStorage.setItem(CLE_VUE_PROFILS, mode); } catch(e) {}
+  }
+
+  function _chargerColsVis() {
+    const mode = _getModeVue();
+    const vis = {};
+    if (mode === 'essentiel') {
+      COLS_PROFILS.forEach(c => { vis[c.key] = COLS_ESSENTIELLES.has(c.key); });
+    } else if (mode === 'complet') {
+      COLS_PROFILS.forEach(c => { vis[c.key] = true; });
+    } else {
+      // personnalise
+      try {
+        const raw = localStorage.getItem(CLE_COLS_PROFILS);
+        const saved = raw ? JSON.parse(raw) : {};
+        COLS_PROFILS.forEach(c => { vis[c.key] = c.key in saved ? saved[c.key] : c.defaut; });
+      } catch(e) {
+        COLS_PROFILS.forEach(c => { vis[c.key] = c.defaut; });
+      }
+    }
+    return vis;
+  }
+
+  function _sauverColsVis(vis) {
+    try { localStorage.setItem(CLE_COLS_PROFILS, JSON.stringify(vis)); } catch(e) {}
+  }
 
   /* ──────────────────────────────────────────────────────────────
      FILTRAGE
@@ -256,28 +479,42 @@ const Stock = (() => {
 
   function _filtrer() {
     if (!_data) return;
+    if (_onglet === 'synthese') { _rendreSynthese(); return; }
 
     // Récupérer le profil courant pour masquer les éléments refusés
     const session = window.Auth ? window.Auth.getSession() : null;
     const profil  = session ? session.profil : 'consultation';
     const voirRefus = (profil === 'administration');
 
-    const source = _data.barres.filter(b => {
-      // Masquer les refusés pour Consultation et Gestion
-      if (!voirRefus && b.statut === 'refuse') return false;
-      return _onglet === 'profils' ? b.categorie === 'profil' : b.categorie === 'tole';
-    });
+    let source;
+    if (_onglet === 'archivees') {
+      // Onglet archivées : uniquement les profilés avec statut archivee
+      source = _data.barres.filter(b => b.categorie === 'profil' && b.statut === 'archivee');
+    } else {
+      // Onglets actifs : exclure les archivées et masquer les refusés selon le profil
+      source = _data.barres.filter(b => {
+        if (b.statut === 'archivee') return false;
+        if (!voirRefus && b.statut === 'refuse') return false;
+        return _onglet === 'profils' ? b.categorie === 'profil' : b.categorie === 'tole';
+      });
+    }
 
-    let resultats = _onglet === 'profils'
-      ? _filtrerProfils(source)
-      : _filtrerToles(source);
+    let resultats;
+    if (_onglet === 'profils') {
+      resultats = _filtrerProfils(source);
+    } else if (_onglet === 'toles') {
+      resultats = _filtrerToles(source);
+    } else {
+      resultats = _filtrerArchivees(source);
+    }
 
     if (_tri.col) resultats = _trier(resultats);
 
     _rendrTableau(resultats);
     _majCompteur(resultats.length, source.length);
 
-    if (_onglet === 'profils') _peuplerDesignations(_val('p-type'));
+    if (_onglet === 'profils')   _peuplerDesignations(_val('p-type'));
+    if (_onglet === 'archivees') _peuplerDesignationsArchivees(_val('a-type'));
   }
 
   function _filtrerProfils(source) {
@@ -291,7 +528,7 @@ const Stock = (() => {
     return source.filter(b => {
       if (type     && b.section_type     !== type)     return false;
       if (desig    && b.designation      !== desig)    return false;
-      if (chantier && b.chantier_origine !== chantier) return false;
+      if (chantier && b.chantier_affectation !== chantier) return false;
       if (lieu     && b.lieu_stockage    !== lieu)     return false;
       if (dispo    && b.disponibilite    !== dispo)    return false;
       if (texte) {
@@ -324,6 +561,28 @@ const Stock = (() => {
     });
   }
 
+  /**
+   * Filtre les barres archivées selon les filtres de l'onglet "Archivées"
+   * @param {Array} source — barres avec statut archivee
+   * @returns {Array}
+   */
+  function _filtrerArchivees(source) {
+    const type  = _val('a-type');
+    const desig = _val('a-desig');
+    const texte = _val('a-recherche').toLowerCase().trim();
+
+    return source.filter(b => {
+      if (type  && b.section_type !== type)  return false;
+      if (desig && b.designation  !== desig) return false;
+      if (texte) {
+        const h = [b.section_type, b.designation, b.code_barre,
+          b.id, b.chantier_origine, b.commentaire].join(' ').toLowerCase();
+        if (!h.includes(texte)) return false;
+      }
+      return true;
+    });
+  }
+
 
   /* ──────────────────────────────────────────────────────────────
      TRI
@@ -350,11 +609,11 @@ const Stock = (() => {
       case 'type':        return item.section_type     || '';
       case 'designation': return item.designation      || '';
       case 'longueur':    return item.longueur_m       || 0;
-      case 'poids':       return item.poids_barre_kg   || item.poids_unitaire_kg || 0;
-      case 'chantier':    return item.chantier_origine || '';
+      case 'poids':       return item.categorie === 'profil' ? _poidsEffectifProfil(item) : (item.poids_unitaire_kg || 0);
+      case 'chantier':    return item.chantier_affectation || '';
       case 'lieu':        return item.lieu_stockage    || '';
       case 'dispo':       return item.disponibilite    || '';
-      case 'date':        return item.date_ajout       || '';
+      case 'date':        return item.date_modif || item.date_validation || item.date_ajout || '';
       case 'epaisseur':   return item.epaisseur_mm     || 0;
       case 'dimensions':  return (item.largeur_mm || 0) * 100000 + (item.longueur_mm || 0);
       case 'quantite':    return item.quantite         || 0;
@@ -371,9 +630,12 @@ const Stock = (() => {
     const zone = document.getElementById('tableau-stock');
     if (!zone) return;
 
-    zone.innerHTML = _onglet === 'profils'
-      ? _htmlProfils(data)
-      : _htmlToles(data);
+    let html;
+    if (_onglet === 'profils')        html = _htmlProfils(data);
+    else if (_onglet === 'toles')     html = _htmlToles(data);
+    else                              html = _htmlArchivees(data);
+
+    zone.innerHTML = html;
 
     zone.querySelectorAll('thead th[data-col]').forEach(th => {
       th.addEventListener('click', () => _clicTri(th.dataset.col));
@@ -383,9 +645,98 @@ const Stock = (() => {
   function _htmlProfils(data) {
     const admin = Auth.hasRight('can_validate');
     const modif = Auth.hasRight('can_edit');
+    const vis   = _chargerColsVis();
+    const nbCols = COLS_PROFILS.filter(c => vis[c.key]).length + 2; // +hist +actions
 
+    let h = '<table class="table-profils"><thead><tr>';
+    COLS_PROFILS.forEach(c => {
+      if (!vis[c.key]) return;
+      const cls   = `col-p-${c.key}`;
+      if (c.tri) {
+        const actif = _tri.col === c.tri;
+        const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
+        h += `<th class="${cls}${actif ? ' tri-actif' : ''}" data-col="${c.tri}">${c.label} <span class="tri-ind">${ind}</span></th>`;
+      } else {
+        h += `<th class="${cls}">${c.label}</th>`;
+      }
+    });
+    h += '<th class="col-p-hist">Hist.</th><th class="col-p-actions">Actions</th></tr></thead><tbody>';
+
+    if (!data.length) {
+      h += `<tr><td colspan="${nbCols}" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
+    } else {
+      data.forEach(b => {
+        const attente = b.statut === 'en_attente';
+        h += `<tr${attente ? ' class="ligne-attente"' : ''} data-id="${_e(b.id)}">`;
+        COLS_PROFILS.forEach(c => {
+          if (!vis[c.key]) return;
+          const ed = modif && COLS_EDITABLES_PROFIL.has(c.key);
+          h += `<td class="col-p-${c.key}${ed ? ' cell-editable' : ''}"${ed ? ` data-field="${c.key}"` : ''}>${_cellProfil(c.key, b)}</td>`;
+        });
+        h += `<td class="col-p-hist"><button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Historique">📋</button></td>`;
+        h += `<td class="col-p-actions">${_actionsLigneProfil(b, modif, admin)}</td>`;
+        h += '</tr>';
+      });
+    }
+
+    return h + '</tbody></table>';
+  }
+
+  /** Retourne le contenu HTML d'une cellule du tableau profilés */
+  function _cellProfil(key, b) {
+    switch (key) {
+      case 'id':
+        return `<span class="chip-id">${_e(b.id)}</span>`;
+      case 'type':
+        return `<strong>${_e(b.section_type)}</strong>`;
+      case 'designation':
+        return `${_e(b.designation)}<button class="btn-inline" onclick="Stock.ouvrirFicheSection('${_e(b.section_type)}','${_e(b.designation)}')" title="Fiche section">🔍</button>`;
+      case 'longueur':
+        return b.longueur_m.toFixed(2);
+      case 'poids': {
+        const p = _poidsEffectifProfil(b);
+        return p > 0 ? p.toFixed(1) : '—';
+      }
+      case 'classe':
+        return b.classe_acier
+          ? `<span class="badge-classe-acier">${_e(b.classe_acier)}</span>`
+          : '—';
+      case 'dispo':
+        return _badgeDispo(b);
+      case 'date': {
+        const d = b.date_modif || b.date_validation || b.date_ajout;
+        return d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+      }
+      case 'chantier':
+        return b.chantier_affectation ? _e(_labelChantier(b.chantier_affectation)) : '—';
+      case 'lieu':
+        return b.lieu_stockage
+          ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(b.lieu_stockage)}" title="Voir sur le plan">${_e(b.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>`
+          : '—';
+      case 'origine':
+        return _e(_labelChantier(b.chantier_origine)) || '—';
+      case 'ref_cmd':
+        return _e(b.ref_commande) || '—';
+      case 'fournisseur':
+        return _e(b.fournisseur) || '—';
+      case 'ajoute_par':
+        return _e(b.ajoute_par) || '—';
+      case 'commentaire':
+        return `<span title="${_e(b.commentaire || '')}">${_e(b.commentaire) || '—'}</span>`;
+      default:
+        return '—';
+    }
+  }
+
+  /**
+   * Génère le HTML du tableau des barres archivées (lecture seule)
+   * @param {Array} data
+   * @returns {string}
+   */
+  function _htmlArchivees(data) {
     const cols = [
       { col: 'id',          label: 'ID'               },
+      { col: null,          label: 'Code'             },
       { col: 'type',        label: 'Type'             },
       { col: 'designation', label: 'Désignation'      },
       { col: 'longueur',    label: 'Longueur (m)'     },
@@ -393,46 +744,43 @@ const Stock = (() => {
       { col: 'lieu',        label: 'Stockage'         },
       { col: 'date',        label: 'Date ajout'       },
       { col: 'chantier',    label: 'Chantier origine' },
-      { col: 'dispo',       label: 'Statut'           },
     ];
 
     let h = '<table><thead><tr>';
     cols.forEach(c => {
+      if (!c.col) { h += `<th>${c.label}</th>`; return; }
       const actif = _tri.col === c.col;
       const ind   = actif ? (_tri.ordre === 'asc' ? '▲' : '▼') : '⇅';
       h += `<th data-col="${c.col}" class="${actif ? 'tri-actif' : ''}">${c.label} <span class="tri-ind">${ind}</span></th>`;
     });
-    h += '<th>Action</th></tr></thead><tbody>';
+    h += '<th>Historique</th></tr></thead><tbody>';
 
     if (!data.length) {
-      h += `<tr><td colspan="10" class="vide">Aucun profilé ne correspond aux filtres.</td></tr>`;
+      h += `<tr><td colspan="10" class="vide">Aucune barre archivée.</td></tr>`;
     } else {
       data.forEach(b => {
-        const attente = b.statut === 'en_attente';
-        const poids   = b.poids_barre_kg
-          ? b.poids_barre_kg.toFixed(1)
-          : (b.poids_ml * b.longueur_m).toFixed(1);
+        const poidsEff = _poidsEffectifProfil(b);
+        const poids = poidsEff > 0 ? poidsEff.toFixed(1) : '—';
         const dateAjout = b.date_ajout
           ? new Date(b.date_ajout).toLocaleDateString('fr-FR')
           : '—';
+        const codeAff = b.code_barre
+          ? `<span class="chip-code chip-code-arc">ARC-${_e(b.code_barre)}</span>`
+          : '<span style="color:#bbb;font-size:11px">—</span>';
 
-        h += `<tr${attente ? ' class="ligne-attente"' : ''}>`;
+        h += `<tr>`;
         h += `<td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>`;
+        h += `<td>${codeAff}</td>`;
         h += `<td><strong>${_e(b.section_type)}</strong></td>`;
-        h += `<td>${_e(b.designation)}
-          <button class="btn-inline" onclick="Stock.ouvrirFicheSection('${_e(b.section_type)}','${_e(b.designation)}')" title="Fiche section">🔍</button>
-        </td>`;
-        h += `<td>${b.longueur_m.toFixed(2)}</td>`;
+        h += `<td>${_e(b.designation)}</td>`;
+        h += `<td>${typeof b.longueur_m === 'number' ? b.longueur_m.toFixed(2) : '—'}</td>`;
         h += `<td>${poids}</td>`;
-        h += `<td>${_e(b.lieu_stockage)}
-          <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(b.lieu_stockage)}')" title="Voir sur le plan">📍</button>
-        </td>`;
+        h += `<td>${_e(b.lieu_stockage || '—')}</td>`;
         h += `<td>${dateAjout}</td>`;
-        h += `<td>${_e(b.chantier_origine)}${b.chantier_affectation
-          ? ` <span class="chip-chantier" title="Affecté à : ${_e(b.chantier_affectation)}">→ ${_e(b.chantier_affectation)}</span>`
-          : ''}</td>`;
-        h += `<td>${_badgeDispo(b)}</td>`;
-        h += `<td class="td-actions">${_actionsLigneProfil(b, modif, admin)}</td>`;
+        h += `<td>${_e(_labelChantier(b.chantier_origine) || '—')}</td>`;
+        h += `<td class="td-actions">
+          <button class="btn-historique" onclick="Stock.ouvrirHistoriqueBarre('${_e(b.id)}')" title="Voir l'historique">📋</button>
+        </td>`;
         h += `</tr>`;
       });
     }
@@ -474,20 +822,26 @@ const Stock = (() => {
           ? new Date(t.date_ajout).toLocaleDateString('fr-FR')
           : '—';
 
-        h += `<tr${attente ? ' class="ligne-attente"' : ''}>`;
+        h += `<tr${attente ? ' class="ligne-attente"' : ''} data-id="${_e(t.id)}">`;
         h += `<td class="td-id"><span class="chip-id">${_e(t.id)}</span></td>`;
-        h += `<td><strong>${t.epaisseur_mm} mm</strong></td>`;
+        h += modif
+          ? `<td class="cell-editable" data-field="epaisseur"><strong>${t.epaisseur_mm} mm</strong></td>`
+          : `<td><strong>${t.epaisseur_mm} mm</strong></td>`;
         h += `<td>${dims}</td>`;
-        h += `<td>${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`;
+        h += modif
+          ? `<td class="cell-editable" data-field="quantite">${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`
+          : `<td>${t.quantite} pièce${t.quantite > 1 ? 's' : ''}</td>`;
         h += `<td>${t.poids_unitaire_kg.toFixed(1)} <span style="color:#999;font-size:11px">(tot.&nbsp;${t.poids_total_kg.toFixed(1)})</span></td>`;
-        h += `<td>${_e(t.lieu_stockage)}
-          <button class="btn-inline btn-inline-carte" onclick="_ouvrirCarte('${_e(t.lieu_stockage)}')" title="Voir sur le plan">📍</button>
-        </td>`;
+        h += modif
+          ? `<td class="cell-editable" data-field="lieu">${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`
+          : `<td>${t.lieu_stockage ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>` : '—'}</td>`;
         h += `<td>${dateAjout}</td>`;
-        h += `<td>${_e(t.chantier_origine)}${t.chantier_affectation
-          ? ` <span class="chip-chantier" title="Affecté à : ${_e(t.chantier_affectation)}">→ ${_e(t.chantier_affectation)}</span>`
+        h += `<td>${_e(_labelChantier(t.chantier_origine))}${t.chantier_affectation
+          ? ` <span class="chip-chantier" title="Affecté à : ${_e(_labelChantier(t.chantier_affectation))}">→ ${_e(_labelChantier(t.chantier_affectation))}</span>`
           : ''}</td>`;
-        h += `<td>${_badgeDispo(t)}</td>`;
+        h += modif
+          ? `<td class="cell-editable" data-field="dispo">${_badgeDispo(t)}</td>`
+          : `<td>${_badgeDispo(t)}</td>`;
         h += `<td class="td-actions">${_actionsLigneTole(t, modif, admin)}</td>`;
         h += `</tr>`;
       });
@@ -496,6 +850,45 @@ const Stock = (() => {
     return h + '</tbody></table>';
   }
 
+
+  /* ──────────────────────────────────────────────────────────────
+     HELPERS CALCUL
+     ────────────────────────────────────────────────────────────── */
+
+  /** Étiquette d'allée : 0→A, 25→Z, 26→AA, 27→AB … (style colonnes Excel) */
+  function _labelAllee(i) {
+    let s = '', n = i;
+    do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
+    return s;
+  }
+
+  /** Génère tous les emplacements d'un rack (ex. "Rack 1 - B4").
+   *  Rack avec nb_allees=0 → zone plate : retourne juste [rack.nom]. */
+  function _lieuxDuRack(rack) {
+    if (!rack.nb_allees || !rack.nb_etages) return [rack.nom];
+    const lieux = [];
+    for (let a = 0; a < rack.nb_allees; a++) {
+      for (let e = 1; e <= rack.nb_etages; e++) {
+        lieux.push(`${rack.nom} - ${_labelAllee(a)}${e}`);
+      }
+    }
+    return lieux;
+  }
+
+  /** Recalcule _lieux depuis _racks et retourne le tableau */
+  function _majLieux() {
+    const liste = _racks.flatMap(r => _lieuxDuRack(r));
+    return liste.length ? liste : [...LIEUX_DEFAUT];
+  }
+
+  /** Poids effectif d'un profilé — poids_barre_kg prioritaire, sinon poids_ml × longueur,
+   *  sinon lookup catalogue sections.json × longueur */
+  function _poidsEffectifProfil(b) {
+    if (b.poids_barre_kg > 0) return b.poids_barre_kg;
+    const pml = b.poids_ml > 0 ? b.poids_ml : (_getDims(b.section_type, b.designation)?.pml || 0);
+    if (pml > 0 && b.longueur_m > 0) return Math.round(pml * b.longueur_m * 10) / 10;
+    return 0;
+  }
 
   /* ──────────────────────────────────────────────────────────────
      BADGES ET BOUTONS LIGNE
@@ -571,14 +964,16 @@ const Stock = (() => {
      ────────────────────────────────────────────────────────────── */
 
   function _peuplerFiltres() {
-    const profils = _data.barres.filter(b => b.categorie === 'profil');
-    const toles   = _data.barres.filter(b => b.categorie === 'tole');
+    // Exclure les archivées des onglets actifs
+    const profils   = _data.barres.filter(b => b.categorie === 'profil' && b.statut !== 'archivee');
+    const toles     = _data.barres.filter(b => b.categorie === 'tole'   && b.statut !== 'archivee');
+    const archivees = _data.barres.filter(b => b.categorie === 'profil' && b.statut === 'archivee');
 
     _remplirSelect('p-type',
       [...new Set(profils.map(b => b.section_type))].sort()
     );
-    _remplirSelect('p-chantier',
-      [...new Set(profils.map(b => b.chantier_origine))].sort()
+    _remplirSelectChantiers('p-chantier',
+      [...new Set(profils.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))].sort()
     );
     _remplirSelect('p-lieu',
       [...new Set(profils.map(b => b.lieu_stockage))].sort()
@@ -587,11 +982,15 @@ const Stock = (() => {
       [...new Set(toles.map(b => String(b.epaisseur_mm)))].sort((a,b) => +a - +b),
       'mm'
     );
-    _remplirSelect('t-chantier',
+    _remplirSelectChantiers('t-chantier',
       [...new Set(toles.map(b => b.chantier_origine))].sort()
     );
     _remplirSelect('t-lieu',
       [...new Set(toles.map(b => b.lieu_stockage))].sort()
+    );
+    // Filtre type pour l'onglet archivées
+    _remplirSelect('a-type',
+      [...new Set(archivees.map(b => b.section_type))].sort()
     );
   }
 
@@ -604,7 +1003,35 @@ const Stock = (() => {
 
     const desigs = [...new Set(
       _data.barres
-        .filter(b => b.categorie === 'profil' && b.section_type === type)
+        .filter(b => b.categorie === 'profil' && b.statut !== 'archivee' && b.section_type === type)
+        .map(b => b.designation)
+    )].sort((a, b) => {
+      const na = parseFloat(a), nb = parseFloat(b);
+      return isNaN(na) ? a.localeCompare(b) : na - nb;
+    });
+
+    desigs.forEach(d => {
+      const o = document.createElement('option');
+      o.value = d; o.textContent = d;
+      if (d === valAct) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  /**
+   * Peuple la cascade désignation de l'onglet Archivées selon le type sélectionné
+   * @param {string} type — valeur du select a-type
+   */
+  function _peuplerDesignationsArchivees(type) {
+    const sel = document.getElementById('a-desig');
+    if (!sel) return;
+    const valAct = sel.value;
+    sel.innerHTML = '<option value="">Toutes désignations</option>';
+    if (!type) return;
+
+    const desigs = [...new Set(
+      _data.barres
+        .filter(b => b.categorie === 'profil' && b.statut === 'archivee' && b.section_type === type)
         .map(b => b.designation)
     )].sort((a, b) => {
       const na = parseFloat(a), nb = parseFloat(b);
@@ -633,12 +1060,282 @@ const Stock = (() => {
     });
   }
 
+  function _remplirSelectChantiers(id, noms) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const premiere = sel.options[0];
+    sel.innerHTML = '';
+    sel.appendChild(premiere);
+    noms.forEach(nom => {
+      const o = document.createElement('option');
+      o.value = nom;
+      o.textContent = _labelChantier(nom) || nom;
+      sel.appendChild(o);
+    });
+  }
+
+
+  /* ──────────────────────────────────────────────────────────────
+     SYNTHÈSE
+     ────────────────────────────────────────────────────────────── */
+
+  function _rendreSynthese() {
+    const zone = document.getElementById('zone-synthese');
+    if (!zone || !_data) return;
+
+    const barres = _data.barres || [];
+
+    // Segmentation
+    const profilsDispo    = barres.filter(b => b.categorie === 'profil' && b.statut === 'valide' && b.disponibilite === 'disponible');
+    const profilsAffectes = barres.filter(b => b.categorie === 'profil' && b.statut === 'valide' && b.disponibilite === 'affecte');
+    const profilsAttente  = barres.filter(b => b.categorie === 'profil' && b.statut === 'en_attente');
+    const tolesDispo      = barres.filter(b => b.categorie === 'tole'   && b.statut === 'valide' && b.disponibilite === 'disponible');
+    const tolesAffectees  = barres.filter(b => b.categorie === 'tole'   && b.statut === 'valide' && b.disponibilite === 'affecte');
+    const tolesAttente    = barres.filter(b => b.categorie === 'tole'   && b.statut === 'en_attente');
+
+    // Métriques globales
+    const mlDispo      = profilsDispo.reduce((s, b)    => s + (b.longueur_m     || 0), 0);
+    const mlAffectes   = profilsAffectes.reduce((s, b) => s + (b.longueur_m     || 0), 0);
+    const mlAttente    = profilsAttente.reduce((s, b)  => s + (b.longueur_m     || 0), 0);
+    const poidsProfils = profilsDispo.reduce((s, b)    => s + _poidsEffectifProfil(b), 0);
+    const poidsToles   = tolesDispo.reduce((s, b)      => s + (b.poids_total_kg || 0), 0);
+    const nbAttente    = profilsAttente.length + tolesAttente.length;
+
+    // Formatage français
+    const fmt  = (n, d = 1) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const fmtT = (kg)       => kg >= 1000 ? `${fmt(kg / 1000)} t` : `${fmt(kg, 0)} kg`;
+
+    // ── Contenu sous-onglet Profilés ──────────────────────────────
+    const _contenuProfils = () => {
+      const sourceType = _synProfilsTous
+        ? [...profilsDispo, ...profilsAffectes]
+        : profilsDispo;
+      const parType = {};
+      sourceType.forEach(b => {
+        const t = b.section_type || '?';
+        const d = b.designation  || '?';
+        if (!parType[t]) parType[t] = { nb: 0, ml: 0, poids: 0, desigs: {} };
+        parType[t].nb++;
+        parType[t].ml    += b.longueur_m || 0;
+        parType[t].poids += _poidsEffectifProfil(b);
+        if (!parType[t].desigs[d]) parType[t].desigs[d] = { nb: 0, ml: 0, poids: 0 };
+        parType[t].desigs[d].nb++;
+        parType[t].desigs[d].ml    += b.longueur_m || 0;
+        parType[t].desigs[d].poids += _poidsEffectifProfil(b);
+      });
+      const lignesType = Object.entries(parType).sort((a, b) => b[1].ml - a[1].ml);
+      const mlMax = lignesType.length ? lignesType[0][1].ml : 1;
+
+      const mlAffectes   = profilsAffectes.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const mlAttente    = profilsAttente.reduce((s, b)  => s + (b.longueur_m || 0), 0);
+      const mlTotal      = mlDispo + mlAffectes + mlAttente;
+      const poidsAffectes = profilsAffectes.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const poidsAttente  = profilsAttente.reduce((s, b)  => s + _poidsEffectifProfil(b), 0);
+      const poidsTotal    = poidsProfils + poidsAffectes + poidsAttente;
+      const nbTotal       = profilsDispo.length + profilsAffectes.length + profilsAttente.length;
+
+      const cartes = `
+        <div class="syn-kpi k-vert syn-kpi-table" style="margin-bottom:16px">
+          <table class="syn-kpi-inner">
+            <thead><tr>
+              <th></th>
+              <th>Barres</th><th>Métrage</th><th>Poids</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="syn-dot s-vert"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils">Disponible →</span></td>
+                <td><strong>${profilsDispo.length}</strong></td>
+                <td>${fmt(mlDispo)} m</td>
+                <td>${fmtT(poidsProfils)}</td>
+              </tr>
+              <tr>
+                <td><span class="syn-dot s-rouge"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="profils" data-syn-dispo="affecte">Affecté →</span></td>
+                <td><strong>${profilsAffectes.length}</strong></td>
+                <td>${fmt(mlAffectes)} m</td>
+                <td>${fmtT(poidsAffectes)}</td>
+              </tr>
+              <tr class="syn-kpi-inner-total">
+                <td>Total</td>
+                <td><strong>${nbTotal}</strong></td>
+                <td>${fmt(mlTotal)} m</td>
+                <td>${fmtT(poidsTotal)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>`;
+
+      const rowsType = lignesType.map(([type, d]) => {
+        const pct = Math.round((d.ml / mlMax) * 100);
+        const sousLignes = Object.entries(d.desigs)
+          .sort((a, b) => b[1].ml - a[1].ml)
+          .map(([desig, sd]) => `
+            <tr class="syn-sous-ligne" data-syn-parent="${_e(type)}"
+                data-syn-action="voir-desig" data-syn-type="${_e(type)}" data-syn-desig="${_e(desig)}"
+                style="display:none" title="Filtrer ${_e(type)} ${_e(desig)}">
+              <td class="syn-sous-cell">
+                <span class="syn-sous-indent">└</span>
+                ${_e(type)} <strong>${_e(desig)}</strong>
+              </td>
+              <td class="r syn-sous-val">${sd.nb}</td>
+              <td class="r syn-sous-val">${fmt(sd.ml)} m</td>
+              <td class="r syn-sous-val">${fmtT(sd.poids)}</td>
+            </tr>`).join('');
+        return `<tr class="syn-type-row">
+          <td>
+            <span class="syn-toggle-icon" data-syn-action="toggle-type" data-syn-type-group="${_e(type)}">▶</span>
+            <span class="syn-type-chip" data-syn-action="voir-type" data-syn-type="${_e(type)}" title="Voir ${_e(type)} dans le stock">${_e(type)}</span>
+          </td>
+          <td class="r">${d.nb}</td>
+          <td class="r">${fmt(d.ml)} m</td>
+          <td class="r">${fmtT(d.poids)}</td>
+        </tr>${sousLignes}`;
+      }).join('');
+
+      const nbTotal2   = sourceType.length;
+      const mlTotal2   = sourceType.reduce((s, b) => s + (b.longueur_m || 0), 0);
+      const poidsTotal2 = sourceType.reduce((s, b) => s + _poidsEffectifProfil(b), 0);
+      const totalRow = lignesType.length > 1 ? `<tr class="syn-total">
+        <td>Total</td><td class="r">${nbTotal2}</td>
+        <td class="r">${fmt(mlTotal2)} m</td><td class="r">${fmtT(poidsTotal2)}</td>
+      </tr>` : '';
+
+      const scopeLabel = _synProfilsTous ? 'Tous' : 'Disponibles';
+      const scopeNext  = _synProfilsTous ? 'Disponibles' : 'Tous';
+      return `
+        ${cartes}
+        <div class="syn-card" style="padding:0;overflow:hidden">
+          <table class="syn-table">
+            <colgroup>
+              <col style="width:auto">
+              <col style="width:58px">
+              <col style="width:88px">
+              <col style="width:78px">
+            </colgroup>
+            <thead>
+              <tr class="syn-table-title-row">
+                <th colspan="4">
+                  Par type
+                  <span class="syn-scope-btn" data-syn-action="toggle-profils-scope"
+                        title="Basculer le périmètre">
+                    ${scopeLabel} ▾
+                  </span>
+                </th>
+              </tr>
+              <tr>
+                <th>Type</th>
+                <th class="r">Barres</th>
+                <th class="r">ML</th>
+                <th class="r">Poids</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsType || `<tr><td colspan="4" style="color:#aaa;text-align:center;padding:14px">Aucun profilé ${_synProfilsTous ? '' : 'disponible'}</td></tr>`}
+              ${totalRow}
+            </tbody>
+          </table>
+        </div>`;
+    };
+
+    // ── Contenu sous-onglet Tôles ─────────────────────────────────
+    const _contenuToles = () => {
+      const surfaceDispo  = tolesDispo.reduce((s, b) => s + ((b.largeur_mm||0)/1000)*((b.longueur_mm||0)/1000)*(b.quantite||1), 0);
+      const surfaceAfft   = tolesAffectees.reduce((s, b) => s + ((b.largeur_mm||0)/1000)*((b.longueur_mm||0)/1000)*(b.quantite||1), 0);
+      const poidsTolesTot = tolesDispo.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
+      const pAfft         = tolesAffectees.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
+      const nbTolTotal    = tolesDispo.length + tolesAffectees.length + tolesAttente.length;
+
+      const parEp = {};
+      tolesDispo.forEach(b => {
+        const ep = b.epaisseur_mm;
+        if (!parEp[ep]) parEp[ep] = { nb: 0, poids: 0, dims: [] };
+        parEp[ep].nb++;
+        parEp[ep].poids += b.poids_total_kg || 0;
+        parEp[ep].dims.push(`${b.largeur_mm}×${b.longueur_mm}`);
+      });
+      const lignesEp = Object.entries(parEp).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+      const poidsMax = lignesEp.length ? Math.max(...lignesEp.map(([, d]) => d.poids)) : 1;
+
+      const rowsEp = lignesEp.map(([ep, d]) => {
+        const pct      = Math.round((d.poids / poidsMax) * 100);
+        const uniqDims = [...new Set(d.dims)].slice(0, 3).join(', ');
+        return `<tr class="syn-type-row" data-syn-action="voir-dispo" data-syn-onglet="toles">
+          <td><span class="syn-type-chip" style="background:#2980b9">${_e(String(ep))} mm</span></td>
+          <td class="r">${d.nb}</td>
+          <td style="color:#888;font-size:12px">${_e(uniqDims)}${d.dims.length > 3 ? '…' : ''}</td>
+          <td class="r">${fmtT(d.poids)}</td>
+          <td><div class="syn-bar"><div class="syn-bar-fill" style="width:${pct}%;background:#2980b9"></div></div></td>
+        </tr>`;
+      }).join('');
+
+      const totalRow = lignesEp.length > 1 ? `<tr class="syn-total">
+        <td>Total</td><td class="r">${tolesDispo.length}</td><td></td>
+        <td class="r">${fmtT(poidsTolesTot)}</td><td></td>
+      </tr>` : '';
+
+      return `
+        <div class="syn-kpi k-vert syn-kpi-table" style="margin-bottom:16px">
+          <table class="syn-kpi-inner">
+            <thead><tr>
+              <th></th>
+              <th>Tôles</th><th>Surface</th><th>Poids</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="syn-dot s-vert"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles">Disponible →</span></td>
+                <td><strong>${tolesDispo.length}</strong></td>
+                <td>${fmt(surfaceDispo)} m²</td>
+                <td>${fmtT(poidsTolesTot)}</td>
+              </tr>
+              <tr>
+                <td><span class="syn-dot s-rouge"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="affecte">Affecté →</span></td>
+                <td><strong>${tolesAffectees.length}</strong></td>
+                <td>${fmt(surfaceAfft)} m²</td>
+                <td>${fmtT(pAfft)}</td>
+              </tr>
+              <tr class="syn-kpi-inner-total">
+                <td>Total</td>
+                <td><strong>${nbTolTotal}</strong></td>
+                <td>${fmt(surfaceDispo + surfaceAfft)} m²</td>
+                <td>${fmtT(poidsTolesTot + pAfft)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="syn-section-titre">Par épaisseur</div>
+        <div class="syn-card" style="padding:0;overflow:hidden">
+          <table class="syn-table">
+            <thead><tr>
+              <th>Épaisseur</th><th class="r">Réf.</th>
+              <th>Dimensions (mm)</th><th class="r">Poids</th>
+              <th style="width:70px"></th>
+            </tr></thead>
+            <tbody>
+              ${rowsEp || '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">Aucune tôle disponible</td></tr>'}
+              ${totalRow}
+            </tbody>
+          </table>
+        </div>`;
+    };
+
+    // ── Rendu final ───────────────────────────────────────────────
+    const estProfils = _synTab !== 'toles';
+    zone.innerHTML = `
+    <div class="syn-page">
+      <div class="syn-sous-nav">
+        <button class="syn-tab${estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="profils">Profilés</button>
+        <button class="syn-tab${!estProfils ? ' actif' : ''}" data-syn-action="changer-syn-tab" data-syn-tab="toles">Tôles</button>
+      </div>
+      ${estProfils ? _contenuProfils() : _contenuToles()}
+    </div>`;
+  }
+
 
   /* ──────────────────────────────────────────────────────────────
      ONGLETS
      ────────────────────────────────────────────────────────────── */
 
   function _basculerOnglet(onglet) {
+    const precedent = _onglet;
     _onglet = onglet;
     _tri    = { col: null, ordre: 'asc' };
 
@@ -648,23 +1345,39 @@ const Stock = (() => {
 
     const tpro = document.getElementById('toolbar-profils');
     const ttol = document.getElementById('toolbar-toles');
-    if (tpro) tpro.style.display = onglet === 'profils' ? '' : 'none';
-    if (ttol) ttol.style.display = onglet === 'toles'   ? '' : 'none';
+    const tarc = document.getElementById('toolbar-archivees');
+    if (tpro) tpro.style.display = onglet === 'profils'   ? '' : 'none';
+    if (ttol) ttol.style.display = onglet === 'toles'     ? '' : 'none';
+    if (tarc) tarc.style.display = onglet === 'archivees' ? '' : 'none';
+
+    // Basculer entre tableau et zone synthèse
+    const ztab  = document.getElementById('tableau-stock');
+    const zpied = document.querySelector('.pied-tableau');
+    const zsyn  = document.getElementById('zone-synthese');
+    const estSyn = onglet === 'synthese';
+    if (ztab)  ztab.style.display  = estSyn ? 'none' : '';
+    if (zpied) zpied.style.display = estSyn ? 'none' : '';
+    if (zsyn)  zsyn.style.display  = estSyn ? '' : 'none';
 
     // Titre dynamique selon l'onglet
-    document.title = onglet === 'profils'
-      ? 'Stock Profilés — LBF'
-      : 'Stock Tôles — LBF';
+    const titres = {
+      profils: 'Stock Profilés — LBF', toles: 'Stock Tôles — LBF',
+      archivees: 'Stock Archivées — LBF', synthese: 'Synthèse Stock — LBF'
+    };
+    document.title = titres[onglet] || 'Stock — LBF';
 
-    _resetFiltres(onglet === 'profils' ? 'toles' : 'profils');
+    // Réinitialiser les filtres de l'onglet quitté
+    if (precedent !== onglet) _resetFiltres(precedent);
     _filtrer();
   }
 
   function _resetFiltres(onglet) {
-    const ids = onglet === 'profils'
-      ? ['p-type','p-desig','p-chantier','p-lieu','p-dispo','p-recherche']
-      : ['t-epaisseur','t-chantier','t-lieu','t-dispo','t-recherche'];
-    ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const map = {
+      profils:   ['p-type','p-desig','p-chantier','p-lieu','p-dispo','p-recherche'],
+      toles:     ['t-epaisseur','t-chantier','t-lieu','t-dispo','t-recherche'],
+      archivees: ['a-type','a-desig','a-recherche'],
+    };
+    (map[onglet] || []).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   }
 
 
@@ -675,10 +1388,13 @@ const Stock = (() => {
   function _majCompteur(nb, total) {
     const z = document.getElementById('stock-compteur');
     if (!z) return;
-    const s = _onglet === 'profils' ? ['profilé','profilés'] : ['tôle','tôles'];
+    let s;
+    if (_onglet === 'profils')        s = ['profilé', 'profilés'];
+    else if (_onglet === 'toles')     s = ['tôle', 'tôles'];
+    else                              s = ['barre archivée', 'barres archivées'];
     z.textContent = nb === total
       ? `${nb} ${nb > 1 ? s[1] : s[0]}`
-      : `${nb} ${nb > 1 ? s[1] : s[0]} affichés sur ${total}`;
+      : `${nb} ${nb > 1 ? s[1] : s[0]} affichées sur ${total}`;
   }
 
   function _majAlerteAttente() {
@@ -708,6 +1424,56 @@ const Stock = (() => {
       b.addEventListener('click', () => _basculerOnglet(b.dataset.onglet));
     });
 
+    // Liens de navigation depuis la synthèse (event delegation)
+    const zsyn = document.getElementById('zone-synthese');
+    if (zsyn) {
+      zsyn.addEventListener('click', e => {
+        const el = e.target.closest('[data-syn-action]');
+        if (!el) return;
+        const action  = el.dataset.synAction;
+        const onglet  = el.dataset.synOnglet || 'profils';
+        const type    = el.dataset.synType   || '';
+        const dispo   = el.dataset.synDispo  || '';
+        if (action === 'changer-syn-tab') {
+          _synTab = el.dataset.synTab;
+          _rendreSynthese();
+        } else if (action === 'toggle-profils-scope') {
+          _synProfilsTous = !_synProfilsTous;
+          _rendreSynthese();
+        } else if (action === 'toggle-type') {
+          const grp      = el.dataset.synTypeGroup;
+          const expanded = el.textContent.trim() === '▶';
+          el.textContent = expanded ? '▼' : '▶';
+          el.style.color = expanded ? 'var(--vert)' : '';
+          const row = el.closest('tr');
+          if (row) row.classList.toggle('expanded', expanded);
+          zsyn.querySelectorAll(`[data-syn-parent="${CSS.escape(grp)}"]`).forEach(tr => {
+            tr.style.display = expanded ? '' : 'none';
+          });
+        } else if (action === 'voir-desig') {
+          const desig = el.dataset.synDesig || '';
+          _basculerOnglet('profils');
+          const selType  = document.getElementById('p-type');
+          const selDesig = document.getElementById('p-desig');
+          if (selType && type) { selType.value = type; _peuplerDesignations(type); }
+          if (selDesig && desig) selDesig.value = desig;
+          _filtrer();
+        } else if (action === 'voir-type') {
+          _basculerOnglet(onglet);
+          const selType = document.getElementById('p-type');
+          if (selType && type) { selType.value = type; _peuplerDesignations(type); }
+          _filtrer();
+        } else if (action === 'voir-dispo') {
+          _basculerOnglet(onglet);
+          if (dispo) {
+            const selDispo = document.getElementById(onglet === 'profils' ? 'p-dispo' : 't-dispo');
+            if (selDispo) selDispo.value = dispo;
+          }
+          _filtrer();
+        }
+      });
+    }
+
     // Filtres profilés
     ['p-type','p-desig','p-chantier','p-lieu','p-dispo'].forEach(id => {
       const el = document.getElementById(id);
@@ -724,13 +1490,124 @@ const Stock = (() => {
     const trech = document.getElementById('t-recherche');
     if (trech) trech.addEventListener('input', _filtrer);
 
+    // Filtres archivées — cascade type → désignation
+    const selAType = document.getElementById('a-type');
+    if (selAType) selAType.addEventListener('change', () => {
+      _peuplerDesignationsArchivees(selAType.value);
+      _filtrer();
+    });
+    const selADesig = document.getElementById('a-desig');
+    if (selADesig) selADesig.addEventListener('change', _filtrer);
+    const arech = document.getElementById('a-recherche');
+    if (arech) arech.addEventListener('input', _filtrer);
+
     // Reset filtres
     const rp = document.getElementById('btn-reset-profils');
     if (rp) rp.addEventListener('click', () => { _resetFiltres('profils'); _filtrer(); });
     const rt = document.getElementById('btn-reset-toles');
     if (rt) rt.addEventListener('click', () => { _resetFiltres('toles'); _filtrer(); });
+    const ra = document.getElementById('btn-reset-archivees');
+    if (ra) ra.addEventListener('click', () => { _resetFiltres('archivees'); _filtrer(); });
+
+    // Export / Import CSV (admin)
+    const btnExp = document.getElementById('btn-exporter');
+    if (btnExp) btnExp.addEventListener('click', _exporterCSV);
+    const btnImp = document.getElementById('btn-importer');
+    if (btnImp) btnImp.addEventListener('click', _ouvrirImport);
 
     // Boutons ajout → ouvrir modales
+    // Focus ligne au clic cellule
+    const zoneTab = document.getElementById('tableau-stock');
+    if (zoneTab) {
+      zoneTab.addEventListener('click', e => {
+        // Chip lieu → ouvrir plan
+        const chipLieu = e.target.closest('.chip-lieu-btn');
+        if (chipLieu) { e.stopPropagation(); _ouvrirCarte(chipLieu.dataset.lieu); return; }
+
+        if (e.target.closest('button')) return;
+        const tdEd = e.target.closest('td.cell-editable');
+        if (tdEd) {
+          if (!tdEd.classList.contains('editing')) _activerEditionInline(tdEd);
+          return;
+        }
+        const td = e.target.closest('td');
+        if (!td) return;
+        const tr = td.closest('tr');
+        if (!tr || tr.closest('thead')) return;
+        const deja = tr.classList.contains('ligne-focus');
+        zoneTab.querySelectorAll('tr.ligne-focus').forEach(r => r.classList.remove('ligne-focus'));
+        if (!deja) tr.classList.add('ligne-focus');
+      });
+    }
+
+    // Sélecteur de vue (Essentiel / Complet / Personnalisé)
+    const panelCols = document.getElementById('panel-cols-profils');
+
+    function _ouvrirPanelCols() {
+      if (!panelCols) return;
+      // Même source de vérité que le rendu du tableau
+      const vis = _chargerColsVis();
+      panelCols.innerHTML = '<div class="panel-cols-titre">Colonnes visibles</div>'
+        + COLS_PROFILS.map(c =>
+          `<label><input type="checkbox" data-col="${c.key}"${vis[c.key] ? ' checked' : ''}> ${c.label}</label>`
+        ).join('');
+      panelCols.classList.add('open');
+    }
+
+    function _syncBoutonsVue() {
+      const mode = _getModeVue();
+      ['essentiel','complet','personnalise'].forEach(m => {
+        const el = document.getElementById(`btn-vue-${m}`);
+        if (el) el.classList.toggle('active', m === mode);
+      });
+      if (panelCols) panelCols.classList.remove('open');
+    }
+
+    ['essentiel','complet','personnalise'].forEach(mode => {
+      const btn = document.getElementById(`btn-vue-${mode}`);
+      if (!btn) return;
+      btn.addEventListener('click', e => {
+        if (mode === 'personnalise') {
+          e.stopPropagation();
+          // Si déjà actif → toggle panel
+          if (_getModeVue() === 'personnalise') {
+            panelCols?.classList.contains('open')
+              ? panelCols.classList.remove('open')
+              : _ouvrirPanelCols();
+            return;
+          }
+          // Passage en mode perso : snapshot de l'affichage courant
+          // pour que les checkboxes soient toujours en accord avec ce qui est affiché
+          _sauverColsVis(_chargerColsVis());
+          _setModeVue('personnalise');
+          _syncBoutonsVue();
+          _filtrer();
+          _ouvrirPanelCols();
+          return;
+        }
+        _setModeVue(mode);
+        _syncBoutonsVue();
+        _filtrer();
+      });
+    });
+
+    if (panelCols) {
+      panelCols.addEventListener('change', e => {
+        if (e.target.type !== 'checkbox') return;
+        const vis = _chargerColsVis();
+        vis[e.target.dataset.col] = e.target.checked;
+        _sauverColsVis(vis);
+        _filtrer();
+      });
+      document.addEventListener('click', e => {
+        if (!panelCols.contains(e.target) && !e.target.closest('#btn-vue-personnalise')) {
+          panelCols.classList.remove('open');
+        }
+      });
+    }
+
+    _syncBoutonsVue();
+
     const btnProfil = document.getElementById('btn-ajout-profil');
     if (btnProfil) btnProfil.addEventListener('click', () => _ouvrirModaleAjoutProfil());
 
@@ -767,6 +1644,50 @@ const Stock = (() => {
       if (selDesig) selDesig.addEventListener('change', () => _apMajSchema(mAP));
       if (inpLong)  inpLong.addEventListener('input',   () => _apMajPoids(mAP));
 
+      // Tabs inventaire / commande
+      mAP.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          mAP.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const mode = tab.dataset.mode;
+          mAP.dataset.modeAjout = mode;
+          document.getElementById('ap-panel-inventaire').style.display = mode === 'inventaire' ? '' : 'none';
+          document.getElementById('ap-panel-commande').style.display   = mode === 'commande'   ? '' : 'none';
+          // Note de statut sur les deux panels
+          _majNoteStatut(mAP, '.ap-note-statut');
+          _majNoteStatut(mAP, '.ap-note-statut-cmd');
+        });
+      });
+
+      // Bouton toggle schéma
+      const btnToggleSchemaAP = mAP.querySelector('#ap-toggle-schema');
+      if (btnToggleSchemaAP) {
+        btnToggleSchemaAP.addEventListener('click', () => {
+          const zoneSchema = mAP.querySelector('#ap-schema');
+          if (!zoneSchema) return;
+          const open = zoneSchema.style.display !== 'none';
+          zoneSchema.style.display = open ? 'none' : 'flex';
+          btnToggleSchemaAP.textContent = open
+            ? '▶ Voir schéma et caractéristiques'
+            : '▼ Masquer schéma et caractéristiques';
+        });
+      }
+
+      // Bouton "+ Ajouter une référence"
+      const btnAjLigne = mAP.querySelector('#ap-cmd-ajouter-ligne');
+      if (btnAjLigne) btnAjLigne.addEventListener('click', () => {
+        _ajouterLigneCommande(mAP.querySelector('#ap-cmd-tbody'));
+      });
+
+      // Délégation type → désig sur les lignes commande
+      const tbody = mAP.querySelector('#ap-cmd-tbody');
+      if (tbody) tbody.addEventListener('change', e => {
+        if (e.target.classList.contains('cmd-type')) {
+          const tr = e.target.closest('tr');
+          if (tr) _apMajDesigLigne(tr);
+        }
+      });
+
       const btnSoumettre = mAP.querySelector('.btn-soumettre');
       if (btnSoumettre) btnSoumettre.addEventListener('click', () => _soumettreAjoutProfil(mAP));
     }
@@ -785,16 +1706,18 @@ const Stock = (() => {
     // ── Modale modification ───────────────────────────────────
     const mMod = document.getElementById('m-modification');
     if (mMod) {
-      const selType  = mMod.querySelector('#mod-type');
-      const selDesig = mMod.querySelector('#mod-desig');
-      const inpLong  = mMod.querySelector('#mod-longueur');
-
-      if (selType)  selType.addEventListener('change',  () => _apMajDesig(mMod, '#mod-type', '#mod-desig'));
-      if (selDesig) selDesig.addEventListener('change', () => _apMajSchema(mMod, '#mod-type', '#mod-desig'));
-      if (inpLong)  inpLong.addEventListener('input',   () => _apMajPoids(mMod, '#mod-longueur'));
+      const inpLong = mMod.querySelector('#mod-longueur');
+      if (inpLong) inpLong.addEventListener('input', () => _apMajPoids(mMod, '#mod-longueur'));
 
       const btnSoumettre = mMod.querySelector('.btn-soumettre');
       if (btnSoumettre) btnSoumettre.addEventListener('click', () => _soumettreModification(mMod));
+    }
+
+    // ── Modal résumé réception commande ──────────────────────
+    const mResume = document.getElementById('m-reception-resume');
+    if (mResume) {
+      const btnFermer = mResume.querySelector('#btn-resume-fermer');
+      if (btnFermer) btnFermer.addEventListener('click', () => _fermerModale('m-reception-resume'));
     }
 
     // ── Modale demande d'attribution ──────────────────────────
@@ -856,6 +1779,120 @@ const Stock = (() => {
       if (btnConfirmer) btnConfirmer.addEventListener('click', _confirmerSuppression);
       if (btnAnnuler)   btnAnnuler.addEventListener('click',   () => _fermerModale('m-supprimer'));
     }
+
+    // ── Modale historique barre ───────────────────────────────
+    const mHist = document.getElementById('m-historique-barre');
+    if (mHist) {
+      const btnFermer = mHist.querySelector('.btn-fermer-hist');
+      if (btnFermer) btnFermer.addEventListener('click', () => _fermerModale('m-historique-barre'));
+    }
+
+    // ── Modale import CSV ─────────────────────────────────────
+    const mImport = document.getElementById('m-import');
+    if (mImport) {
+      // Fermeture fond + bouton annuler
+      mImport.addEventListener('click', e => { if (e.target === mImport) _fermerModale('m-import'); });
+      const btnAnnuler = mImport.querySelector('#import-btn-annuler');
+      if (btnAnnuler) btnAnnuler.addEventListener('click', () => _fermerModale('m-import'));
+
+      // Sélection fichier → activer bouton Analyser
+      const fichierInput = mImport.querySelector('#import-fichier');
+      if (fichierInput) {
+        fichierInput.addEventListener('change', () => {
+          const nom = fichierInput.files[0]?.name || '';
+          mImport.querySelector('#import-nom-fichier').textContent = nom;
+          mImport.querySelector('#import-btn-analyser').disabled = !nom;
+          // Réinitialiser l'état d'analyse si on change de fichier
+          mImport.querySelector('#import-resume').style.display        = 'none';
+          mImport.querySelector('#import-avertissement').style.display = 'none';
+          mImport.querySelector('#import-erreur').style.display        = 'none';
+          mImport.querySelector('#import-btn-confirmer').style.display = 'none';
+          mImport.querySelector('#import-btn-analyser').style.display  = '';
+          _importData = null;
+        });
+      }
+
+      // Drag & drop sur la zone
+      const dropzone = mImport.querySelector('#import-dropzone');
+      if (dropzone) {
+        dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+        dropzone.addEventListener('drop', e => {
+          e.preventDefault();
+          dropzone.classList.remove('drag-over');
+          const f = e.dataTransfer.files[0];
+          if (f && fichierInput) {
+            // Affecter le fichier glissé à l'input
+            const dt = new DataTransfer();
+            dt.items.add(f);
+            fichierInput.files = dt.files;
+            fichierInput.dispatchEvent(new Event('change'));
+          }
+        });
+      }
+
+      // Boutons Analyser / Confirmer
+      const btnAnalyser  = mImport.querySelector('#import-btn-analyser');
+      const btnConfirmer = mImport.querySelector('#import-btn-confirmer');
+      if (btnAnalyser)  btnAnalyser.addEventListener('click',  _analyserImport);
+      if (btnConfirmer) btnConfirmer.addEventListener('click', _confirmerImport);
+    }
+
+    _attacherAdminStockage();
+    _attacherAdminPlan();
+    _attacherAdminChantiers();
+    _attacherAdminFournisseurs();
+    _attacherAdminDemandeurs();
+    _attacherNavAdmin();
+
+    // ── Modale modification — dispo ↔ chantier ────────────────────
+    const mModAff = document.getElementById('m-modification');
+    if (mModAff) {
+      const selDispo   = mModAff.querySelector('#mod-dispo');
+      const affWrap    = mModAff.querySelector('#mod-affectation-wrap');
+      const inpAff     = mModAff.querySelector('#mod-affectation');
+      const btnCreer   = mModAff.querySelector('#mod-btn-creer-chantier');
+      const formNouv      = mModAff.querySelector('#mod-nouveau-chantier-form');
+      const inpNomNouv    = mModAff.querySelector('#mod-new-chantier-nom');
+      const inpAffaireNouv = mModAff.querySelector('#mod-new-chantier-affaire');
+      const inpVilleNouv  = mModAff.querySelector('#mod-new-chantier-ville');
+      const btnConf       = mModAff.querySelector('#mod-btn-confirmer-chantier');
+      const btnAnn        = mModAff.querySelector('#mod-btn-annuler-chantier');
+
+      function _majVisibiliteChantierMod() {
+        const estAffecte = selDispo?.value === 'affecte';
+        if (affWrap) affWrap.style.display = estAffecte ? '' : 'none';
+        if (!estAffecte && inpAff) inpAff.value = '';
+        if (formNouv) formNouv.style.display = 'none';
+      }
+
+      if (selDispo) selDispo.addEventListener('change', _majVisibiliteChantierMod);
+
+      if (btnCreer) btnCreer.addEventListener('click', () => {
+        if (formNouv) formNouv.style.display = '';
+        if (inpAffaireNouv) inpAffaireNouv.value = '';
+        if (inpVilleNouv)  inpVilleNouv.value  = '';
+        if (inpNomNouv)    { inpNomNouv.value = ''; inpNomNouv.focus(); }
+      });
+
+      if (btnAnn) btnAnn.addEventListener('click', () => {
+        if (formNouv) formNouv.style.display = 'none';
+      });
+
+      if (btnConf) btnConf.addEventListener('click', async () => {
+        const nom     = inpNomNouv?.value?.trim();
+        const affaire = inpAffaireNouv?.value?.trim() || null;
+        const ville   = inpVilleNouv?.value?.trim()   || null;
+        if (!nom) return;
+        const res = await window.SB.inserer('chantiers', { nom, numero_affaire: affaire, ville, actif: true });
+        if (res?.error) { alert('Erreur création chantier : ' + res.error.message); return; }
+        const rows = await window.SB.lire('chantiers', { order: 'nom' });
+        _chantiers = rows.filter(c => c.actif);
+        _majDatalistChantiers();
+        _peuplerSelectAffectation(inpAff, nom);
+        if (formNouv) formNouv.style.display = 'none';
+      });
+    }
   }
 
 
@@ -870,17 +1907,21 @@ const Stock = (() => {
     const m = document.getElementById('m-ajout-profil');
     if (!m) return;
 
-    // Réinitialiser le formulaire
-    m.querySelectorAll('input:not([type=hidden]), select, textarea').forEach(el => {
+    // Revenir au mode inventaire
+    m.dataset.modeAjout = 'inventaire';
+    m.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'inventaire'));
+    document.getElementById('ap-panel-inventaire').style.display = '';
+    document.getElementById('ap-panel-commande').style.display   = 'none';
+
+    // Réinitialiser le formulaire inventaire
+    m.querySelectorAll('#ap-panel-inventaire input:not([type=hidden]), #ap-panel-inventaire select, #ap-panel-inventaire textarea').forEach(el => {
       if (el.tagName === 'SELECT') el.selectedIndex = 0;
       else el.value = '';
     });
 
-    // Remplir le select type depuis sections.json ou stock.json
+    // Remplir les selects
     _remplirSelectType(m.querySelector('#ap-type'));
-
-    // Pré-remplir les lieux
-    _remplirSelectLieux(m.querySelector('#ap-lieu'));
+    _monterSelecteurLieu(m.querySelector('#ap-lieu'));
 
     // Cacher le schéma et la zone ID
     const schema = m.querySelector('#ap-schema');
@@ -891,12 +1932,21 @@ const Stock = (() => {
 
     // Reset désignations
     const selDesig = m.querySelector('#ap-desig');
-    if (selDesig) {
-      selDesig.innerHTML = '<option value="">— Choisir le type d\'abord —</option>';
+    if (selDesig) selDesig.innerHTML = '<option value="">— Choisir le type d\'abord —</option>';
+
+    // Réinitialiser le panel commande
+    m.querySelectorAll('#ap-panel-commande input').forEach(el => { el.value = ''; });
+    _monterPickerChantier('ap-cmd-chantier-picker', 'ap-cmd-chantier');
+    _monterPickerFournisseur('ap-cmd-fournisseur-picker', 'ap-cmd-fournisseur');
+    const tbody = m.querySelector('#ap-cmd-tbody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      _ajouterLigneCommande(tbody); // une ligne vide par défaut
     }
 
-    // Note selon profil
+    // Note de statut
     _majNoteStatut(m, '.ap-note-statut');
+    _majNoteStatut(m, '.ap-note-statut-cmd');
 
     _ouvrirModale('m-ajout-profil');
   }
@@ -916,7 +1966,7 @@ const Stock = (() => {
     selDesig.innerHTML = '<option value="">— Choisir —</option>';
 
     if (!type) {
-      const schema = m.querySelector('[id$="-schema"]');
+      const schema = m.querySelector('div[id$="-schema"]');
       if (schema) schema.style.display = 'none';
       return;
     }
@@ -952,6 +2002,9 @@ const Stock = (() => {
       o.value = d; o.textContent = d;
       selDesig.appendChild(o);
     });
+
+    // Mettre à jour le schéma/poids : désignation vient d'être réinitialisée
+    _apMajSchema(m, selTypeId, selDesigId);
   }
 
   /**
@@ -964,13 +2017,22 @@ const Stock = (() => {
     const type  = m.querySelector(selTypeId)?.value;
     const desig = m.querySelector(selDesigId)?.value;
 
-    const zoneSchema = m.querySelector('[id$="-schema"]');
+    const zoneSchema  = m.querySelector('div[id$="-schema"]');
+    const btnToggle   = m.querySelector('#ap-toggle-schema');
     if (!zoneSchema || !type || !desig) {
-      if (zoneSchema) zoneSchema.style.display = 'none';
+      if (zoneSchema)  zoneSchema.style.display = 'none';
+      if (btnToggle)   btnToggle.style.display  = 'none';
+      m.dataset.poidsml = '';
+      _apMajPoids(m);
       return;
     }
 
-    zoneSchema.style.display = 'flex';
+    // Afficher le bouton toggle, garder le schéma masqué par défaut
+    zoneSchema.style.display = 'none';
+    if (btnToggle) {
+      btnToggle.style.display = 'block';
+      btnToggle.textContent   = '▶ Voir schéma et caractéristiques';
+    }
 
     // Libellé
     const label = zoneSchema.querySelector('[id$="-schema-label"]');
@@ -983,34 +2045,27 @@ const Stock = (() => {
       'HEA': 'HEA.png', 'HEA A': 'HEAA.png', 'HEB': 'HEB.png', 'HEM': 'HEM.png',
       'UPN': 'UPN.png', 'UPE': 'UPE.png',
       'L égale': 'Le.png', 'L inégale': 'Li.png',
+      'SHS': 'SHS chaud.png', 'RHS': 'RHS chaud.png', 'CHS': 'CHS chaud.png',
+      'Rond': 'Rond.png', 'Carré': 'Carre.png',
     };
     const nomFichier = SERIES_IMAGES[type] || null;
-    const img   = zoneSchema.querySelector('[id$="-img"]');
-    const svgEl = zoneSchema.querySelector('svg');
+    const visuel = zoneSchema.querySelector('[id$="-visuel"]');
 
-    if (nomFichier && img) {
-      img.src          = `../assets/profils/${nomFichier}`;
-      img.alt          = `${type} ${desig}`;
-      img.dataset.zoom = '0';
-      img.style.cursor = 'zoom-in';
-      img.style.display = 'block';
-      img.onclick      = () => _zoomImage(img);
-      if (svgEl) svgEl.style.display = 'none';
-
-      img.onerror = function() {
-        this.style.display = 'none';
-        if (svgEl) {
-          while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
-          _dessinerSVGComplet(svgEl, type);
-          svgEl.style.display = 'block';
+    if (visuel) {
+      if (nomFichier) {
+        visuel.innerHTML = `<img alt="${type} ${desig}" data-zoom="0"
+          style="max-width:130px;max-height:130px;object-fit:contain;display:block;margin:0 auto;
+                 cursor:zoom-in;border:1px solid var(--gris-clair);border-radius:3px;background:#f7f7f7;"
+          onclick="profilZoomImage(this)">`;
+        const imgEl = visuel.querySelector('img');
+        if (imgEl) {
+          imgEl.onerror = () => {
+            visuel.innerHTML = profilSvgCote({ serie: type }, 130, 130);
+          };
+          imgEl.src = `../assets/profils/${nomFichier}`;
         }
-      };
-    } else {
-      if (img) img.style.display = 'none';
-      if (svgEl) {
-        while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
-        _dessinerSVGComplet(svgEl, type);
-        svgEl.style.display = 'block';
+      } else {
+        visuel.innerHTML = profilSvgCote({ serie: type }, 130, 130);
       }
     }
 
@@ -1018,7 +2073,9 @@ const Stock = (() => {
     const dimsList = zoneSchema.querySelector('[id$="-dims-list"]');
     if (dimsList) {
       const dims = _getDims(type, desig);
-      _rendreDimsList(dimsList, dims);
+      dimsList.innerHTML = dims
+        ? profilDimsTableau(dims)
+        : '<div style="color:#aaa;font-size:12px">Non disponible</div>';
       m.dataset.poidsml = dims ? dims.pml : '';
     }
 
@@ -1063,30 +2120,29 @@ const Stock = (() => {
    * @param {HTMLElement} m — modale
    */
   async function _soumettreAjoutProfil(m) {
-    const type    = m.querySelector('#ap-type')?.value?.trim();
-    const desig   = m.querySelector('#ap-desig')?.value?.trim();
-    const longueur = parseFloat(m.querySelector('#ap-longueur')?.value);
-    const chantier = m.querySelector('#ap-chantier')?.value?.trim();
-    const lieu     = m.querySelector('#ap-lieu')?.value?.trim();
-    const dispo    = m.querySelector('#ap-dispo')?.value || 'disponible';
+    if ((m.dataset.modeAjout || 'inventaire') === 'commande') {
+      return _soumettreAjoutCommande(m);
+    }
+
+    const type        = m.querySelector('#ap-type')?.value?.trim();
+    const desig       = m.querySelector('#ap-desig')?.value?.trim();
+    const longueur    = parseFloat(m.querySelector('#ap-longueur')?.value);
+    const lieu        = _lireLieu(m.querySelector('#ap-lieu'));
+    const classe      = m.querySelector('#ap-classe')?.value?.trim() || '';
     const commentaire = m.querySelector('#ap-commentaire')?.value?.trim() || '';
 
     // Validation
-    if (!type)         return _signalerErreur(m, '#ap-type', 'Le type de section est obligatoire');
-    if (!desig)        return _signalerErreur(m, '#ap-desig', 'La désignation est obligatoire');
+    if (!type)    return _signalerErreur(m, '#ap-type',    'Le type de section est obligatoire');
+    if (!desig)   return _signalerErreur(m, '#ap-desig',   'La désignation est obligatoire');
     if (!longueur || longueur <= 0) return _signalerErreur(m, '#ap-longueur', 'La longueur est obligatoire');
 
     const session = Auth.getSession();
     const isAdmin = Auth.hasRight('can_validate');
 
-    // Récupérer le poids/ml depuis les données ou la modale
-    const poidsml = parseFloat(m.dataset.poidsml) || 0;
+    const poidsml    = parseFloat(m.dataset.poidsml) || 0;
     const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
-
-    // Utiliser l'ID déjà affiché à l'opérateur — sinon en générer un nouveau
     const nouvelleId = m.dataset.idPrevu || _genererIdBarre();
 
-    /** @type {Object} Structure identique à stock.json */
     const barre = {
       id: nouvelleId,
       categorie: 'profil',
@@ -1095,19 +2151,24 @@ const Stock = (() => {
       longueur_m: longueur,
       poids_ml: poidsml,
       poids_barre_kg: poidsBarre,
-      chantier_origine: chantier || 'Non renseigné',
+      chantier_origine: null,
       lieu_stockage: lieu,
-      disponibilite: dispo,
+      disponibilite: 'disponible',
       chantier_affectation: null,
+      classe_acier: classe || null,
+      ref_commande: null,
+      fournisseur: null,
       statut: isAdmin ? 'valide' : 'en_attente',
       date_ajout: _dateAujourdhui(),
       ajoute_par: session?.identifiant || 'inconnu',
       valide_par: isAdmin ? session?.identifiant : null,
       date_validation: isAdmin ? _dateAujourdhui() : null,
-      commentaire
+      commentaire,
     };
 
-    await _persisterElement(barre);
+    const enLigne = await _persisterElement(barre);
+    await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null, barre.lieu_stockage || null);
+
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
     _filtrer();
@@ -1116,7 +2177,245 @@ const Stock = (() => {
     const msg = isAdmin
       ? `Profilé ${type} ${desig} ajouté (${nouvelleId})`
       : `Profilé ${type} ${desig} soumis pour validation`;
-    _notif(msg, isAdmin ? 'succes' : 'info');
+    _notif(msg + (enLigne ? '' : ' — ⚠ mode hors ligne'), isAdmin ? (enLigne ? 'succes' : 'alerte') : 'info');
+  }
+
+  /**
+   * Soumet le formulaire en mode réception commande :
+   * crée une barre individuelle pour chaque unité de chaque ligne.
+   */
+  async function _soumettreAjoutCommande(m) {
+    const chantier    = m.querySelector('#ap-cmd-chantier')?.value?.trim()    || '';
+    const refCmd      = m.querySelector('#ap-cmd-ref')?.value?.trim()         || '';
+    const fournisseur = m.querySelector('#ap-cmd-fournisseur')?.value?.trim() || '';
+
+    const lignes = [...m.querySelectorAll('#ap-cmd-tbody .cmd-ligne')];
+    if (!lignes.length) return _notif('Ajoutez au moins une ligne', 'erreur');
+
+    // Validation globale avant création
+    for (const [i, ligne] of lignes.entries()) {
+      const type  = ligne.querySelector('.cmd-type')?.value?.trim();
+      const desig = ligne.querySelector('.cmd-desig')?.value?.trim();
+      const lng   = parseFloat(ligne.querySelector('.cmd-longueur')?.value);
+      const qte   = parseInt(ligne.querySelector('.cmd-qte')?.value) || 0;
+      if (!type || !desig) return _notif(`Ligne ${i+1} : type et désignation obligatoires`, 'erreur');
+      if (!lng || lng <= 0) return _notif(`Ligne ${i+1} : longueur invalide`, 'erreur');
+      if (qte < 1)         return _notif(`Ligne ${i+1} : quantité invalide`, 'erreur');
+    }
+
+    const session = Auth.getSession();
+    const isAdmin = Auth.hasRight('can_validate');
+
+    // Résumé par ligne pour affichage post-soumission
+    const resumeLignes = [];
+    let toutEnLigne = true;
+
+    for (const ligne of lignes) {
+      const type     = ligne.querySelector('.cmd-type')?.value?.trim();
+      const desig    = ligne.querySelector('.cmd-desig')?.value?.trim();
+      const classe   = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
+      const longueur = parseFloat(ligne.querySelector('.cmd-longueur')?.value);
+      const qte      = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
+      const lieu     = _lireLieu(ligne.querySelector('.cmd-lieu-csc'))  || '';
+
+      const dims    = _getDims(type, desig);
+      const poidsml = dims?.pml || 0;
+
+      const idsLigne = [];
+      for (let i = 0; i < qte; i++) {
+        const nouvelleId = _genererIdBarre();
+        const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
+
+        const barre = {
+          id: nouvelleId,
+          categorie: 'profil',
+          section_type: type,
+          designation: desig,
+          longueur_m: longueur,
+          poids_ml: poidsml,
+          poids_barre_kg: poidsBarre,
+          chantier_origine: chantier || null,
+          lieu_stockage: lieu,
+          disponibilite: chantier ? 'affecte' : 'disponible',
+          chantier_affectation: chantier || null,
+          classe_acier: classe || null,
+          ref_commande: refCmd || null,
+          fournisseur: fournisseur || null,
+          statut: isAdmin ? 'valide' : 'en_attente',
+          date_ajout: _dateAujourdhui(),
+          ajoute_par: session?.identifiant || 'inconnu',
+          valide_par: isAdmin ? session?.identifiant : null,
+          date_validation: isAdmin ? _dateAujourdhui() : null,
+          commentaire: '',
+        };
+
+        const ok = await _persisterElement(barre);
+        if (!ok) toutEnLigne = false;
+        await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, chantier || null, session?.identifiant || null, null, refCmd || null, barre.lieu_stockage || null);
+        idsLigne.push(nouvelleId);
+      }
+
+      resumeLignes.push({ type, desig, classe, longueur, qte, ids: idsLigne });
+    }
+
+    _fermerModale('m-ajout-profil');
+    _peuplerFiltres();
+    _filtrer();
+    _majAlerteAttente();
+
+    if (!toutEnLigne) _notif('⚠ Sauvegarde en mode hors ligne — données non synchronisées', 'alerte');
+
+    // Afficher le résumé interactif
+    _afficherResumeReception(resumeLignes, chantier, refCmd, fournisseur);
+  }
+
+  /**
+   * Affiche le modal de résumé après une réception de commande.
+   * Permet à l'opérateur de noter les IDs et de filtrer directement.
+   */
+  function _afficherResumeReception(resumeLignes, chantier, refCmd, fournisseur) {
+    const m = document.getElementById('m-reception-resume');
+    if (!m) return;
+
+    // En-tête récapitulatif
+    const entete = m.querySelector('#resume-entete');
+    const parts = [];
+    if (chantier)    parts.push(`Chantier : <strong>${_e(chantier)}</strong>`);
+    if (refCmd)      parts.push(`Réf. : <strong>${_e(refCmd)}</strong>`);
+    if (fournisseur) parts.push(`Fournisseur : <strong>${_e(fournisseur)}</strong>`);
+    entete.innerHTML = parts.length
+      ? parts.join(' &nbsp;·&nbsp; ')
+      : '<em>Réception sans chantier défini</em>';
+
+    // Tableau des lignes
+    const tbody = m.querySelector('#resume-tbody');
+    tbody.innerHTML = '';
+    resumeLignes.forEach(({ type, desig, classe, longueur, qte, ids }) => {
+      const tr = document.createElement('tr');
+      const idBadges = ids.map(id => `<span class="chip-id">${_e(id)}</span>`).join(' ');
+      tr.innerHTML = `
+        <td><strong>${_e(type)}</strong></td>
+        <td>${_e(desig)}</td>
+        <td>${classe ? `<span class="badge-classe-acier">${_e(classe)}</span>` : '—'}</td>
+        <td>${longueur.toFixed(2)} m</td>
+        <td style="text-align:center">${qte}</td>
+        <td class="td-ids-resume">${idBadges}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Bouton "Voir dans le stock"
+    const btnFiltrer = m.querySelector('#btn-resume-filtrer');
+    if (btnFiltrer) {
+      if (chantier) {
+        btnFiltrer.style.display = '';
+        btnFiltrer.onclick = () => {
+          _fermerModale('m-reception-resume');
+          _basculerOnglet('profils');
+          const sel = document.getElementById('p-chantier');
+          if (sel) { sel.value = chantier; _filtrer(); }
+        };
+      } else {
+        btnFiltrer.style.display = 'none';
+      }
+    }
+
+    _ouvrirModale('m-reception-resume');
+  }
+
+  /**
+   * Ajoute une ligne vide dans le tableau de saisie commande.
+   * @param {HTMLTableSectionElement} tbody
+   */
+  function _ajouterLigneCommande(tbody) {
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.className = 'cmd-ligne';
+
+    // Select type
+    const selType = document.createElement('select');
+    selType.className = 'cmd-type';
+    _remplirSelectType(selType);
+
+    // Select désignation (vide au départ)
+    const selDesig = document.createElement('select');
+    selDesig.className = 'cmd-desig';
+    selDesig.innerHTML = '<option value="">— d\'abord le type —</option>';
+
+    // Select classe acier
+    const selClasse = document.createElement('select');
+    selClasse.className = 'cmd-classe';
+    ['', 'S235', 'S275', 'S355', 'S420', 'S460', 'S690'].forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v || '—';
+      selClasse.appendChild(o);
+    });
+
+    // Input longueur
+    const inpLong = document.createElement('input');
+    inpLong.type = 'number'; inpLong.className = 'cmd-longueur';
+    inpLong.placeholder = '6.00'; inpLong.step = '0.01'; inpLong.min = '0.01';
+
+    // Input quantité
+    const inpQte = document.createElement('input');
+    inpQte.type = 'number'; inpQte.className = 'cmd-qte';
+    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
+
+    // Sélecteur lieu en cascade
+    const selLieu = document.createElement('span');
+    selLieu.className = 'cmd-lieu-csc lieu-cascade';
+    _monterSelecteurLieu(selLieu);
+
+    // Bouton suppression
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
+    btnDel.textContent = '✕';
+    btnDel.addEventListener('click', () => {
+      tr.remove();
+      // Toujours garder au moins une ligne
+      if (!tbody.querySelector('.cmd-ligne')) _ajouterLigneCommande(tbody);
+    });
+
+    [selType, selDesig, selClasse, inpLong, inpQte, selLieu, btnDel].forEach(el => {
+      const td = document.createElement('td');
+      td.appendChild(el);
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  }
+
+  /**
+   * Met à jour le select désignation d'une ligne commande après changement de type.
+   * @param {HTMLTableRowElement} tr
+   */
+  function _apMajDesigLigne(tr) {
+    const type     = tr.querySelector('.cmd-type')?.value;
+    const selDesig = tr.querySelector('.cmd-desig');
+    if (!selDesig) return;
+
+    selDesig.innerHTML = '<option value="">— Choisir —</option>';
+    if (!type) return;
+
+    let desigs = [];
+    if (_sections?.standard) {
+      _sections.standard.forEach(f => {
+        f.sections.forEach(s => {
+          if (s.serie === type) {
+            const taille = s.desig.startsWith(type + ' ') ? s.desig.slice(type.length + 1) : s.desig;
+            if (!desigs.includes(taille)) desigs.push(taille);
+          }
+        });
+      });
+    }
+    if (!desigs.length) {
+      desigs = [...new Set(_data.barres.filter(b => b.categorie === 'profil' && b.section_type === type).map(b => b.designation))].sort((a, b) => parseFloat(a) - parseFloat(b));
+    }
+    desigs.forEach(d => {
+      const o = document.createElement('option');
+      o.value = d; o.textContent = d;
+      selDesig.appendChild(o);
+    });
   }
 
 
@@ -1134,7 +2433,8 @@ const Stock = (() => {
       else el.value = '';
     });
 
-    _remplirSelectLieux(m.querySelector('#at-lieu'));
+    _monterSelecteurLieu(m.querySelector('#at-lieu'));
+    _monterPickerChantier('at-chantier-picker', 'at-chantier');
     _majNoteStatut(m, '.at-note-statut');
     _atMajApercu(m); // reset aperçu
 
@@ -1185,7 +2485,7 @@ const Stock = (() => {
     const lng = parseFloat(m.querySelector('#at-longueur')?.value);
     const qty = parseInt(m.querySelector('#at-quantite')?.value) || 1;
     const chantier    = m.querySelector('#at-chantier')?.value?.trim();
-    const lieu        = m.querySelector('#at-lieu')?.value?.trim();
+    const lieu        = _lireLieu(m.querySelector('#at-lieu'));
     const dispo       = m.querySelector('#at-dispo')?.value || 'disponible';
     const commentaire = m.querySelector('#at-commentaire')?.value?.trim() || '';
 
@@ -1223,7 +2523,7 @@ const Stock = (() => {
       commentaire
     };
 
-    await _persisterElement(tole);
+    const enLigne = await _persisterElement(tole);
     _fermerModale('m-ajout-tole');
     _peuplerFiltres();
     _filtrer();
@@ -1232,13 +2532,214 @@ const Stock = (() => {
     const msg = isAdmin
       ? `Tôle ${ep}mm ajoutée (${nouvelleId})`
       : `Tôle ${ep}mm soumise pour validation`;
-    _notif(msg, isAdmin ? 'succes' : 'info');
+    _notif(msg + (enLigne ? '' : ' — ⚠ mode hors ligne'), isAdmin ? (enLigne ? 'succes' : 'alerte') : 'info');
   }
 
 
   /* ──────────────────────────────────────────────────────────────
      MODALE MODIFICATION
      ────────────────────────────────────────────────────────────── */
+
+  /* ──────────────────────────────────────────────────────────────
+     ÉDITION INLINE
+     ────────────────────────────────────────────────────────────── */
+
+  function _activerEditionInline(td) {
+    const tr    = td.closest('tr');
+    const id    = tr?.dataset.id;
+    const field = td.dataset.field;
+    if (!id || !field) return;
+    const item = _parId(id);
+    if (!item) return;
+
+    td.classList.add('editing');
+    const originalHtml = td.innerHTML;
+
+    // ── Cas particulier : lieu (cascade Rack → Allée → Étage) ──────
+    if (field === 'lieu') {
+      const wrapper = document.createElement('span');
+      wrapper.className = 'lieu-cascade lieu-cascade-inline';
+      _monterSelecteurLieu(wrapper, item.lieu_stockage || '');
+
+      const annulerL = () => { td.innerHTML = originalHtml; td.classList.remove('editing'); };
+      let savedL = false;
+      const sauvegarderL = () => {
+        if (savedL) return; savedL = true;
+        td.classList.remove('editing');
+        _sauvegarderInline(id, field, _lireLieu(wrapper), item.categorie);
+      };
+
+      // Zone plate : sauvegarder dès la sélection du rack
+      wrapper.querySelector('.lieu-sel-rack')?.addEventListener('change', () => {
+        const rNom = wrapper.querySelector('.lieu-sel-rack')?.value;
+        const rack = _racks.find(r => r.nom === rNom);
+        if (rack && (!rack.nb_allees || !rack.nb_etages)) sauvegarderL();
+      });
+      wrapper.querySelector('.lieu-sel-etage')?.addEventListener('change', sauvegarderL);
+      wrapper.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); sauvegarderL(); }
+        if (e.key === 'Escape') { e.preventDefault(); annulerL(); }
+      });
+
+      td.innerHTML = '';
+      td.appendChild(wrapper);
+      wrapper.querySelector('.lieu-sel-rack')?.focus();
+      return;
+    }
+
+    let ctrl;
+    if (field === 'dispo') {
+      ctrl = document.createElement('select');
+      ctrl.className = 'cell-inline-input';
+      ctrl.innerHTML = `
+          <option value="disponible"${item.disponibilite === 'disponible' ? ' selected' : ''}>Disponible</option>
+          <option value="affecte"${item.disponibilite === 'affecte' ? ' selected' : ''}>Affecté</option>`;
+    } else {
+      ctrl = document.createElement('input');
+      ctrl.className = 'cell-inline-input';
+      if (field === 'longueur') {
+        ctrl.type = 'number'; ctrl.step = '0.01'; ctrl.min = '0';
+        ctrl.value = item.longueur_m ?? '';
+      } else if (field === 'epaisseur') {
+        ctrl.type = 'number'; ctrl.step = '0.5'; ctrl.min = '1';
+        ctrl.value = item.epaisseur_mm ?? '';
+      } else if (field === 'quantite') {
+        ctrl.type = 'number'; ctrl.min = '1'; ctrl.step = '1';
+        ctrl.value = item.quantite ?? 1;
+      } else if (field === 'chantier') {
+        ctrl = document.createElement('select');
+        ctrl.className = 'cell-inline-input';
+        ctrl.innerHTML = `<option value="">— Aucun —</option>` +
+          _chantiers.map(c => {
+            const label = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
+            const sel   = c.nom === item.chantier_affectation ? ' selected' : '';
+            return `<option value="${_e(c.nom)}"${sel}>${_e(label)}</option>`;
+          }).join('');
+      } else if (field === 'commentaire') {
+        ctrl.type = 'text';
+        ctrl.value = item.commentaire ?? '';
+        ctrl.placeholder = 'Commentaire…';
+      }
+    }
+
+    const annuler = () => {
+      td.innerHTML = originalHtml;
+      td.classList.remove('editing');
+    };
+
+    let sauvegarde = false;
+    const sauvegarder = () => {
+      if (sauvegarde) return;
+      sauvegarde = true;
+      td.classList.remove('editing');
+      _sauvegarderInline(id, field, ctrl.value, item.categorie);
+    };
+
+    ctrl.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); sauvegarder(); }
+      if (e.key === 'Escape') { e.preventDefault(); annuler(); }
+    });
+    if (ctrl.tagName === 'SELECT') {
+      ctrl.addEventListener('change', sauvegarder);
+    } else {
+      ctrl.addEventListener('blur', sauvegarder);
+    }
+
+    td.innerHTML = '';
+    td.appendChild(ctrl);
+    ctrl.focus();
+    if (ctrl.select) ctrl.select();
+  }
+
+  async function _sauvegarderInline(id, field, rawVal, categorie) {
+    const original = _parId(id);
+    if (!original) return;
+    const session = Auth.getSession();
+    const isAdmin = Auth.hasRight('can_validate');
+
+    let patch = {};
+    if (categorie === 'profil') {
+      if (field === 'longueur') {
+        const longueur = parseFloat(rawVal);
+        if (isNaN(longueur) || longueur < 0) { _filtrer(); return; }
+        const poidsml = original.poids_ml || 0;
+        const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : original.poids_barre_kg;
+        patch = { longueur_m: longueur, poids_barre_kg: poidsBarre };
+      } else if (field === 'lieu') {
+        patch = { lieu_stockage: rawVal || original.lieu_stockage };
+      } else if (field === 'dispo') {
+        patch = { disponibilite: rawVal };
+      } else if (field === 'chantier') {
+        patch = { chantier_affectation: rawVal || null };
+      } else if (field === 'commentaire') {
+        patch = { commentaire: rawVal };
+      }
+    } else {
+      // tôle
+      if (field === 'epaisseur') {
+        const ep = parseFloat(rawVal);
+        if (isNaN(ep) || ep <= 0) { _filtrer(); return; }
+        const poidsU = Math.round(((ep/1000)*(original.largeur_mm/1000)*(original.longueur_mm/1000)*7850)*10)/10;
+        patch = { epaisseur_mm: ep, poids_unitaire_kg: poidsU, poids_total_kg: Math.round(poidsU*(original.quantite||1)*10)/10 };
+      } else if (field === 'quantite') {
+        const qty = parseInt(rawVal) || 1;
+        patch = { quantite: qty, poids_total_kg: Math.round(original.poids_unitaire_kg*qty*10)/10 };
+      } else if (field === 'lieu') {
+        patch = { lieu_stockage: rawVal };
+      } else if (field === 'dispo') {
+        patch = { disponibilite: rawVal };
+      }
+    }
+
+    if (!Object.keys(patch).length) { _filtrer(); return; }
+
+    const modif = {
+      ...original,
+      ...patch,
+      statut: original.statut === 'en_attente' ? 'en_attente' : (isAdmin ? 'valide' : 'en_attente'),
+      valide_par:      isAdmin ? session?.identifiant : null,
+      date_validation: isAdmin ? _dateAujourdhui() : null,
+      date_modif:      _dateAujourdhui(),
+      modifie_par:     session?.identifiant || 'inconnu'
+    };
+
+    const enLigne = await _persisterElement(modif);
+    _notif('Modification enregistrée' + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
+
+    if (original.categorie === 'profil') {
+      const op  = session?.identifiant || null;
+      const lieuActuel = original.lieu_stockage || null;
+      if (field === 'longueur') {
+        const longAvant = original.longueur_m;
+        const longueur  = modif.longueur_m;
+        if (longueur === 0) {
+          await _enregistrerHistorique(id, 'ARCHIVAGE', longAvant, 0,
+            original.chantier_origine || null, op, null, null, lieuActuel);
+        } else if (longueur < longAvant) {
+          await _enregistrerHistorique(id, 'RETOUR', longAvant, longueur,
+            original.chantier_origine || null, op, null, null, lieuActuel);
+        } else if (longueur !== longAvant) {
+          await _enregistrerHistorique(id, 'MODIFICATION', longAvant, longueur,
+            original.chantier_affectation || null, op, null, 'Correction longueur', lieuActuel);
+        }
+      } else if (field === 'chantier') {
+        const chantier = rawVal || null;
+        const type = chantier ? 'AFFECTATION' : 'RETOUR';
+        await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
+          chantier, op, null, null, lieuActuel);
+      } else if (field === 'dispo') {
+        const type = rawVal === 'affecte' ? 'AFFECTATION' : 'RETOUR';
+        await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
+          original.chantier_affectation || null, op, null, null, lieuActuel);
+      } else if (field === 'lieu') {
+        const nouveauLieu = rawVal || null;
+        await _enregistrerHistorique(id, 'MODIFICATION', original.longueur_m, original.longueur_m,
+          original.chantier_affectation || null, op, null, null, nouveauLieu);
+      }
+    }
+
+    _filtrer();
+  }
 
   /**
    * Ouvre la modale de modification et pré-remplit les champs
@@ -1259,38 +2760,53 @@ const Stock = (() => {
     const m = document.getElementById('m-modification');
     if (!m) return;
 
-    // En-tête de la modale
+    // Titre modale
     const titre = m.querySelector('.modale-titre');
-    if (titre) titre.textContent = `Modifier — ${barre.section_type} ${barre.designation} (${barre.id})`;
+    if (titre) titre.textContent = 'Modifier la barre';
 
-    // Remplir les selects
-    _remplirSelectType(m.querySelector('#mod-type'));
-    _remplirSelectLieux(m.querySelector('#mod-lieu'));
+    // ── En-tête lecture seule ──
+    const elId    = m.querySelector('#mod-display-id');
+    const elType  = m.querySelector('#mod-display-type');
+    const elDesig = m.querySelector('#mod-display-desig');
+    const elLong  = m.querySelector('#mod-display-longueur');
+    if (elId)    elId.textContent    = barre.id;
+    if (elType)  elType.textContent  = barre.section_type;
+    if (elDesig) elDesig.textContent = barre.designation;
+    if (elLong)  elLong.textContent  = barre.longueur_m.toFixed(2) + ' m';
 
-    // Pré-remplir les valeurs
-    _setVal(m, '#mod-type',        barre.section_type);
-    _apMajDesig(m, '#mod-type', '#mod-desig');  // cascade désignations
-    // Après avoir peuplé les désignations, sélectionner la bonne
-    setTimeout(() => {
-      _setVal(m, '#mod-desig', barre.designation);
-      _apMajSchema(m, '#mod-type', '#mod-desig');
-    }, 0);
+    // Bouton fiche section
+    const btnFiche = m.querySelector('#mod-btn-fiche');
+    if (btnFiche) btnFiche.onclick = () => Stock.ouvrirFicheSection(barre.section_type, barre.designation);
 
-    _setVal(m, '#mod-longueur',   barre.longueur_m);
-    _setVal(m, '#mod-chantier',   barre.chantier_origine);
-    _setVal(m, '#mod-lieu',       barre.lieu_stockage);
-    _setVal(m, '#mod-dispo',      barre.disponibilite);
-    _setVal(m, '#mod-affectation', barre.chantier_affectation || '');
+    // Chips métadonnées
+    const metaDiv = m.querySelector('#mod-barre-meta');
+    if (metaDiv) {
+      const chips = [];
+      if (barre.chantier_origine) chips.push(`<span class="mod-meta-chip"><strong>Origine :</strong>&nbsp;${_e(_labelChantier(barre.chantier_origine))}</span>`);
+      if (barre.classe_acier)     chips.push(`<span class="mod-meta-chip"><strong>Classe :</strong>&nbsp;${_e(barre.classe_acier)}</span>`);
+      if (barre.ref_commande)     chips.push(`<span class="mod-meta-chip"><strong>Réf :</strong>&nbsp;${_e(barre.ref_commande)}</span>`);
+      if (barre.fournisseur)      chips.push(`<span class="mod-meta-chip"><strong>Fourn. :</strong>&nbsp;${_e(barre.fournisseur)}</span>`);
+      metaDiv.innerHTML = chips.join('');
+    }
+
+    // ── Champs éditables ──
+    _monterSelecteurLieu(m.querySelector('#mod-lieu'), barre.lieu_stockage || '');
+    _setVal(m, '#mod-longueur',    barre.longueur_m);
+    _setVal(m, '#mod-dispo',       barre.disponibilite);
+    _peuplerSelectAffectation(m.querySelector('#mod-affectation'), barre.chantier_affectation || '');
     _setVal(m, '#mod-commentaire', barre.commentaire || '');
+    _apMajPoids(m, '#mod-longueur');
+    const affWrapMod = m.querySelector('#mod-affectation-wrap');
+    if (affWrapMod) affWrapMod.style.display = barre.disponibilite === 'affecte' ? '' : 'none';
+    const formNouvMod = m.querySelector('#mod-nouveau-chantier-form');
+    if (formNouvMod) formNouvMod.style.display = 'none';
 
-    // Stocker l'id en cours de modification
-    m.dataset.idEnCours  = barre.id;
-    m.dataset.categorieEnCours = 'profil';
-    m.dataset.poidsml = barre.poids_ml || '';
+    // Stocker l'id et les données immuables
+    m.dataset.idEnCours         = barre.id;
+    m.dataset.categorieEnCours  = 'profil';
+    m.dataset.poidsml           = barre.poids_ml || '';
 
-    // Note selon profil
     _majNoteStatut(m, '.mod-note-statut');
-
     _ouvrirModale('m-modification');
   }
 
@@ -1308,14 +2824,13 @@ const Stock = (() => {
     if (zoneProfil) zoneProfil.style.display = 'none';
     if (zoneTole)   zoneTole.style.display   = 'block';
 
-    _remplirSelectLieux(m.querySelector('#mod-t-lieu'));
+    _monterSelecteurLieu(m.querySelector('#mod-t-lieu'), tole.lieu_stockage || '');
 
     _setVal(m, '#mod-t-epaisseur',  tole.epaisseur_mm);
     _setVal(m, '#mod-t-largeur',    tole.largeur_mm);
     _setVal(m, '#mod-t-longueur',   tole.longueur_mm);
     _setVal(m, '#mod-t-quantite',   tole.quantite);
-    _setVal(m, '#mod-t-chantier',   tole.chantier_origine);
-    _setVal(m, '#mod-t-lieu',       tole.lieu_stockage);
+    _monterPickerChantier('mod-t-chantier-picker', 'mod-t-chantier', tole.chantier_origine || '');
     _setVal(m, '#mod-t-dispo',      tole.disponibilite);
     _setVal(m, '#mod-t-commentaire', tole.commentaire || '');
 
@@ -1340,44 +2855,57 @@ const Stock = (() => {
     const isAdmin = Auth.hasRight('can_validate');
 
     if (categorie === 'profil') {
-      const type    = m.querySelector('#mod-type')?.value?.trim();
-      const desig   = m.querySelector('#mod-desig')?.value?.trim();
-      const longueur = parseFloat(m.querySelector('#mod-longueur')?.value);
-      const chantier = m.querySelector('#mod-chantier')?.value?.trim();
-      const lieu     = m.querySelector('#mod-lieu')?.value?.trim();
-      const dispo    = m.querySelector('#mod-dispo')?.value || 'disponible';
+      const longueur    = parseFloat(m.querySelector('#mod-longueur')?.value);
+      const lieu        = _lireLieu(m.querySelector('#mod-lieu'));
+      const dispo       = m.querySelector('#mod-dispo')?.value || 'disponible';
       const affectation = m.querySelector('#mod-affectation')?.value?.trim() || null;
       const commentaire = m.querySelector('#mod-commentaire')?.value?.trim() || '';
 
-      if (!type)   return _signalerErreur(m, '#mod-type',    'Le type est obligatoire');
-      if (!desig)  return _signalerErreur(m, '#mod-desig',   'La désignation est obligatoire');
-      if (!longueur || longueur <= 0) return _signalerErreur(m, '#mod-longueur', 'La longueur est obligatoire');
+      // La longueur 0 est autorisée (déclenchera un archivage)
+      if (isNaN(longueur) || longueur < 0) return _signalerErreur(m, '#mod-longueur', 'La longueur est obligatoire');
 
-      const poidsml   = parseFloat(m.dataset.poidsml) || original.poids_ml || 0;
+      const poidsml    = parseFloat(m.dataset.poidsml) || original.poids_ml || 0;
       const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : original.poids_barre_kg;
+      const estArchivage = longueur === 0;
 
-      /** @type {Object} Barre modifiée — Gestion repasse en en_attente */
       const modif = {
         ...original,
-        section_type: type,
-        designation: desig,
         longueur_m: longueur,
-        poids_ml: poidsml,
         poids_barre_kg: poidsBarre,
-        chantier_origine: chantier || original.chantier_origine,
         lieu_stockage: lieu,
         disponibilite: dispo,
         chantier_affectation: affectation,
         commentaire,
-        // Gestion → en_attente / Admin → valide direct
-        statut: isAdmin ? 'valide' : 'en_attente',
+        statut: estArchivage ? 'archivee' : (isAdmin ? 'valide' : 'en_attente'),
         valide_par: isAdmin ? session?.identifiant : null,
         date_validation: isAdmin ? _dateAujourdhui() : null,
         date_modif: _dateAujourdhui(),
         modifie_par: session?.identifiant || 'inconnu'
       };
 
-      await _persisterElement(modif);
+      var _enLigneModif = await _persisterElement(modif);
+
+      const longAvant = original.longueur_m;
+      const op = session?.identifiant || null;
+      if (estArchivage) {
+        await _enregistrerHistorique(original.id, 'ARCHIVAGE', longAvant, 0,
+          affectation || original.chantier_origine || null, op, null, commentaire || null, lieu || null);
+      } else if (longueur < longAvant) {
+        await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
+          original.chantier_origine || null, op, null, commentaire || null, lieu || null);
+      } else if (longueur > longAvant) {
+        await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
+          affectation || original.chantier_affectation || null, op, null, 'Correction longueur', lieu || null);
+      } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
+        await _enregistrerHistorique(original.id, 'AFFECTATION', longAvant, longueur,
+          affectation || null, op, null, commentaire || null, lieu || null);
+      } else if (dispo === 'disponible' && original.disponibilite === 'affecte') {
+        await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
+          original.chantier_affectation || null, op, null, commentaire || null, lieu || null);
+      } else if (lieu !== original.lieu_stockage) {
+        await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
+          affectation || original.chantier_affectation || null, op, null, null, lieu || null);
+      }
 
     } else {
       // Modification tôle
@@ -1386,7 +2914,7 @@ const Stock = (() => {
       const lng = parseFloat(m.querySelector('#mod-t-longueur')?.value);
       const qty = parseInt(m.querySelector('#mod-t-quantite')?.value) || 1;
       const chantier    = m.querySelector('#mod-t-chantier')?.value?.trim();
-      const lieu        = m.querySelector('#mod-t-lieu')?.value?.trim();
+      const lieu        = _lireLieu(m.querySelector('#mod-t-lieu'));
       const dispo       = m.querySelector('#mod-t-dispo')?.value || 'disponible';
       const commentaire = m.querySelector('#mod-t-commentaire')?.value?.trim() || '';
 
@@ -1416,7 +2944,7 @@ const Stock = (() => {
         modifie_par: session?.identifiant || 'inconnu'
       };
 
-      await _persisterElement(modif);
+      _enLigneModif = await _persisterElement(modif);
     }
 
     // Réafficher la zone correcte
@@ -1426,11 +2954,17 @@ const Stock = (() => {
     if (zoneTole)   zoneTole.style.display   = 'none';
 
     _fermerModale('m-modification');
+    _peuplerFiltres();
     _filtrer();
     _majAlerteAttente();
 
-    const msg = isAdmin ? 'Modification enregistrée' : 'Modification soumise pour validation';
-    _notif(msg, isAdmin ? 'succes' : 'info');
+    // Message adapté selon le type d'opération
+    const estArch = categorie === 'profil' && parseFloat(m.querySelector('#mod-longueur')?.value) === 0;
+    const msgBase = estArch
+      ? 'Barre archivée'
+      : (isAdmin ? 'Modification enregistrée' : 'Modification soumise pour validation');
+    const typeNotif = _enLigneModif ? 'succes' : 'alerte';
+    _notif(msgBase + (_enLigneModif ? '' : ' — ⚠ mode hors ligne'), typeNotif);
   }
 
 
@@ -1471,10 +3005,13 @@ const Stock = (() => {
       }
     }
 
-    // Pré-remplir le demandeur depuis la session
+    // Picker demandeur
     const session = Auth.getSession();
-    const inpDemandeur = m.querySelector('#dem-demandeur');
-    if (inpDemandeur && session?.nom) inpDemandeur.value = session.nom;
+    const pickWrap = m.querySelector('#dem-demandeur-picker');
+    _monterPickerDemandeur(pickWrap);
+
+    // Picker chantier
+    _monterPickerChantier('dem-chantier-picker', 'dem-chantier');
 
     m.dataset.idBarre = id;
 
@@ -1486,32 +3023,40 @@ const Stock = (() => {
    * @param {HTMLElement} m
    */
   async function _soumettreDemande(m) {
-    const demandeur = m.querySelector('#dem-demandeur')?.value?.trim();
-    const chantier  = m.querySelector('#dem-chantier')?.value?.trim();
-    const commentaire = m.querySelector('#dem-commentaire')?.value?.trim() || '';
-    const idBarre   = m.dataset.idBarre;
+    const demandeurInfo = _lireDemandeurPicker(m);
+    const chantier      = m.querySelector('#dem-chantier')?.value?.trim();
+    const commentaire   = m.querySelector('#dem-commentaire')?.value?.trim() || '';
+    const idBarre       = m.dataset.idBarre;
 
-    if (!demandeur) return _signalerErreur(m, '#dem-demandeur', 'Le nom du demandeur est obligatoire');
-    if (!chantier)  return _signalerErreur(m, '#dem-chantier',  'Le chantier est obligatoire');
+    if (!demandeurInfo) return _notif('Le demandeur est obligatoire', 'erreur');
+    if (!chantier)      return _signalerErreur(m, '#dem-chantier', 'Le chantier est obligatoire');
+
+    const nomComplet = [demandeurInfo.prenom, demandeurInfo.nom].filter(Boolean).join(' ');
 
     const store = _chargerDemandes();
     const nb    = (store.compteur || 0) + 1;
 
-    /** @type {Object} Structure identique à demandes.json */
     const demande = {
-      id: `DEM-${String(nb).padStart(4, '0')}`,
-      id_barre: idBarre,
-      demandeur,
+      id:               `DEM-${String(nb).padStart(4, '0')}`,
+      id_barre:         idBarre,
+      demandeur:        nomComplet,
+      demandeur_email:  demandeurInfo.email || null,
+      demandeur_id:     demandeurInfo.id    || null,
+      demandeur_nom:    demandeurInfo.nom   || null,
+      demandeur_prenom: demandeurInfo.prenom || null,
       chantier_demande: chantier,
       commentaire,
-      statut: 'en_attente',
+      statut:      'en_attente',
       date_demande: _dateAujourdhui(),
-      demande_par: Auth.getSession()?.identifiant || 'visiteur'
+      demande_par:  Auth.getSession()?.identifiant || 'visiteur'
     };
 
-    await _persisterDemande(demande);
+    const enLigne = await _persisterDemande(demande);
+    _demandes.push(demande);
     _fermerModale('m-demande');
-    _notif(`Demande ${demande.id} envoyée — en attente de validation admin`, 'info');
+    _filtrer();
+    _majAlerteAttente();
+    _notif(`Demande ${demande.id} envoyée — en attente de validation admin` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'info' : 'alerte');
   }
 
 
@@ -1602,74 +3147,72 @@ const Stock = (() => {
       'L égale':   { norme: 'EN 10056-1',  desc: 'Cornière à ailes égales' },
       'L inégale': { norme: 'EN 10056-1',  desc: 'Cornière à ailes inégales' },
       'Plat':      { norme: 'EN 10058',    desc: 'Plat laminé à chaud' },
+      'SHS':       { norme: 'EN 10210 / EN 10219', desc: 'Tube carré à section creuse' },
+      'RHS':       { norme: 'EN 10210 / EN 10219', desc: 'Tube rectangulaire à section creuse' },
+      'CHS':       { norme: 'EN 10210 / EN 10219', desc: 'Tube circulaire à section creuse' },
     };
     const info = NORMES[type] || { norme: 'Section normalisée', desc: '' };
     if (badgeNorme) badgeNorme.textContent = info.norme;
     if (descNorme)  descNorme.textContent  = info.desc;
 
-    /* Image de la section — avec fallback SVG si fichier absent */
-    const zoneVisuel = m.querySelector('#fiche-visuel');
-    if (zoneVisuel) {
-      // type = série directe (ex: "IPE", "IPE A", "HEA A", "L égale"...)
-      // Correspondance série → fichier image dans assets/profils/
-      const SERIES_IMAGES = {
-        'IPE':       'IPE.png',
-        'IPE A':     'IPEA.png',
-        'IPE O':     'IPEO.png',
-        'IPE 750':   'IPE750.png',
-        'IPN':       'IPN.png',
-        'HEA':       'HEA.png',
-        'HEA A':     'HEAA.png',
-        'HEB':       'HEB.png',
-        'HEM':       'HEM.png',
-        'UPN':       'UPN.png',
-        'UPE':       'UPE.png',
-        'L égale':   'Le.png',
-        'L inégale': 'Li.png',
+    /* Image PNG ou SVG coté + dimensions */
+    const sec = _getDims(type, desig);
+    const svgZone = m.querySelector('.detail-svg-zone');
+    if (svgZone) {
+      const PHOTOS = {
+        'IPE':       '../assets/profils/IPE.png',
+        'IPE A':     '../assets/profils/IPEA.png',
+        'IPE AA':    '../assets/profils/IPEAA.png',
+        'IPE O':     '../assets/profils/IPEO.png',
+        'IPN':       '../assets/profils/IPN.png',
+        'HEA':       '../assets/profils/HEA.png',
+        'HEA A':     '../assets/profils/HEAA.png',
+        'HEB':       '../assets/profils/HEB.png',
+        'HEM':       '../assets/profils/HEM.png',
+        'UPN':       '../assets/profils/UPN.png',
+        'UPE':       '../assets/profils/UPE.png',
+        'L égale':   '../assets/profils/Le.png',
+        'L inégale': '../assets/profils/Li.png',
+        'Plat':      '../assets/profils/Plat.png',
+        'SHS':       '../assets/profils/SHS chaud.png',
+        'SHS chaud': '../assets/profils/SHS chaud.png',
+        'SHS froid': '../assets/profils/SHS froid.png',
+        'RHS':       '../assets/profils/RHS chaud.png',
+        'RHS chaud': '../assets/profils/RHS chaud.png',
+        'RHS froid': '../assets/profils/RHS froid.png',
+        'CHS':       '../assets/profils/CHS chaud.png',
+        'CHS chaud': '../assets/profils/CHS chaud.png',
+        'CHS froid': '../assets/profils/CHS froid.png',
+      };
+      const fab    = sec?.fabrication;
+      const imgKey = fab ? `${type} ${fab}` : type;
+      const imgSrc = PHOTOS[imgKey] || PHOTOS[type] || null;
+
+      const showSvg = () => {
+        svgZone.innerHTML = profilSvgCote(sec || { serie: type }, 190, 190);
       };
 
-      const nomFichier = SERIES_IMAGES[type] || null;
-
-      const img   = zoneVisuel.querySelector('#fiche-img');
-      const svgEl = zoneVisuel.querySelector('#fiche-svg');
-
-      if (nomFichier && img) {
-        // Afficher l'image — masquer le SVG
-        img.src = `../assets/profils/${nomFichier}`;
-        img.alt = `Section ${desig}`;
-        img.style.display  = 'block';
-        img.style.cursor   = 'zoom-in';
-        img.dataset.zoom   = '0';
-        img.onclick        = () => _zoomImage(img);
-        if (svgEl) svgEl.style.display = 'none';
-
-        // Fallback SVG si l'image ne charge pas
-        img.onerror = function() {
-          this.style.display = 'none';
-          if (svgEl) {
-            while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
-            _dessinerSVGComplet(svgEl, type);
-            svgEl.style.display = 'block';
-          }
-        };
-      } else {
-        // Pas d'image disponible — garder le SVG généré
-        if (img) img.style.display = 'none';
-        if (svgEl) {
-          while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
-          _dessinerSVGComplet(svgEl, type);
-          svgEl.style.display = 'block';
+      if (imgSrc) {
+        // Pattern identique à mfImageHtml() dans la bibliothèque
+        svgZone.innerHTML = `<img alt="${type}" data-zoom="0"
+          style="max-width:100%;max-height:220px;object-fit:contain;display:block;margin:0 auto;cursor:zoom-in;transition:max-height .2s;"
+          onclick="profilZoomImage(this)">`;
+        const imgEl = svgZone.querySelector('img');
+        if (imgEl) {
+          imgEl.onerror = showSvg;
+          imgEl.src     = imgSrc;
         }
+      } else {
+        showSvg();
       }
     }
 
-    /* Label schéma */
-    const schemaLabel = m.querySelector('#fiche-schema-label');
-    if (schemaLabel) schemaLabel.textContent = `${desig}`;
-
-    /* Dimensions */
-    const dimsList = m.querySelector('#fiche-dims-list');
-    if (dimsList) _rendreDimsList(dimsList, _getDims(type, desig));
+    const dimsZone = m.querySelector('.detail-dims-zone');
+    if (dimsZone) {
+      dimsZone.innerHTML = sec
+        ? profilDimsTableau(sec)
+        : '<div style="color:#aaa;font-size:12px">Dimensions non disponibles</div>';
+    }
 
     /* Inventaire rapide depuis le stock courant */
     const stockInfo = m.querySelector('#fiche-stock-info');
@@ -1702,8 +3245,11 @@ const Stock = (() => {
   async function validerElement(id) {
     if (id.startsWith('DEM-')) {
       // Validation d'une demande d'attribution
-      const store   = _chargerDemandes();
-      _selection     = store.demandes.find(d => d.id === id) || null;
+      _selection = _demandes.find(d => d.id === id) || null;
+      if (!_selection) {
+        // fallback localStorage
+        _selection = _chargerDemandes().demandes.find(d => d.id === id) || null;
+      }
       if (!_selection) return _notif('Demande introuvable', 'erreur');
       _remplirValidationDemande(_selection);
       _ouvrirModale('m-valider-demande');
@@ -1722,8 +3268,8 @@ const Stock = (() => {
    */
   async function refuserElement(id) {
     if (id.startsWith('DEM-')) {
-      const store = _chargerDemandes();
-      _selection   = store.demandes.find(d => d.id === id) || null;
+      _selection = _demandes.find(d => d.id === id) || null;
+      if (!_selection) _selection = _chargerDemandes().demandes.find(d => d.id === id) || null;
     } else {
       _selection = _parId(id);
     }
@@ -1758,7 +3304,8 @@ const Stock = (() => {
     const typeOp  = el.date_modif ? 'Modification' : 'Ajout';
 
     if (el.categorie === 'profil') {
-      const poids = el.poids_barre_kg ? `${el.poids_barre_kg.toFixed(1)} kg` : '—';
+      const poidsP = _poidsEffectifProfil(el);
+      const poids = poidsP > 0 ? `${poidsP.toFixed(1)} kg` : '—';
       recap.innerHTML = `
         <div class="dim-row"><span class="dim-label">Opération</span><span class="dim-val">${typeOp}</span></div>
         <div class="dim-row"><span class="dim-label">Référence</span><span class="dim-val">${_e(el.id)}</span></div>
@@ -1867,12 +3414,26 @@ const Stock = (() => {
       date_validation: _dateAujourdhui()
     };
 
-    await _persisterElement(valide);
+    const enLigne = await _persisterElement(valide);
+
+    // Enregistrer la validation dans l'historique (profilés uniquement)
+    if (el.categorie === 'profil') {
+      await _enregistrerHistorique(
+        el.id, 'VALIDATION',
+        null, el.longueur_m,
+        el.chantier_origine || null,
+        null,
+        session?.identifiant || null,
+        null,
+        el.lieu_stockage || null
+      );
+    }
+
     _fermerModale('m-valider-stock');
     _filtrer();
     _majAlerteAttente();
 
-    _notif(`${id} validé avec succès`, 'succes');
+    _notif(`${id} validé` + (enLigne ? ' avec succès' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
   }
 
   /**
@@ -1897,6 +3458,7 @@ const Stock = (() => {
     };
 
     // Persister la demande mise à jour dans Supabase
+    let enLigne = true;
     try {
       await window.SB.upsert('demandes', demMAJ);
     } catch(e) {
@@ -1905,6 +3467,7 @@ const Stock = (() => {
       const idx = store.demandes.findIndex(d => d.id === idDem);
       if (idx !== -1) { store.demandes[idx] = demMAJ; } else { store.demandes.push(demMAJ); }
       try { localStorage.setItem(CLE_DEMANDES, JSON.stringify(store)); } catch {}
+      enLigne = false;
     }
 
     // Mettre à jour la barre → affectée au chantier demandé
@@ -1918,7 +3481,21 @@ const Stock = (() => {
         date_modif: _dateAujourdhui(),
         modifie_par: session?.identifiant || 'admin'
       };
-      await _persisterElement(barreMAJ);
+      const ok = await _persisterElement(barreMAJ);
+      if (!ok) enLigne = false;
+
+      // Enregistrer l'affectation dans l'historique (profilés uniquement)
+      if (barre.categorie === 'profil') {
+        await _enregistrerHistorique(
+          barre.id, 'AFFECTATION',
+          barre.longueur_m, barre.longueur_m,
+          dem.chantier_demande,
+          dem.demandeur,
+          session?.identifiant || null,
+          dem.commentaire || null,
+          barre.lieu_stockage || null
+        );
+      }
     }
 
     // Rafraîchir la liste des demandes en mémoire
@@ -1929,10 +3506,27 @@ const Stock = (() => {
       _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
     }
 
+    // Sauvegarder le nouveau demandeur s'il n'était pas encore dans la liste
+    if (!dem.demandeur_id && dem.demandeur_nom) {
+      try {
+        const res = await window.SB.inserer('demandeurs', {
+          nom:    dem.demandeur_nom,
+          prenom: dem.demandeur_prenom || null,
+          email:  dem.demandeur_email  || null,
+          actif:  true
+        });
+        const rows = await window.SB.lire('demandeurs', { order: 'nom' });
+        _demandeurs = rows.filter(d => d.actif);
+      } catch(e) { console.warn('[Stock] Impossible de sauvegarder le demandeur :', e); }
+    }
+
+    // Envoyer email de confirmation
+    await _envoyerMailConfirmation(dem, 'accepte');
+
     _fermerModale('m-valider-demande');
     _filtrer();
     _majAlerteAttente();
-    _notif(`Demande ${idDem} validée — barre affectée à "${dem.chantier_demande}"`, 'succes');
+    _notif(`Demande ${idDem} validée — barre affectée à "${dem.chantier_demande}"` + (enLigne ? '' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
   }
 
   /**
@@ -1967,6 +3561,7 @@ const Stock = (() => {
           try { localStorage.setItem(CLE_DEMANDES, JSON.stringify(store)); } catch {}
         }
       }
+      if (dem) await _envoyerMailConfirmation(dem, 'refuse', motif);
       try {
         const demandes = await window.SB.lire('demandes');
         _demandes = demandes.filter(d => d.statut === 'en_attente');
@@ -1996,6 +3591,134 @@ const Stock = (() => {
 
   /** Retourne l'élément sélectionné */
   function getSelection() { return _selection; }
+
+
+  /* ──────────────────────────────────────────────────────────────
+     HISTORIQUE DES BARRES
+     ────────────────────────────────────────────────────────────── */
+
+  /**
+   * Enregistre une entrée dans lbf_barres_historique (non-bloquant).
+   * En cas d'erreur Supabase, l'opération est ignorée silencieusement.
+   * @param {string} barreId
+   * @param {string} typeOperation — ENTREE | AFFECTATION | RETOUR | ARCHIVAGE | VALIDATION
+   * @param {number|null} longueurAvant
+   * @param {number|null} longueurApres
+   * @param {string|null} chantier
+   * @param {string|null} operateur
+   * @param {string|null} validePar
+   * @param {string|null} commentaire
+   */
+  async function _enregistrerHistorique(barreId, typeOperation, longueurAvant, longueurApres, chantier, operateur, validePar, commentaire, lieu = null) {
+    if (!barreId || !typeOperation) return;
+    try {
+      await window.SB.insererHistorique({
+        barre_id:         barreId,
+        type_operation:   typeOperation,
+        longueur_avant_m: longueurAvant  ?? null,
+        longueur_apres_m: longueurApres  ?? null,
+        chantier:         chantier       || null,
+        operateur:        operateur      || null,
+        valide_par:       validePar      || null,
+        commentaire:      commentaire    || null,
+        lieu:             lieu           || null,
+      });
+    } catch(e) {
+      console.warn('[Stock] Impossible d\'enregistrer l\'historique :', e);
+    }
+  }
+
+  /**
+   * Ouvre la modale d'historique pour une barre donnée et charge les données.
+   * Accessible depuis le tableau (bouton 📋) et l'onglet Archivées.
+   * @param {string} id — ex. "BAR-0001"
+   */
+  async function ouvrirHistoriqueBarre(id) {
+    const barre = _parId(id);
+
+    // Construire le titre de la modale
+    const titreEl = document.getElementById('hist-titre');
+    if (titreEl) {
+      if (barre) {
+        const prefix = barre.statut === 'archivee' ? 'ARC' : 'BAR';
+        const code   = barre.code_barre ? `${prefix}-${barre.code_barre}` : barre.id;
+        titreEl.textContent = `Historique — ${code} · ${barre.section_type} ${barre.designation}`;
+      } else {
+        titreEl.textContent = `Historique — ${id}`;
+      }
+    }
+
+    // Afficher le loader et ouvrir la modale
+    const contenu = document.getElementById('hist-contenu');
+    if (contenu) {
+      contenu.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Chargement de l\'historique…</div>';
+    }
+    _ouvrirModale('m-historique-barre');
+
+    // Charger l'historique depuis Supabase
+    try {
+      const lignes = await window.SB.lireHistoriqueParBarre(id);
+      if (contenu) contenu.innerHTML = _htmlTableauHistorique(lignes);
+    } catch(e) {
+      console.error('[Stock] Erreur chargement historique :', e);
+      if (contenu) {
+        contenu.innerHTML = '<div style="padding:24px;text-align:center;color:var(--rouge)">Impossible de charger l\'historique.</div>';
+      }
+    }
+  }
+
+  /**
+   * Génère le HTML du tableau historique d'une barre.
+   * @param {Array} lignes — entrées de lbf_barres_historique
+   * @returns {string}
+   */
+  function _htmlTableauHistorique(lignes) {
+    if (!lignes || !lignes.length) {
+      return '<div style="padding:24px;text-align:center;color:#aaa;font-style:italic">Aucune entrée dans l\'historique.</div>';
+    }
+
+    // Correspondance type d'opération → classe CSS du badge
+    const BADGES = {
+      ENTREE:       'badge-op-entree',
+      AFFECTATION:  'badge-op-affectation',
+      RETOUR:       'badge-op-retour',
+      ARCHIVAGE:    'badge-op-archivage',
+      VALIDATION:   'badge-op-validation',
+      MODIFICATION: 'badge-op-modification',
+    };
+
+    let h = `<table class="hist-table">
+      <thead><tr>
+        <th>Date</th>
+        <th>Opération</th>
+        <th>Long. avant</th>
+        <th>Long. après</th>
+        <th>Lieu</th>
+        <th>Chantier</th>
+        <th>Opérateur</th>
+      </tr></thead><tbody>`;
+
+    lignes.forEach(l => {
+      const date = l.date_operation
+        ? new Date(l.date_operation).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+        : '—';
+      const cls   = BADGES[l.type_operation] || '';
+      const avant = l.longueur_avant_m != null ? `${parseFloat(l.longueur_avant_m).toFixed(2)} m` : '—';
+      const apres = l.longueur_apres_m != null ? `${parseFloat(l.longueur_apres_m).toFixed(2)} m` : '—';
+
+      h += `<tr>
+        <td style="white-space:nowrap">${_e(date)}</td>
+        <td><span class="badge-operation ${cls}">${_e(l.type_operation)}</span></td>
+        <td>${avant}</td>
+        <td>${apres}</td>
+        <td>${_e(l.lieu || '—')}</td>
+        <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
+        <td>${_e(l.operateur || '—')}</td>
+      </tr>`;
+    });
+
+    return h + '</tbody></table>';
+  }
 
 
   /* ──────────────────────────────────────────────────────────────
@@ -2038,6 +3761,25 @@ const Stock = (() => {
   }
 
   /**
+   * Convertit les lignes Supabase sections en structure {standard, custom}
+   */
+  function _sectionsFromRows(rows) {
+    const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat', 'Barres rondes', 'Barres carrées'];
+    const map = {};
+    rows.forEach(r => {
+      if (!map[r.famille]) map[r.famille] = { famille: r.famille, sections: [] };
+      const dims = typeof r.dims === 'string' ? JSON.parse(r.dims) : (r.dims || {});
+      const sec = { famille: r.famille, serie: r.serie, desig: r.desig, pml: r.pml, fabrication: r.fabrication || null, ...dims };
+      if (r.serie === 'CHS') {
+        const ep = sec.e ?? sec.t;
+        if (sec.d !== undefined && ep !== undefined) sec.di = Math.round((sec.d - 2 * ep) * 10) / 10;
+      }
+      map[r.famille].sections.push(sec);
+    });
+    return { standard: ORDRE.map(f => map[f]).filter(Boolean), custom: [] };
+  }
+
+  /**
    * Remplit un select avec les types de sections disponibles
    * @param {HTMLSelectElement} sel
    */
@@ -2071,14 +3813,291 @@ const Stock = (() => {
    * Remplit un select avec les lieux de stockage
    * @param {HTMLSelectElement} sel
    */
-  function _remplirSelectLieux(sel) {
-    if (!sel) return;
-    sel.innerHTML = '<option value="">— Choisir —</option>';
-    LIEUX.forEach(l => {
-      const o = document.createElement('option');
-      o.value = l; o.textContent = l;
-      sel.appendChild(o);
+  /** Monte un sélecteur lieu en cascade (Rack → Allée → Étage) dans el.
+   *  valeur — ex. "Rack 1 - B4" pour pré-sélectionner */
+  function _monterSelecteurLieu(el, valeur = '') {
+    if (!el) return;
+    let nomRack = '', nomAllee = '', nomEtage = '';
+    if (valeur) {
+      const mt = valeur.match(/^(.+)\s*-\s*([A-Z]+)(\d+)$/);
+      if (mt) { nomRack = mt[1].trim(); nomAllee = mt[2]; nomEtage = mt[3]; }
+      else { nomRack = valeur.trim(); } // zone plate : valeur = nom du rack seul
+    }
+
+    const selRack = document.createElement('select');
+    selRack.className = 'lieu-sel lieu-sel-rack';
+    selRack.innerHTML = '<option value="">— Rack —</option>'
+      + _racks.map(r => `<option value="${_e(r.nom)}"${r.nom === nomRack ? ' selected' : ''}>${_e(r.nom)}</option>`).join('');
+
+    const selAllee = document.createElement('select');
+    selAllee.className = 'lieu-sel lieu-sel-allee';
+
+    const selEtage = document.createElement('select');
+    selEtage.className = 'lieu-sel lieu-sel-etage';
+
+    const majAllee = () => {
+      const rack = _racks.find(r => r.nom === selRack.value);
+      if (!rack) {
+        selAllee.innerHTML = '<option value="">— Allée —</option>';
+        selAllee.style.display = '';
+        selEtage.innerHTML = '<option value="">— Étage —</option>';
+        selEtage.style.display = '';
+        return;
+      }
+      // Zone plate : cacher allée et étage
+      if (!rack.nb_allees || !rack.nb_etages) {
+        selAllee.innerHTML = '<option value="">— Allée —</option>';
+        selAllee.style.display = 'none';
+        selEtage.innerHTML = '<option value="">— Étage —</option>';
+        selEtage.style.display = 'none';
+        return;
+      }
+      selAllee.style.display = '';
+      selEtage.style.display = '';
+      selAllee.innerHTML = '<option value="">— Allée —</option>'
+        + Array.from({length: rack.nb_allees}, (_, i) => {
+            const l = _labelAllee(i);
+            return `<option value="${l}"${l === nomAllee ? ' selected' : ''}>${l}</option>`;
+          }).join('');
+      majEtage();
+    };
+
+    const majEtage = () => {
+      const rack = _racks.find(r => r.nom === selRack.value);
+      if (!rack || !selAllee.value) { selEtage.innerHTML = '<option value="">— Étage —</option>'; return; }
+      selEtage.innerHTML = '<option value="">— Étage —</option>'
+        + Array.from({length: rack.nb_etages}, (_, i) => {
+            const n = String(i + 1);
+            return `<option value="${n}"${n === nomEtage ? ' selected' : ''}>${n}</option>`;
+          }).join('');
+    };
+
+    selRack.addEventListener('change', () => { nomAllee = ''; nomEtage = ''; majAllee(); });
+    selAllee.addEventListener('change', majEtage);
+
+    el.innerHTML = '';
+    el.append(selRack, selAllee, selEtage);
+    majAllee();
+  }
+
+  /** Lit la valeur depuis un conteneur lieu-cascade.
+   *  Zone plate : retourne juste le nom du rack.
+   *  Zone avec allées/étages : retourne "Rack 1 - B4". */
+  function _lireLieu(el) {
+    if (!el) return '';
+    const rack = el.querySelector('.lieu-sel-rack')?.value || '';
+    if (!rack) return '';
+    const selAllee = el.querySelector('.lieu-sel-allee');
+    if (selAllee?.style.display === 'none') return rack; // zone plate
+    const allee = selAllee?.value || '';
+    const etage = el.querySelector('.lieu-sel-etage')?.value || '';
+    if (!allee || !etage) return '';
+    return `${rack} - ${allee}${etage}`;
+  }
+
+  function _majDatalistChantiers() {
+    const dl = document.getElementById('dl-chantiers');
+    if (!dl) return;
+    dl.innerHTML = _chantiers.map(c => `<option value="${_e(c.nom)}">`).join('');
+  }
+
+  function _monterPickerFournisseur(wrapId, selectId, valeurCourante = '') {
+    const wrap = typeof wrapId === 'string' ? document.getElementById(wrapId) : wrapId;
+    if (!wrap) return;
+
+    const opts = `<option value="">— Choisir un fournisseur —</option>` +
+      _fournisseurs.map(f => {
+        const sel = f.nom === valeurCourante ? ' selected' : '';
+        return `<option value="${_e(f.nom)}"${sel}>${_e(f.nom)}</option>`;
+      }).join('');
+
+    wrap.innerHTML = `
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="${selectId}" style="flex:1;min-width:0">${opts}</select>
+        <button type="button" class="btn btn-sec fv-btn-creer" style="white-space:nowrap;padding:4px 8px;font-size:.85em">+ Nouveau</button>
+      </div>
+      <div class="fv-form-nouv" style="display:none;margin-top:6px;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd">
+        <div style="display:flex;gap:6px">
+          <input type="text" class="fv-new-nom" placeholder="Nom du fournisseur *" style="flex:1;min-width:0">
+          <button type="button" class="btn btn-ok fv-btn-confirmer" style="white-space:nowrap;padding:4px 8px;font-size:.85em">✓ Ajouter</button>
+          <button type="button" class="btn btn-sec fv-btn-annuler" style="padding:4px 8px;font-size:.85em">✗</button>
+        </div>
+      </div>`;
+
+    const formNouv = wrap.querySelector('.fv-form-nouv');
+    const inpNom   = wrap.querySelector('.fv-new-nom');
+    const sel      = wrap.querySelector(`#${selectId}`);
+
+    wrap.querySelector('.fv-btn-creer').addEventListener('click', () => {
+      formNouv.style.display = '';
+      inpNom.value = '';
+      inpNom.focus();
     });
+    wrap.querySelector('.fv-btn-annuler').addEventListener('click', () => {
+      formNouv.style.display = 'none';
+    });
+    wrap.querySelector('.fv-btn-confirmer').addEventListener('click', async () => {
+      const nom = inpNom.value.trim();
+      if (!nom) return;
+      const res = await window.SB.inserer('fournisseurs', { nom, actif: true });
+      if (res?.error) { alert('Erreur création fournisseur : ' + res.error.message); return; }
+      const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
+      _fournisseurs = rows.filter(f => f.actif);
+      _monterPickerFournisseur(wrap, selectId, nom);
+    });
+  }
+
+  function _peuplerSelectAffectation(sel, valeurCourante) {
+    if (!sel) return;
+    const opts = _chantiers.map(c => {
+      const label = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
+      return `<option value="${_e(c.nom)}"${c.nom === valeurCourante ? ' selected' : ''}>${_e(label)}</option>`;
+    });
+    if (!valeurCourante || _chantiers.some(c => c.nom === valeurCourante)) {
+      opts.unshift(`<option value="">— Choisir un chantier —</option>`);
+    } else {
+      opts.unshift(`<option value="${_e(valeurCourante)}" selected>${_e(valeurCourante)}</option>`);
+    }
+    sel.innerHTML = opts.join('');
+  }
+
+  function _monterPickerChantier(wrapId, selectId, valeurCourante = '') {
+    const wrap = typeof wrapId === 'string' ? document.getElementById(wrapId) : wrapId;
+    if (!wrap) return;
+
+    const opts = `<option value="">— Choisir un chantier —</option>` +
+      _chantiers.map(c => {
+        const lbl = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
+        const sel = c.nom === valeurCourante ? ' selected' : '';
+        return `<option value="${_e(c.nom)}"${sel}>${_e(lbl)}</option>`;
+      }).join('');
+
+    wrap.innerHTML = `
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="${selectId}" style="flex:1;min-width:0">${opts}</select>
+        <button type="button" class="btn btn-sec ch-btn-creer" style="white-space:nowrap;padding:4px 8px;font-size:.85em">+ Nouveau</button>
+      </div>
+      <div class="ch-form-nouv" style="display:none;margin-top:6px;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd">
+        <div style="display:flex;gap:6px;margin-bottom:5px">
+          <input type="text" class="ch-new-affaire" placeholder="N° affaire" style="width:110px">
+          <input type="text" class="ch-new-ville" placeholder="Ville" style="flex:1;min-width:0">
+        </div>
+        <div style="display:flex;gap:6px">
+          <input type="text" class="ch-new-nom" placeholder="Nom du chantier *" style="flex:1;min-width:0">
+          <button type="button" class="btn btn-ok ch-btn-confirmer" style="white-space:nowrap;padding:4px 8px;font-size:.85em">✓ Créer</button>
+          <button type="button" class="btn btn-sec ch-btn-annuler" style="padding:4px 8px;font-size:.85em">✗</button>
+        </div>
+      </div>`;
+
+    const formNouv = wrap.querySelector('.ch-form-nouv');
+    const inpNom   = wrap.querySelector('.ch-new-nom');
+    const inpAff   = wrap.querySelector('.ch-new-affaire');
+    const inpVille = wrap.querySelector('.ch-new-ville');
+
+    wrap.querySelector('.ch-btn-creer').addEventListener('click', () => {
+      formNouv.style.display = '';
+      inpAff.value = ''; inpVille.value = ''; inpNom.value = '';
+      inpNom.focus();
+    });
+    wrap.querySelector('.ch-btn-annuler').addEventListener('click', () => {
+      formNouv.style.display = 'none';
+    });
+    wrap.querySelector('.ch-btn-confirmer').addEventListener('click', async () => {
+      const nom     = inpNom.value.trim();
+      const affaire = inpAff.value.trim() || null;
+      const ville   = inpVille.value.trim() || null;
+      if (!nom) return;
+      const res = await window.SB.inserer('chantiers', { nom, numero_affaire: affaire, ville, actif: true });
+      if (res?.error) { alert('Erreur création chantier : ' + res.error.message); return; }
+      const rows = await window.SB.lire('chantiers', { order: 'nom' });
+      _chantiers = rows.filter(c => c.actif);
+      _majDatalistChantiers();
+      _monterPickerChantier(wrap, selectId, nom);
+    });
+  }
+
+  function _monterPickerDemandeur(wrap, demandeurId = '') {
+    if (!wrap) return;
+    const opts = `<option value="">— Choisir un demandeur —</option>` +
+      _demandeurs.map(d => {
+        const label = [d.prenom, d.nom].filter(Boolean).join(' ') + (d.email ? ` (${d.email})` : '');
+        return `<option value="${_e(d.id)}"${d.id === demandeurId ? ' selected' : ''}>${_e(label)}</option>`;
+      }).join('') +
+      `<option value="__nouveau__">— Nouveau demandeur —</option>`;
+
+    wrap.innerHTML = `
+      <select id="dem-demandeur-sel" style="width:100%">${opts}</select>
+      <div id="dem-demandeur-email-affiche" style="margin-top:4px;font-size:12px;color:#666;min-height:18px"></div>
+      <div id="dem-nouveau-form" style="display:none;margin-top:8px;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" id="dem-new-prenom" placeholder="Prénom" style="flex:1;min-width:0">
+          <input type="text" id="dem-new-nom" placeholder="Nom *" style="flex:1;min-width:0">
+        </div>
+        <input type="email" id="dem-new-email" placeholder="Email (confirmation de demande)" style="width:100%;box-sizing:border-box">
+      </div>`;
+
+    const sel = wrap.querySelector('#dem-demandeur-sel');
+    const emailAffiche = wrap.querySelector('#dem-demandeur-email-affiche');
+    const formNouv = wrap.querySelector('#dem-nouveau-form');
+
+    function majEmail() {
+      const v = sel.value;
+      if (v === '__nouveau__') {
+        formNouv.style.display = '';
+        emailAffiche.textContent = '';
+      } else if (v) {
+        formNouv.style.display = 'none';
+        const d = _demandeurs.find(x => x.id === v);
+        emailAffiche.innerHTML = d?.email ? `📧 ${_e(d.email)}` : '';
+      } else {
+        formNouv.style.display = 'none';
+        emailAffiche.textContent = '';
+      }
+    }
+    sel.addEventListener('change', majEmail);
+    majEmail();
+  }
+
+  function _lireDemandeurPicker(m) {
+    const sel = m?.querySelector('#dem-demandeur-sel');
+    if (!sel) return null;
+    const v = sel.value;
+    if (!v) return null;
+    if (v === '__nouveau__') {
+      const prenom = m.querySelector('#dem-new-prenom')?.value?.trim() || '';
+      const nom    = m.querySelector('#dem-new-nom')?.value?.trim() || '';
+      const email  = m.querySelector('#dem-new-email')?.value?.trim() || '';
+      if (!nom) return null;
+      return { id: null, nom, prenom, email, isNew: true };
+    }
+    const d = _demandeurs.find(x => x.id === v);
+    return d ? { ...d, isNew: false } : null;
+  }
+
+  async function _envoyerMailConfirmation(dem, statut, motif = '') {
+    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID) return;
+    const email = dem.demandeur_email;
+    if (!email) return;
+    const tplId = statut === 'accepte' ? EMAILJS_TPL_ACCEPTATION : EMAILJS_TPL_REFUS;
+    if (!tplId) return;
+    try {
+      await window.emailjs.send(EMAILJS_SERVICE_ID, tplId, {
+        to_email:   email,
+        to_name:    dem.demandeur,
+        demande_id: dem.id,
+        chantier:   _labelChantier(dem.chantier_demande) || dem.chantier_demande,
+        motif:      motif || '',
+      }, EMAILJS_PUBLIC_KEY);
+    } catch(e) {
+      console.warn('[Stock] Envoi email échoué :', e);
+    }
+  }
+
+  function _labelChantier(nom) {
+    if (!nom) return '';
+    const c = _chantiers.find(x => x.nom === nom);
+    if (!c) return nom;
+    return [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
   }
 
   /**
@@ -2089,12 +4108,15 @@ const Stock = (() => {
    */
   function _getDims(type, desig) {
     if (!_sections?.standard) return null;
-    // type = série (ex: "IPE A"), desig = taille (ex: "140")
-    // sections.json stocke desig complet = "IPE A 140"
-    const desigComplete = `${type} ${desig}`;
-    for (const famille of _sections.standard) {
-      const section = famille.sections.find(s => s.serie === type && s.desig === desigComplete);
-      if (section) return section;
+    // Normaliser × (U+00D7 Supabase) et x (ASCII sections.json) pour comparaison fiable
+    const norm = s => s.replace(/×/g, 'x');
+    const desigN         = norm(desig);
+    const desigCompleteN = norm(`${type} ${desig}`);
+    for (const groupe of _sections.standard) {
+      const sec = groupe.sections.find(s =>
+        s.serie === type && (norm(s.desig) === desigCompleteN || norm(s.desig) === desigN)
+      );
+      if (sec) return sec.famille ? sec : { famille: groupe.famille, ...sec };
     }
     return null;
   }
@@ -2110,13 +4132,52 @@ const Stock = (() => {
       return;
     }
     const rows = [];
-    if (dims.h   !== undefined) rows.push(['h — Hauteur',       `${dims.h} mm`]);
-    if (dims.b   !== undefined) rows.push(['b — Largeur',       `${dims.b} mm`]);
-    if (dims.tw  !== undefined) rows.push(['tw — Ép. âme',      `${dims.tw} mm`]);
-    if (dims.tf  !== undefined) rows.push(['tf — Ép. aile',     `${dims.tf} mm`]);
-    if (dims.r   !== undefined) rows.push(['r — Congé',         `${dims.r} mm`]);
-    if (dims.pml !== undefined) rows.push(['Poids/ml',          `${dims.pml} kg/m`]);
-    if (dims.A   !== undefined) rows.push(['Section',           `${dims.A} cm²`]);
+    const ser = dims.serie || '';
+    const fam = dims.famille ||
+      (['SHS','RHS','CHS'].includes(ser)              ? 'Profilés creux' :
+       ['L égale','L inégale'].includes(ser)           ? 'Cornière'       : '');
+
+    if (fam === 'Profilés creux') {
+      if (dims.fabrication) rows.push(['Façonnage', dims.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
+      if (ser === 'CHS') {
+        if (dims.d  !== undefined) rows.push(['de — Diamètre ext.', `${dims.d} mm`]);
+        if (dims.di !== undefined) rows.push(['di — Diamètre int.', `${dims.di} mm`]);
+        const ep = dims.e ?? dims.t;
+        if (ep !== undefined) rows.push(['t — Épaisseur', `${ep} mm`]);
+      } else if (ser === 'RHS') {
+        if (dims.a  !== undefined) rows.push(['h — Hauteur',     `${dims.a} mm`]);
+        if (dims.b  !== undefined) rows.push(['b — Largeur',     `${dims.b} mm`]);
+        const ep = dims.e ?? dims.t;
+        if (ep !== undefined) rows.push(['t — Épaisseur', `${ep} mm`]);
+        if (dims.ri !== undefined) rows.push(['ri — Rayon int.', `${dims.ri} mm`]);
+        if (dims.re !== undefined) rows.push(['re — Rayon ext.', `${dims.re} mm`]);
+      } else { // SHS
+        if (dims.a  !== undefined) rows.push(['h — Hauteur',     `${dims.a} mm`]);
+        const ep = dims.e ?? dims.t;
+        if (ep !== undefined) rows.push(['t — Épaisseur', `${ep} mm`]);
+        if (dims.ri !== undefined) rows.push(['ri — Rayon int.', `${dims.ri} mm`]);
+        if (dims.re !== undefined) rows.push(['re — Rayon ext.', `${dims.re} mm`]);
+      }
+    } else if (fam === 'Cornière') {
+      if (ser === 'L inégale') {
+        if (dims.a  !== undefined) rows.push(['h — Hauteur',       `${dims.a} mm`]);
+        if (dims.b  !== undefined) rows.push(['b — Largeur',       `${dims.b} mm`]);
+        if (dims.t  !== undefined) rows.push(['t — Épaisseur',     `${dims.t} mm`]);
+        if (dims.r1 !== undefined) rows.push(['r1 — Rayon int.',   `${dims.r1} mm`]);
+      } else {
+        if (dims.a  !== undefined) rows.push(['h — Largeur d\'aile', `${dims.a} mm`]);
+        if (dims.t  !== undefined) rows.push(['t — Épaisseur',       `${dims.t} mm`]);
+        if (dims.r1 !== undefined) rows.push(['r1 — Rayon int.',     `${dims.r1} mm`]);
+      }
+    } else {
+      if (dims.h   !== undefined) rows.push(['h — Hauteur',    `${dims.h} mm`]);
+      if (dims.b   !== undefined) rows.push(['b — Largeur',    `${dims.b} mm`]);
+      if (dims.tw  !== undefined) rows.push(['tw — Ép. âme',   `${dims.tw} mm`]);
+      if (dims.tf  !== undefined) rows.push(['tf — Ép. aile',  `${dims.tf} mm`]);
+      if (dims.r   !== undefined) rows.push(['r — Congé',      `${dims.r} mm`]);
+    }
+    if (dims.pml !== undefined) rows.push(['Poids/ml', `${dims.pml} kg/m`]);
+    if (dims.A   !== undefined) rows.push(['Section',  `${dims.A} cm²`]);
 
     el.innerHTML = rows.map(r =>
       `<div class="dim-row"><span class="dim-label">${r[0]}</span><span class="dim-val">${r[1]}</span></div>`
@@ -2154,10 +4215,13 @@ const Stock = (() => {
       svg.appendChild(e('rect', { x:35, y:25,  width:10, height:100, fill:F, stroke:S, 'stroke-width':1.5 }));
     } else if (type === 'Plat') {
       svg.appendChild(e('rect', { x:20, y:65, width:120, height:30, fill:F, stroke:S, 'stroke-width':1.5 }));
-    } else if (type === 'Tube □') {
+    } else if (type === 'SHS' || type === 'Tube □') {
       svg.appendChild(e('rect', { x:25, y:25,  width:110, height:110, fill:F, stroke:S, 'stroke-width':1.5 }));
       svg.appendChild(e('rect', { x:38, y:38,  width:84,  height:84,  fill:'white', stroke:S, 'stroke-width':1.5 }));
-    } else if (type === 'Tube ○') {
+    } else if (type === 'RHS') {
+      svg.appendChild(e('rect', { x:20, y:35,  width:120, height:90,  fill:F, stroke:S, 'stroke-width':1.5 }));
+      svg.appendChild(e('rect', { x:33, y:48,  width:94,  height:64,  fill:'white', stroke:S, 'stroke-width':1.5 }));
+    } else if (type === 'CHS' || type === 'Tube ○') {
       svg.appendChild(e('circle', { cx:80, cy:80, r:58, fill:F, stroke:S, 'stroke-width':1.5 }));
       svg.appendChild(e('circle', { cx:80, cy:80, r:45, fill:'white', stroke:S, 'stroke-width':1.5 }));
     }
@@ -2243,33 +4307,146 @@ const Stock = (() => {
 
 
   /* ──────────────────────────────────────────────────────────────
-     MODALE CARTE DE STOCKAGE
+     PLAN DE STOCKAGE
      ────────────────────────────────────────────────────────────── */
 
+  function _chargerPlanImg() { return localStorage.getItem(CLE_PLAN_IMG) || null; }
+
+  function _chargerPlanPos() {
+    try { return JSON.parse(localStorage.getItem(CLE_PLAN_POS) || '{}'); } catch { return {}; }
+  }
+
+  function _sauvegarderPlanPos(p) { localStorage.setItem(CLE_PLAN_POS, JSON.stringify(p)); }
+
+  /** Génère les marqueurs SVG à superposer sur l'image du plan.
+   *  showNames=true : tous les marqueurs avec nom (vue admin).
+   *  showNames=false : uniquement le rack actif en rouge, sans texte (vue localisation). */
+  function _svgMarqueursPlan(positions, rackActif, showNames = false) {
+    return _racks.map(r => {
+      const pos = positions[r.id];
+      if (!pos) return '';
+      const actif = r.nom === rackActif;
+      // Vue localisation : afficher uniquement le rack actif
+      if (!showNames && !actif) return '';
+      const cx = `${pos.x}%`;
+      const cy = `${pos.y}%`;
+      if (showNames) {
+        // Vue admin : pastille verte + nom sous le cercle
+        return `
+          <circle cx="${cx}" cy="${cy}" r="10" fill="rgb(45,95,50)" fill-opacity=".85"/>
+          <text x="${cx}" y="${cy}" dy="22" text-anchor="middle" fill="rgb(45,95,50)"
+            font-size="11" font-family="Tahoma" font-weight="bold"
+            style="text-shadow:0 0 3px white,0 0 3px white">${_e(r.nom)}</text>`;
+      }
+      // Vue localisation : cercle rouge avec pulsation
+      return `
+        <circle cx="${cx}" cy="${cy}" r="26" fill="rgb(210,35,42)" fill-opacity=".18">
+          <animate attributeName="r" values="22;30;22" dur="1.6s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="${cx}" cy="${cy}" r="18" fill="rgb(210,35,42)"/>`;
+    }).join('');
+  }
+
   /**
-   * Ouvre la modale de plan de stockage et met en évidence la zone.
-   * @param {string} lieu — nom du lieu de stockage
+   * Ouvre la modale de plan et met en évidence le rack correspondant.
+   * @param {string} lieu — ex. "Rack 1 - B4" ou "Zone Ext."
    */
   function _ouvrirCarte(lieu) {
     const m = document.getElementById('m-carte');
     if (!m) return;
 
-    // Titre
     const titre = m.querySelector('#carte-titre');
     if (titre) titre.textContent = `Emplacement : ${lieu}`;
 
-    // Mettre en évidence la zone correspondante sur le plan SVG
-    m.querySelectorAll('.zone-stockage').forEach(z => {
-      const actif = z.dataset.zone === lieu;
-      z.classList.toggle('zone-active', actif);
-      z.classList.toggle('zone-inactive', !actif);
-    });
+    const img      = _chargerPlanImg();
+    const noPlan   = m.querySelector('#carte-no-plan');
+    const planWrap = m.querySelector('#carte-plan-wrap');
+    const planImg  = m.querySelector('#carte-plan-img');
+    const svgOver  = m.querySelector('#carte-plan-svg');
+
+    // Plan personnalisé ou plan provisoire par défaut
+    const src = img || PLAN_PROVISOIRE_SRC;
+    if (noPlan)   noPlan.style.display   = 'none';
+    if (planWrap) planWrap.style.display  = '';
+    if (planImg)  planImg.src = src;
+
+    // Marqueurs sur tous les plans (provisoire ou personnalisé)
+    if (svgOver) {
+      const rackNom = lieu.includes(' - ') ? lieu.split(' - ')[0].trim() : lieu;
+      svgOver.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), rackNom);
+    }
 
     m.classList.add('open');
   }
 
-  // Exposer _ouvrirCarte globalement (appelée depuis le HTML généré)
   window._ouvrirCarte = _ouvrirCarte;
+
+  /* ── Gestion admin du plan ───────────────────────────────────── */
+
+  function _rendreAdminPlan() {
+    const img       = _chargerPlanImg();
+    const positions = _chargerPlanPos();
+    const editor    = document.getElementById('admin-plan-editor');
+    const btnClear  = document.getElementById('admin-plan-clear');
+    const planImg   = document.getElementById('admin-plan-img');
+    const planSvg   = document.getElementById('admin-plan-svg');
+    const sel       = document.getElementById('admin-plan-rack-sel');
+
+    if (sel) {
+      sel.innerHTML = '<option value="">— Choisir —</option>'
+        + [..._racks]
+            .sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }))
+            .map(r => `<option value="${_e(r.id)}">${_e(r.nom)}</option>`)
+            .join('');
+    }
+
+    if (editor) editor.style.display = '';
+    if (btnClear) btnClear.style.display = img ? '' : 'none';
+
+    const src = img || PLAN_PROVISOIRE_SRC;
+    if (planImg) planImg.src = src;
+    if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null, true);
+  }
+
+  function _attacherAdminPlan() {
+    const input = document.getElementById('admin-plan-input');
+    const wrap  = document.getElementById('admin-plan-canvas-wrap');
+
+    input?.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        localStorage.setItem(CLE_PLAN_IMG, ev.target.result);
+        _rendreAdminPlan();
+        _notif('Plan chargé', 'succes');
+      };
+      reader.readAsDataURL(file);
+      input.value = '';
+    });
+
+    document.getElementById('admin-plan-clear')?.addEventListener('click', () => {
+      localStorage.removeItem(CLE_PLAN_IMG);
+      localStorage.removeItem(CLE_PLAN_POS);
+      _rendreAdminPlan();
+      _notif('Plan supprimé', 'info');
+    });
+
+    wrap?.addEventListener('click', e => {
+      const rackId = document.getElementById('admin-plan-rack-sel')?.value;
+      if (!rackId) { _notif('Sélectionnez une zone d\'abord', 'alerte'); return; }
+      const rect = wrap.getBoundingClientRect();
+      const x = +((e.clientX - rect.left)  / rect.width  * 100).toFixed(2);
+      const y = +((e.clientY - rect.top)   / rect.height * 100).toFixed(2);
+      const positions = _chargerPlanPos();
+      positions[rackId] = { x, y };
+      _sauvegarderPlanPos(positions);
+      const planSvg = document.getElementById('admin-plan-svg');
+      if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(positions, null, true);
+      const rack = _racks.find(r => r.id === rackId);
+      _notif(`${rack?.nom || 'Zone'} placée sur le plan`, 'succes');
+    });
+  }
 
   /* ──────────────────────────────────────────────────────────────
      SUPPRESSION D'UNE BARRE
@@ -2313,11 +4490,12 @@ const Stock = (() => {
     if (!id) return;
 
     // Supprimer de Supabase
+    let enLigne = true;
     try {
       await window.SB.supprimer('stock', id);
     } catch(e) {
       console.warn('[Stock] Supabase indisponible, suppression locale :', e);
-      // Fallback : marquer comme "refuse" en localStorage pour simuler la suppression
+      // Fallback : marquer comme supprimé en localStorage
       const local = _chargerLocal();
       const idx = local.barres.findIndex(b => b.id === id);
       if (idx !== -1) {
@@ -2327,6 +4505,7 @@ const Stock = (() => {
         local.barres.push({ id, _supprime: true });
       }
       _sauvegarderLocal(local);
+      enLigne = false;
     }
 
     // Supprimer de _data en mémoire
@@ -2336,7 +4515,7 @@ const Stock = (() => {
     _peuplerFiltres();
     _filtrer();
     _majAlerteAttente();
-    _notif(`Élément ${id} supprimé du stock`, 'succes');
+    _notif(`Élément ${id} supprimé` + (enLigne ? ' du stock' : ' — ⚠ mode hors ligne'), enLigne ? 'succes' : 'alerte');
   }
 
 
@@ -2398,6 +4577,616 @@ const Stock = (() => {
 
 
   /* ──────────────────────────────────────────────────────────────
+     EXPORT / IMPORT CSV (admin)
+     ────────────────────────────────────────────────────────────── */
+
+  /** Colonnes du CSV (ordre fixe, couvre profilés et tôles) */
+  const CSV_CHAMPS = [
+    'id', 'categorie',
+    'section_type', 'designation', 'longueur_m', 'poids_ml', 'poids_barre_kg',
+    'classe_acier', 'ref_commande', 'fournisseur',
+    'epaisseur_mm', 'largeur_mm', 'longueur_mm', 'quantite',
+    'poids_unitaire_kg', 'poids_total_kg',
+    'chantier_origine', 'lieu_stockage', 'disponibilite', 'chantier_affectation',
+    'statut', 'date_ajout', 'ajoute_par', 'valide_par', 'date_validation', 'commentaire',
+  ];
+
+  /**
+   * Exporte tout le stock (hors archivées) en fichier CSV téléchargeable.
+   * Séparateur ";" et BOM UTF-8 pour compatibilité Excel.
+   */
+  function _exporterCSV() {
+    if (!Auth.hasRight('can_validate')) return;
+
+    const SEP = ';';
+    const esc = v => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return (s.includes(SEP) || s.includes('"') || s.includes('\n'))
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
+    };
+
+    const elements = _data.barres.filter(b => b.statut !== 'archivee');
+    const lignes   = [CSV_CHAMPS.join(SEP)];
+    for (const b of elements) {
+      lignes.push(CSV_CHAMPS.map(c => esc(b[c])).join(SEP));
+    }
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const blob = new Blob(['\uFEFF' + lignes.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const lien = Object.assign(document.createElement('a'), {
+      href: url, download: `stock-lbf-${dateStr}.csv`,
+    });
+    document.body.appendChild(lien);
+    lien.click();
+    lien.remove();
+    URL.revokeObjectURL(url);
+
+    _notif(`Export réussi — ${elements.length} élément(s) téléchargé(s)`, 'succes');
+  }
+
+  /** Données parsées en attente de confirmation d'import */
+  let _importData = null;
+
+  /** Ouvre la modale d'import et réinitialise son état */
+  function _ouvrirImport() {
+    if (!Auth.hasRight('can_validate')) return;
+    _importData = null;
+
+    const m = document.getElementById('m-import');
+    if (!m) return;
+
+    const fi = m.querySelector('#import-fichier');
+    if (fi) fi.value = '';
+    m.querySelector('#import-nom-fichier').textContent    = '';
+    m.querySelector('#import-resume').style.display       = 'none';
+    m.querySelector('#import-avertissement').style.display = 'none';
+    m.querySelector('#import-erreur').style.display       = 'none';
+    m.querySelector('#import-btn-analyser').disabled      = true;
+    m.querySelector('#import-btn-analyser').style.display = '';
+    m.querySelector('#import-btn-confirmer').style.display = 'none';
+
+    _ouvrirModale('m-import');
+  }
+
+  /**
+   * Analyse le fichier CSV sélectionné.
+   * Parse, valide les lignes, affiche le résumé et active le bouton Importer.
+   */
+  function _analyserImport() {
+    const m = document.getElementById('m-import');
+    if (!m) return;
+
+    const fi = m.querySelector('#import-fichier');
+    if (!fi?.files[0]) return;
+
+    const afficherErreur = msg => {
+      const el = m.querySelector('#import-erreur');
+      el.innerHTML = msg;
+      el.style.display = 'block';
+    };
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        let texte = e.target.result;
+        // Retirer BOM éventuel
+        if (texte.charCodeAt(0) === 0xFEFF) texte = texte.slice(1);
+
+        // ── Parser CSV (séparateur ; avec support guillemets)
+        const parseRow = line => {
+          const cells = [];
+          let inQ = false, cell = '';
+          for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (inQ) {
+              if (c === '"' && line[i + 1] === '"') { cell += '"'; i++; }
+              else if (c === '"') inQ = false;
+              else cell += c;
+            } else if (c === '"') {
+              inQ = true;
+            } else if (c === ';') {
+              cells.push(cell); cell = '';
+            } else {
+              cell += c;
+            }
+          }
+          cells.push(cell);
+          return cells;
+        };
+
+        const lignesBrutes = texte.split(/\r?\n/).filter(l => l.trim());
+        if (lignesBrutes.length < 2) {
+          afficherErreur('Le fichier est vide ou ne contient pas de données.');
+          return;
+        }
+
+        const headers = parseRow(lignesBrutes[0]);
+        if (!headers.includes('id') || !headers.includes('categorie')) {
+          afficherErreur('Format invalide — colonnes "id" et "categorie" introuvables.<br>Utilisez un fichier exporté depuis cette application.');
+          return;
+        }
+
+        // ── Convertir chaque ligne en objet
+        const nb   = (v, def = null) => { const n = parseFloat(v);  return isNaN(n) ? def : n; };
+        const ni   = (v, def = null) => { const n = parseInt(v, 10); return isNaN(n) ? def : n; };
+        const str  = (v, def = null) => (v && String(v).trim()) ? String(v).trim() : def;
+
+        const valides = [];
+        const erreurs = [];
+
+        for (let i = 1; i < lignesBrutes.length; i++) {
+          const cells = parseRow(lignesBrutes[i]);
+          const row   = {};
+          headers.forEach((h, j) => { row[h] = cells[j] ?? ''; });
+
+          const id  = str(row.id);
+          const cat = str(row.categorie);
+
+          if (!id)                         { erreurs.push(`Ligne ${i + 1} : ID manquant`); continue; }
+          if (!['profil','tole'].includes(cat)) { erreurs.push(`Ligne ${i + 1} (${id}) : catégorie invalide`); continue; }
+
+          const base = {
+            id, categorie: cat,
+            chantier_origine:    str(row.chantier_origine),
+            lieu_stockage:       str(row.lieu_stockage),
+            disponibilite:       str(row.disponibilite, 'disponible'),
+            chantier_affectation: str(row.chantier_affectation),
+            statut:              str(row.statut, 'valide'),
+            date_ajout:          str(row.date_ajout),
+            ajoute_par:          str(row.ajoute_par),
+            valide_par:          str(row.valide_par),
+            date_validation:     str(row.date_validation),
+            commentaire:         str(row.commentaire),
+          };
+
+          if (cat === 'profil') {
+            valides.push({
+              ...base,
+              section_type:    str(row.section_type),
+              designation:     str(row.designation),
+              longueur_m:      nb(row.longueur_m),
+              poids_ml:        nb(row.poids_ml),
+              poids_barre_kg:  nb(row.poids_barre_kg),
+              classe_acier:    str(row.classe_acier),
+              ref_commande:    str(row.ref_commande),
+              fournisseur:     str(row.fournisseur),
+            });
+          } else {
+            valides.push({
+              ...base,
+              epaisseur_mm:      nb(row.epaisseur_mm),
+              largeur_mm:        nb(row.largeur_mm),
+              longueur_mm:       nb(row.longueur_mm),
+              quantite:          ni(row.quantite, 1),
+              poids_unitaire_kg: nb(row.poids_unitaire_kg),
+              poids_total_kg:    nb(row.poids_total_kg),
+            });
+          }
+        }
+
+        if (!valides.length) {
+          afficherErreur('Aucune ligne valide trouvée dans le fichier.' +
+            (erreurs.length ? `<br>${erreurs.slice(0, 3).join('<br>')}` : ''));
+          return;
+        }
+
+        _importData = valides;
+
+        // Résumé
+        const nbProfils = valides.filter(b => b.categorie === 'profil').length;
+        const nbToles   = valides.filter(b => b.categorie === 'tole').length;
+        const resumeEl  = m.querySelector('#import-resume');
+        resumeEl.innerHTML =
+          `<strong>Fichier analysé :</strong><br>` +
+          `&nbsp;• ${nbProfils} profilé(s)<br>` +
+          `&nbsp;• ${nbToles} tôle(s)<br>` +
+          `&nbsp;• <strong>Total : ${valides.length} élément(s)</strong>` +
+          (erreurs.length
+            ? `<br><span style="color:var(--rouge)">⚠ ${erreurs.length} ligne(s) ignorée(s)</span>`
+            : '');
+        resumeEl.style.display = 'block';
+
+        m.querySelector('#import-erreur').style.display        = 'none';
+        m.querySelector('#import-avertissement').style.display = 'block';
+        m.querySelector('#import-btn-analyser').style.display  = 'none';
+        m.querySelector('#import-btn-confirmer').style.display = '';
+
+      } catch (ex) {
+        afficherErreur('Erreur lors de la lecture : ' + ex.message);
+      }
+    };
+    reader.readAsText(fi.files[0], 'UTF-8');
+  }
+
+  /**
+   * Importe (upsert) tous les éléments parsés dans Supabase / localStorage.
+   */
+  async function _confirmerImport() {
+    if (!_importData?.length || !Auth.hasRight('can_validate')) return;
+
+    const m = document.getElementById('m-import');
+    const btnOk = m?.querySelector('#import-btn-confirmer');
+    if (btnOk) { btnOk.disabled = true; btnOk.textContent = 'Import en cours…'; }
+
+    let ok = 0, horsLigne = 0;
+    for (const element of _importData) {
+      const enLigne = await _persisterElement(element);
+      if (enLigne) { ok++; } else { horsLigne++; }
+    }
+
+    _importData = null;
+    _fermerModale('m-import');
+    _peuplerFiltres();
+    _filtrer();
+    _majAlerteAttente();
+
+    const total = ok + horsLigne;
+    const msg = horsLigne === 0
+      ? `Import réussi — ${ok} élément(s) chargé(s)`
+      : ok === 0
+        ? `Import hors ligne — ${horsLigne} élément(s) sauvegardé(s) localement`
+        : `Import partiel — ${ok} en base, ${horsLigne} hors ligne`;
+    _notif(msg, horsLigne === 0 ? 'succes' : 'alerte');
+  }
+
+
+  /* ──────────────────────────────────────────────────────────────
+     NAVIGATION STOCK ↔ ADMINISTRATION
+     ────────────────────────────────────────────────────────────── */
+
+  function _activerSectionAdmin(onglet = _ongletAdmin) {
+    _ongletAdmin = onglet;
+    _sectionActive = 'admin';
+
+    document.getElementById('section-stock')?.style.setProperty('display', 'none');
+    document.getElementById('section-admin')?.style.setProperty('display', 'block');
+
+    // Activer nav-admin
+    document.querySelectorAll('.nav-item').forEach(a => a.classList.remove('actif'));
+    document.getElementById('nav-admin')?.classList.add('actif');
+
+    // Activer sous-onglet admin
+    _activerOngletAdmin(onglet);
+  }
+
+  function _activerSectionStock() {
+    _sectionActive = 'stock';
+    document.getElementById('section-stock')?.style.setProperty('display', 'block');
+    document.getElementById('section-admin')?.style.setProperty('display', 'none');
+
+    document.querySelectorAll('.nav-item').forEach(a => a.classList.remove('actif'));
+    document.querySelector('.nav-item[href="stock.html"]')?.classList.add('actif');
+  }
+
+  function _activerOngletAdmin(onglet) {
+    _ongletAdmin = onglet;
+    document.querySelectorAll('#section-admin .sous-onglet').forEach(btn => {
+      btn.classList.toggle('actif', btn.dataset.adminOnglet === onglet);
+    });
+    document.querySelectorAll('.admin-panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById(`admin-panel-${onglet}`);
+    if (panel) panel.style.display = 'block';
+
+    if (onglet === 'stockage')     { _rendreRacks(); _rendreAdminPlan(); }
+    if (onglet === 'chantiers')    _rendreChantiers();
+    if (onglet === 'fournisseurs') _rendreFournisseurs();
+    if (onglet === 'demandeurs')   _rendreDemandeurs();
+    if (onglet === 'comptes' && typeof chargerUsers === 'function') chargerUsers();
+  }
+
+  function _attacherNavAdmin() {
+    const navAdmin = document.getElementById('nav-admin');
+    if (navAdmin) {
+      navAdmin.addEventListener('click', e => {
+        e.preventDefault();
+        _activerSectionAdmin();
+      });
+    }
+    const navStock = document.querySelector('.nav-item[href="stock.html"]');
+    if (navStock) {
+      navStock.addEventListener('click', e => {
+        e.preventDefault();
+        _activerSectionStock();
+      });
+    }
+    document.querySelectorAll('#section-admin .sous-onglet').forEach(btn => {
+      btn.addEventListener('click', () => _activerOngletAdmin(btn.dataset.adminOnglet));
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     ADMIN STOCKAGE
+     ────────────────────────────────────────────────────────────── */
+
+  function ouvrirAdminStockage() {
+    _activerSectionAdmin('stockage');
+  }
+
+  function _rendreRacks() {
+    const zone = document.getElementById('admin-racks-liste');
+    if (!zone) return;
+    if (!_racks.length) {
+      zone.innerHTML = '<div class="admin-ref-vide">Aucune zone configurée</div>';
+      return;
+    }
+    const sorted = [..._racks].sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }));
+    zone.innerHTML = `
+      <table class="admin-rack-table">
+        <thead><tr>
+          <th>Zone</th><th>Allées</th><th>Étages</th><th>Emplacements</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${sorted.map(r => {
+            const plat = !r.nb_allees || !r.nb_etages;
+            const nb = plat ? 0 : r.nb_allees * r.nb_etages;
+            const alleeLabel = plat ? '—' : `A – ${_e(_labelAllee(r.nb_allees - 1))} (${r.nb_allees})`;
+            const etageLabel = plat ? '—' : `1 – ${r.nb_etages}`;
+            return `<tr>
+              <td><strong>${_e(r.nom)}</strong></td>
+              <td>${alleeLabel}</td>
+              <td>${etageLabel}</td>
+              <td style="color:#888;font-size:12px">${plat ? 'Zone plate' : `${nb} emplacement${nb > 1 ? 's' : ''}`}</td>
+              <td><button class="admin-ref-del" data-rack-id="${_e(r.id)}" data-nom="${_e(r.nom)}" title="Supprimer">✕</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function _aperçuRack(nom, nbAllees, nbEtages) {
+    if (!nom) return '';
+    if (!nbAllees || !nbEtages) return `${nom} (zone plate, sans allée ni étage)`;
+    const ex = [];
+    outer: for (let a = 0; a < nbAllees; a++) {
+      for (let e = 1; e <= nbEtages; e++) {
+        ex.push(`${nom} - ${_labelAllee(a)}${e}`);
+        if (ex.length >= 4) break outer;
+      }
+    }
+    const total = nbAllees * nbEtages;
+    return ex.join(', ') + (total > 4 ? ` … (${total} au total)` : '');
+  }
+
+  function _majAperçuRack() {
+    const m   = document.getElementById('admin-panel-stockage');
+    const nom = m?.querySelector('#admin-rack-nom')?.value?.trim() || '';
+    const na  = parseInt(m?.querySelector('#admin-rack-allees')?.value) || 0;
+    const ne  = parseInt(m?.querySelector('#admin-rack-etages')?.value) || 0;
+    const el  = m?.querySelector('#admin-rack-apercu');
+    if (el) el.textContent = _aperçuRack(nom, na, ne);
+  }
+
+  async function _adminAjouterRack() {
+    const m   = document.getElementById('admin-panel-stockage');
+    const nom = m?.querySelector('#admin-rack-nom')?.value?.trim();
+    const na  = parseInt(m?.querySelector('#admin-rack-allees')?.value);
+    const ne  = parseInt(m?.querySelector('#admin-rack-etages')?.value);
+    if (!nom) return;
+    if (isNaN(na) || na < 0) return _notif('Allées : 0 (zone plate) ou nombre ≥ 1', 'alerte');
+    if (na > 0 && (!ne || ne < 1)) return _notif('Étages : minimum 1', 'alerte');
+    const neEffectif = na === 0 ? 0 : ne;
+    try {
+      await window.SB.inserer('racks', { nom, nb_allees: na, nb_etages: neEffectif, actif: true });
+      const rows = await window.SB.lire('racks', { order: 'created_at' });
+      _racks = rows.filter(r => r.actif);
+      _lieux = _majLieux();
+      _rendreRacks();
+      if (m) { m.querySelector('#admin-rack-nom').value = ''; m.querySelector('#admin-rack-allees').value = ''; m.querySelector('#admin-rack-etages').value = ''; m.querySelector('#admin-rack-apercu').textContent = ''; }
+      _notif(na > 0 ? `${nom} ajouté (${na * ne} emplacements)` : `${nom} ajouté (zone plate)`, 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  async function _adminSupprimerRack(id, nom) {
+    try {
+      await window.SB.supprimer('racks', id);
+      const rows = await window.SB.lire('racks', { order: 'created_at' });
+      _racks = rows.filter(r => r.actif);
+      _lieux = _majLieux();
+      _rendreRacks();
+      _notif(`"${nom}" supprimé`, 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  function _attacherAdminStockage() {
+    const m = document.getElementById('admin-panel-stockage');
+    if (!m) return;
+    m.addEventListener('click', e => {
+      const del = e.target.closest('.admin-ref-del[data-rack-id]');
+      if (del) _adminSupprimerRack(del.dataset.rackId, del.dataset.nom);
+    });
+    m.querySelector('#admin-rack-nom')?.addEventListener('input', _majAperçuRack);
+    m.querySelector('#admin-rack-allees')?.addEventListener('input', _majAperçuRack);
+    m.querySelector('#admin-rack-etages')?.addEventListener('input', _majAperçuRack);
+    m.querySelector('#admin-btn-rack')?.addEventListener('click', _adminAjouterRack);
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     ADMIN CHANTIERS
+     ────────────────────────────────────────────────────────────── */
+
+  function ouvrirAdminChantiers() {
+    _activerSectionAdmin('chantiers');
+  }
+
+  function _rendreChantiers() {
+    const zone = document.getElementById('admin-chantiers-liste');
+    if (!zone) return;
+    if (!_chantiers.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun chantier</div>'; return; }
+    zone.innerHTML = `
+      <table class="admin-rack-table">
+        <thead><tr>
+          <th>N° Affaire</th><th>Ville</th><th>Nom du chantier</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${_chantiers.map(c => `<tr>
+            <td>${_e(c.numero_affaire || '—')}</td>
+            <td>${_e(c.ville || '—')}</td>
+            <td><strong>${_e(c.nom)}</strong></td>
+            <td><button class="admin-ref-del" data-ch-id="${_e(c.id)}" data-nom="${_e(c.nom)}" title="Supprimer">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function _adminAjouterChantier() {
+    const m       = document.getElementById('admin-panel-chantiers');
+    const nom     = m?.querySelector('#admin-ch-nom')?.value?.trim();
+    const affaire = m?.querySelector('#admin-ch-affaire')?.value?.trim();
+    const ville   = m?.querySelector('#admin-ch-ville')?.value?.trim();
+    if (!nom) return;
+    try {
+      await window.SB.inserer('chantiers', { nom, numero_affaire: affaire || null, ville: ville || null, actif: true });
+      const rows = await window.SB.lire('chantiers', { order: 'nom' });
+      _chantiers = rows.filter(c => c.actif);
+      _rendreChantiers();
+      _majDatalistChantiers();
+      if (m) {
+        m.querySelector('#admin-ch-nom').value     = '';
+        m.querySelector('#admin-ch-affaire').value = '';
+        m.querySelector('#admin-ch-ville').value   = '';
+      }
+      _notif('Chantier ajouté', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  async function _adminSupprimerChantier(id, nom) {
+    try {
+      await window.SB.supprimer('chantiers', id);
+      const rows = await window.SB.lire('chantiers', { order: 'nom' });
+      _chantiers = rows.filter(c => c.actif);
+      _rendreChantiers();
+      _majDatalistChantiers();
+      _notif(`"${nom}" supprimé`, 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  function _attacherAdminChantiers() {
+    const m = document.getElementById('admin-panel-chantiers');
+    if (!m) return;
+    m.addEventListener('click', e => {
+      const del = e.target.closest('.admin-ref-del[data-ch-id]');
+      if (del) _adminSupprimerChantier(del.dataset.chId, del.dataset.nom);
+    });
+    m.querySelector('#admin-btn-chantier')?.addEventListener('click', _adminAjouterChantier);
+    ['#admin-ch-affaire','#admin-ch-ville','#admin-ch-nom'].forEach(sel => {
+      m.querySelector(sel)?.addEventListener('keydown', e => { if (e.key === 'Enter') _adminAjouterChantier(); });
+    });
+  }
+
+  function _rendreFournisseurs() {
+    const zone = document.getElementById('admin-fournisseurs-liste');
+    if (!zone) return;
+    if (!_fournisseurs.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun fournisseur</div>'; return; }
+    zone.innerHTML = `
+      <table class="admin-rack-table">
+        <thead><tr><th>Nom du fournisseur</th><th></th></tr></thead>
+        <tbody>
+          ${_fournisseurs.map(f => `<tr>
+            <td><strong>${_e(f.nom)}</strong></td>
+            <td><button class="admin-ref-del" data-fv-id="${_e(f.id)}" data-nom="${_e(f.nom)}" title="Supprimer">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function _adminAjouterFournisseur() {
+    const m   = document.getElementById('admin-panel-fournisseurs');
+    const nom = m?.querySelector('#admin-fv-nom')?.value?.trim();
+    if (!nom) return;
+    try {
+      await window.SB.inserer('fournisseurs', { nom, actif: true });
+      const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
+      _fournisseurs = rows.filter(f => f.actif);
+      _rendreFournisseurs();
+      if (m) m.querySelector('#admin-fv-nom').value = '';
+      _notif('Fournisseur ajouté', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  async function _adminSupprimerFournisseur(id, nom) {
+    try {
+      await window.SB.supprimer('fournisseurs', id);
+      const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
+      _fournisseurs = rows.filter(f => f.actif);
+      _rendreFournisseurs();
+      _notif(`"${nom}" supprimé`, 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  function _attacherAdminFournisseurs() {
+    const m = document.getElementById('admin-panel-fournisseurs');
+    if (!m) return;
+    m.addEventListener('click', e => {
+      const del = e.target.closest('.admin-ref-del[data-fv-id]');
+      if (del) _adminSupprimerFournisseur(del.dataset.fvId, del.dataset.nom);
+    });
+    m.querySelector('#admin-btn-fournisseur')?.addEventListener('click', _adminAjouterFournisseur);
+    m.querySelector('#admin-fv-nom')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') _adminAjouterFournisseur();
+    });
+  }
+
+  function _rendreDemandeurs() {
+    const zone = document.getElementById('admin-demandeurs-liste');
+    if (!zone) return;
+    if (!_demandeurs.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun demandeur enregistré</div>'; return; }
+    zone.innerHTML = `
+      <table class="admin-rack-table">
+        <thead><tr><th>Prénom</th><th>Nom</th><th>Email</th><th></th></tr></thead>
+        <tbody>
+          ${_demandeurs.map(d => `<tr>
+            <td>${_e(d.prenom || '—')}</td>
+            <td><strong>${_e(d.nom)}</strong></td>
+            <td>${d.email ? `<a href="mailto:${_e(d.email)}">${_e(d.email)}</a>` : '—'}</td>
+            <td><button class="admin-ref-del" data-dem-id="${_e(d.id)}" data-nom="${_e(d.nom)}" title="Supprimer">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function _adminAjouterDemandeur() {
+    const m      = document.getElementById('admin-panel-demandeurs');
+    const prenom = m?.querySelector('#admin-dem-prenom')?.value?.trim();
+    const nom    = m?.querySelector('#admin-dem-nom')?.value?.trim();
+    const email  = m?.querySelector('#admin-dem-email')?.value?.trim();
+    if (!nom) return;
+    try {
+      await window.SB.inserer('demandeurs', { nom, prenom: prenom || null, email: email || null, actif: true });
+      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
+      _demandeurs = rows.filter(d => d.actif);
+      _rendreDemandeurs();
+      if (m) { m.querySelector('#admin-dem-prenom').value = ''; m.querySelector('#admin-dem-nom').value = ''; m.querySelector('#admin-dem-email').value = ''; }
+      _notif('Demandeur ajouté', 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  async function _adminSupprimerDemandeur(id, nom) {
+    try {
+      await window.SB.supprimer('demandeurs', id);
+      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
+      _demandeurs = rows.filter(d => d.actif);
+      _rendreDemandeurs();
+      _notif(`"${nom}" supprimé`, 'succes');
+    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
+  }
+
+  function _attacherAdminDemandeurs() {
+    const m = document.getElementById('admin-panel-demandeurs');
+    if (!m) return;
+    m.addEventListener('click', e => {
+      const del = e.target.closest('.admin-ref-del[data-dem-id]');
+      if (del) _adminSupprimerDemandeur(del.dataset.demId, del.dataset.nom);
+    });
+    m.querySelector('#admin-btn-demandeur')?.addEventListener('click', _adminAjouterDemandeur);
+    m.querySelector('#admin-dem-nom')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') _adminAjouterDemandeur();
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────
      API PUBLIQUE
      ────────────────────────────────────────────────────────────── */
   return {
@@ -2409,6 +5198,11 @@ const Stock = (() => {
     validerElement,
     refuserElement,
     getSelection,
+    ouvrirHistoriqueBarre,
+    ouvrirAdminStockage,
+    ouvrirAdminChantiers,
+    exporterCSV: _exporterCSV,
+    ouvrirImport: _ouvrirImport,
   };
 
 })();

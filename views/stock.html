@@ -147,6 +147,7 @@
     .notif-succes  { background: var(--vert);      color: white; }
     .notif-erreur  { background: var(--rouge);     color: white; }
     .notif-info    { background: var(--bleu-info); color: white; }
+    .notif-alerte  { background: #e67e22;          color: white; }
 
     /* ── ALERTE ADMIN ─────────────────────────────────────────── */
     .alerte-attente {
@@ -159,6 +160,62 @@
       font-size: 13px;
       color: var(--or);
       font-weight: bold;
+    }
+    .barre-admin {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f7f7f8;
+      border-bottom: 1px solid var(--gris-bord);
+      padding: 6px 20px;
+      font-size: 12px;
+    }
+    .barre-admin-label {
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-right: 4px;
+    }
+    .btn-admin {
+      background: #fff;
+      border: 1px solid var(--gris-bord);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #444;
+      transition: border-color .15s, background .15s;
+    }
+    .btn-admin:hover { border-color: var(--rouge); color: var(--rouge); background: #fff5f5; }
+    /* Import modal */
+    .import-dropzone {
+      border: 2px dashed #ccc;
+      border-radius: 6px;
+      padding: 28px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      margin-bottom: 12px;
+    }
+    .import-dropzone.drag-over { border-color: var(--rouge); background: #fff5f5; }
+    .import-dropzone label { cursor: pointer; color: var(--rouge); font-weight: 600; font-size: 14px; }
+    .import-resume {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .import-erreur {
+      color: var(--rouge);
+      font-size: 13px;
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      background: #fff0f0;
+      border-radius: 4px;
+      border-left: 3px solid var(--rouge);
     }
     .alerte-nb {
       display: inline-flex;
@@ -286,10 +343,12 @@
 
     .tri-ind { font-size: 10px; color: rgba(255,255,255,.5); margin-left: 3px; }
 
-    #tableau-stock tbody tr             { border-bottom: 1px solid #eaeaea; transition: background .1s; }
+    #tableau-stock tbody tr             { border-bottom: 1px solid #eaeaea; transition: background .1s; cursor: pointer; }
     #tableau-stock tbody tr:hover       { background: #fafafa; }
     #tableau-stock tbody tr.ligne-attente       { background: var(--or-bg) !important; }
     #tableau-stock tbody tr.ligne-attente:hover { background: #ffeebb !important; }
+    #tableau-stock tbody tr.ligne-focus         { background: #fff0f0 !important; outline: 2px solid var(--rouge); outline-offset: -2px; }
+    #tableau-stock tbody tr.ligne-focus:hover   { background: #ffe8e8 !important; }
     #tableau-stock tbody td             { padding: 8px 10px; vertical-align: middle; }
 
     .vide {
@@ -333,6 +392,31 @@
       white-space: nowrap;
     }
 
+    /* Chip lieu de stockage */
+    .chip-lieu {
+      display: inline-block;
+      background: #eef4ee;
+      color: var(--vert);
+      border: 1px solid #b8d8ba;
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    /* ── Sélecteur lieu en cascade ───────────────────────────── */
+    .lieu-cascade { display: flex; gap: 4px; align-items: center; }
+    .lieu-sel {
+      flex: 1; min-width: 0; border: 1px solid var(--gris-bord); border-radius: 3px;
+      padding: 4px 6px; font-size: 12px; font-family: Tahoma; background: #fff;
+    }
+    .lieu-sel:focus { outline: none; border-color: var(--vert); }
+    .lieu-sel-rack  { flex: 2; }
+    .lieu-sel-allee { flex: 1; }
+    .lieu-sel-etage { flex: 1; }
+    .lieu-cascade-inline .lieu-sel { padding: 2px 4px; font-size: 12px; }
+
     /* ── BOUTONS LIGNE ────────────────────────────────────────── */
     .td-actions { white-space: nowrap; }
     .td-id { white-space: nowrap; }
@@ -368,6 +452,19 @@
     .btn-inline:hover { background: #d0d0d0; }
     .btn-inline-carte { background: #e8f0fe; color: #1a56c4; }
     .btn-inline-carte:hover { background: #c8d8f8; }
+
+    /* ── Édition inline ──────────────────────────────────────── */
+    td.cell-editable { cursor: text; }
+    td.cell-editable:not(.editing):hover { background: rgba(39,174,96,.08) !important; }
+    td.cell-editable:not(.editing):hover::after { content: ' ✏'; font-size: 10px; color: #aaa; }
+    td.cell-editable.editing { padding: 2px 3px !important; }
+    .cell-inline-input {
+      width: 100%; box-sizing: border-box;
+      border: 1.5px solid var(--vert); border-radius: 3px;
+      padding: 3px 5px; font-size: 12px; font-family: Tahoma;
+      background: #fff; outline: none; min-width: 60px;
+    }
+    select.cell-inline-input { cursor: pointer; }
 
     .btn-ligne {
       padding: 4px 7px;
@@ -487,6 +584,113 @@
     .btn-modale-rouge    { background: var(--rouge); color: white; }
     .btn-modale-gris     { background: #e0e0e0;      color: var(--noir); }
     .btn-modale-vert     { background: var(--vert);  color: white; }
+
+    /* ── Modale référentiels admin ───────────────────────────── */
+    .admin-ref-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .admin-ref-section-titre {
+      font-size: 12px; font-weight: bold; color: #555;
+      text-transform: uppercase; letter-spacing: .4px;
+      border-bottom: 1px solid var(--gris-clair); padding-bottom: 6px; margin-bottom: 10px;
+    }
+    .admin-ref-liste { min-height: 80px; max-height: 260px; overflow-y: auto; margin-bottom: 12px; }
+    .admin-ref-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 8px; border-radius: 3px; font-size: 13px;
+    }
+    .admin-ref-item:hover { background: #f5f5f5; }
+    .admin-ref-nom { flex: 1; }
+    .admin-ref-nom small { color: #aaa; font-size: 11px; margin-left: 6px; }
+    .admin-ref-del {
+      background: none; border: none; color: #ccc; cursor: pointer;
+      font-size: 12px; padding: 2px 5px; border-radius: 3px;
+      transition: color .12s, background .12s;
+    }
+    .admin-ref-del:hover { color: var(--rouge); background: #fee; }
+    .admin-ref-form { display: flex; gap: 8px; align-items: flex-start; }
+    .admin-ref-inp {
+      flex: 1; border: 1px solid var(--gris-bord); border-radius: 3px;
+      padding: 5px 8px; font-size: 13px; font-family: Tahoma;
+    }
+    .admin-ref-inp:focus { outline: none; border-color: var(--vert); }
+    .admin-ref-vide { color: #aaa; font-size: 12px; padding: 8px 0; }
+
+    /* ── Form chantier en grille ─────────────────────────────────── */
+    .admin-ch-form {
+      display: grid; grid-template-columns: 140px 160px 1fr auto; gap: 10px; align-items: end; margin-top: 10px;
+    }
+    .admin-ch-form label { font-size: 11px; color: #555; font-weight: bold; display: block; margin-bottom: 3px; }
+
+    /* ── Table comptes inline ────────────────────────────────────── */
+    .cpt-table-wrap { background: #fff; border: 1px solid var(--gris-clair); border-radius: 3px; overflow: hidden; }
+    .cpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .cpt-table thead th {
+      background: var(--noir); color: white; font-family: Impact, sans-serif; font-size: 11px;
+      letter-spacing: 1px; text-transform: uppercase; padding: 9px 12px; text-align: left;
+    }
+    .cpt-table tbody tr { border-bottom: 1px solid #eee; }
+    .cpt-table tbody tr:last-child { border-bottom: none; }
+    .cpt-table tbody tr:hover { background: #fafafa; }
+    .cpt-table td { padding: 9px 12px; vertical-align: middle; }
+    .profil-label {
+      display: inline-block; padding: 2px 8px; border-radius: 2px;
+      font-family: Impact, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    }
+    .profil-consultation   { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
+    .profil-gestion        { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert); }
+    .profil-administration { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
+    .statut-actif   { color: var(--vert); font-weight: bold; }
+    .statut-inactif { color: #aaa; }
+    .bl-modifier  { background: var(--vert);  color: white; }
+    .bl-supprimer { background: #dc3545; color: white; }
+    .bl-mdp       { background: #6c757d; color: white; }
+
+    /* ── Champ modale comptes ────────────────────────────────────── */
+    .champ { margin-bottom: 14px; }
+    .champ label { display: block; font-size: 10px; font-weight: bold; color: #666; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; }
+    .champ input, .champ select { width: 100%; padding: 8px 11px; border: 1px solid var(--gris-bord); border-radius: 3px; font-family: Tahoma; font-size: 13px; color: var(--noir); outline: none; transition: border-color .15s; }
+    .champ input:focus, .champ select:focus { border-color: var(--rouge); }
+    .champ-mdp-wrap { position: relative; }
+    .champ-mdp-wrap input { padding-right: 38px; }
+    .btn-oeil { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #aaa; font-size: 15px; }
+    .btn-oeil:hover { color: var(--rouge); }
+    .note-info { background: #e8f0fe; border: 1px solid #a8c4f8; padding: 8px 12px; border-radius: 3px; font-size: 12px; color: var(--bleu-info); margin-bottom: 12px; }
+    .note-danger { background: #fde8e8; border: 1px solid var(--rouge); padding: 8px 12px; border-radius: 3px; font-size: 12px; color: var(--rouge); margin-bottom: 12px; }
+    .msg-erreur-modale { display: none; color: var(--rouge); font-size: 12px; margin-top: -8px; margin-bottom: 10px; }
+    .msg-erreur-modale.visible { display: block; }
+
+    /* ── Section administration ──────────────────────────────────── */
+    .admin-panel-zone { padding: 24px 28px; max-width: 860px; }
+    .admin-panel-titre {
+      font-size: 15px; font-weight: bold; color: var(--noir);
+      margin-bottom: 8px; padding-bottom: 8px;
+      border-bottom: 2px solid var(--gris-clair);
+    }
+    .admin-panel-desc { color: #666; font-size: 13px; margin-bottom: 18px; line-height: 1.5; }
+
+    /* ── Admin racks ─────────────────────────────────────────────── */
+    .admin-rack-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .admin-rack-table th {
+      text-align: left; padding: 6px 10px; font-size: 11px; font-weight: bold;
+      color: #555; text-transform: uppercase; letter-spacing: .4px;
+      border-bottom: 1px solid var(--gris-clair);
+    }
+    .admin-rack-table td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    .admin-rack-table tr:last-child td { border-bottom: none; }
+    .admin-rack-table tr:hover td { background: #fafafa; }
+    .admin-rack-apercu {
+      font-size: 11px; color: #777; margin-top: 4px; min-height: 16px; font-style: italic;
+    }
+    .admin-rack-form {
+      display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: end; margin-top: 14px;
+    }
+    .admin-rack-form label { font-size: 11px; color: #555; font-weight: bold; display: block; margin-bottom: 3px; }
+    .admin-plan-actions { display:flex; gap:8px; align-items:center; margin-top:10px; }
+    .admin-plan-upload-btn { cursor:pointer; }
+    .admin-plan-hint {
+      font-size: 12px; color: #666; background: #f4f9f4; border: 1px solid #c8dfc8;
+      border-radius: 4px; padding: 6px 10px; margin-bottom: 10px;
+    }
+
     .btn-modale-supprimer {
       background: none;
       border: 1px solid #ccc;
@@ -526,6 +730,7 @@
       align-items: flex-start;
     }
     .schema-svg-zone { flex: 0 0 auto; }
+    .detail-svg-zone { flex: 0 0 auto; }
     .schema-titre {
       font-family: Impact, sans-serif;
       font-size: 12px;
@@ -662,6 +867,319 @@
     .zone-motif {
       margin-top: 10px;
     }
+    /* ── TABLEAU PROFILÉS — colonnes par classe ──────────────── */
+    .table-profils { table-layout: fixed; }
+    .table-profils thead th { white-space: normal; word-break: break-word; line-height: 1.3; vertical-align: bottom; }
+    .table-profils td       { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Colonnes fixes */
+    .col-p-id          { width: 75px;  }
+    .col-p-type        { width: 60px;  }
+    .col-p-designation { width: 130px; }
+    .col-p-longueur    { width: 82px;  text-align: center; }
+    .col-p-poids       { width: 68px;  text-align: center; }
+    .col-p-classe      { width: 62px;  text-align: center; }
+    .col-p-dispo       { width: 108px; }
+    .col-p-date        { width: 82px;  }
+    .col-p-chantier    { width: 112px; }
+    .col-p-lieu        { width: 95px;  }
+    .col-p-hist        { width: 44px;  text-align: center; }
+    .col-p-actions     { width: 108px; }
+    /* Colonnes masquables (optionnelles) */
+    .col-p-origine     { width: 100px; }
+    .col-p-ref_cmd     { width: 110px; }
+    .col-p-fournisseur { width: 110px; }
+    .col-p-ajoute_par  { width: 90px;  }
+    .col-p-commentaire { width: 130px; }
+
+    /* ── SÉLECTEUR DE VUE ───────────────────────────────────── */
+    .vue-selector {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+    .btn-vue {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-right: none;
+      padding: 5px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      color: #555;
+      transition: background .12s, color .12s;
+    }
+    .btn-vue:first-child { border-radius: 3px 0 0 3px; }
+    .vue-selector > div:last-child .btn-vue { border-right: 1px solid #ccc; border-radius: 0 3px 3px 0; }
+    .btn-vue:hover  { background: #e4e4e4; }
+    .btn-vue.active { background: var(--rouge); color: #fff; border-color: var(--rouge); }
+    .btn-vue.active + .btn-vue { border-left-color: var(--rouge); }
+    #panel-cols-profils {
+      display: none;
+      position: absolute;
+      z-index: 300;
+      top: calc(100% + 4px);
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.15);
+      padding: 10px 14px;
+      min-width: 190px;
+    }
+    #panel-cols-profils.open { display: block; }
+    #panel-cols-profils .panel-cols-titre {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #999;
+      margin-bottom: 8px;
+    }
+    #panel-cols-profils label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 0;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* ── MODE TABS AJOUT PROFILÉ ─────────────────────────────── */
+    .mode-ajout-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--gris-clair);
+      margin-bottom: 16px;
+    }
+    .mode-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      padding: 7px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #666;
+      transition: color .15s;
+    }
+    .mode-tab.active {
+      color: var(--rouge);
+      border-bottom-color: var(--rouge);
+      font-weight: 600;
+    }
+    .mode-tab:hover:not(.active) { color: #333; }
+
+    /* ── TABLE LIGNES COMMANDE ───────────────────────────────── */
+    .table-lignes-cmd-wrap { overflow-x: auto; margin: 8px 0 6px; }
+    .table-lignes-cmd {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 600px;
+    }
+    .table-lignes-cmd th {
+      background: var(--gris-clair);
+      padding: 6px 7px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .table-lignes-cmd td { padding: 4px 4px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .table-lignes-cmd select,
+    .table-lignes-cmd input[type=number],
+    .table-lignes-cmd input[type=text] {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 12px;
+      box-sizing: border-box;
+    }
+    .col-cmd-type  { width: 120px; }
+    .col-cmd-desig { width: 100px; }
+    .col-cmd-classe{ width: 95px;  }
+    .col-cmd-long  { width: 90px;  }
+    .col-cmd-qte   { width: 48px;  }
+    .col-cmd-del   { width: 30px;  }
+    .btn-ajouter-ligne {
+      background: none;
+      border: 1px dashed var(--rouge);
+      color: var(--rouge);
+      padding: 5px 14px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 2px;
+    }
+    .btn-ajouter-ligne:hover { background: #fff5f5; }
+    .btn-suppr-ligne {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .btn-suppr-ligne:hover { color: var(--rouge); }
+
+    /* ── EN-TÊTE BARRE (modale modification) ────────────────── */
+    .mod-barre-info {
+      background: #f8f8f8;
+      border: 1px solid #e5e5e5;
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+    .mod-barre-info-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .mod-display-section { font-size: 15px; }
+    .mod-display-section strong { color: var(--rouge); margin-right: 4px; }
+    .mod-longueur-ref {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      font-size: 12px;
+      color: #888;
+      line-height: 1.4;
+    }
+    .mod-longueur-ref strong { font-size: 16px; color: var(--noir); }
+    .mod-barre-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .mod-meta-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: #e8e8e8;
+      border-radius: 3px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #555;
+    }
+    .mod-meta-chip strong { color: #333; font-size: 11px; }
+
+    /* ── BADGE CLASSE ACIER ──────────────────────────────────── */
+    .badge-classe-acier {
+      display: inline-block;
+      background: #1565c0;
+      color: #fff;
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+
+    /* ── MODAL RÉSUMÉ RÉCEPTION ──────────────────────────────── */
+    .resume-entete {
+      background: #f5f5f5;
+      border-radius: 4px;
+      padding: 8px 14px;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .resume-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 500px;
+    }
+    .resume-table th {
+      background: var(--gris-clair);
+      padding: 6px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .resume-table td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .td-ids-resume { display: flex; flex-wrap: wrap; gap: 4px; }
+    .resume-hint {
+      margin: 10px 0 4px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* ── HISTORIQUE BARRE ─────────────────────────────────────── */
+
+    .hist-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .hist-table th {
+      background: var(--noir);
+      color: white;
+      padding: 7px 10px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      white-space: nowrap;
+    }
+    .hist-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--gris-clair);
+      vertical-align: middle;
+    }
+    .hist-table tr:last-child td { border-bottom: none; }
+    .hist-table tr:hover td { background: #f7f7f7; }
+
+    /* Badges type d'opération */
+    .badge-operation {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .badge-op-entree     { background: #e8f5e9; color: #2e7d32; }
+    .badge-op-affectation{ background: #fff3e0; color: #e65100; }
+    .badge-op-retour     { background: #e3f2fd; color: #1565c0; }
+    .badge-op-archivage  { background: #f3e5f5; color: #6a1b9a; }
+    .badge-op-validation   { background: #f1f8e9; color: #558b2f; }
+    .badge-op-modification { background: #f5f5f5; color: #546e7a; }
+
+    /* Chip code barre physique */
+    .chip-code {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 11px;
+      font-family: monospace;
+      letter-spacing: 1px;
+      font-weight: 700;
+    }
+    .chip-code-arc { background: #6a1b9a; }
+
+    /* Bouton historique dans les lignes du tableau */
+    .btn-historique {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      padding: 2px 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-historique:hover { background: #e0e0e0; }
+
     /* ── RESPONSIVE ───────────────────────────────────────────── */
     @media (max-width: 900px) { .input-recherche { width: 150px; } }
 
@@ -682,6 +1200,154 @@
       .sel-filtre { font-size: 11px; padding: 5px 6px; }
       .form-cols2, .form-cols3 { grid-template-columns: 1fr; }
       .modale { padding: 16px; }
+      .syn-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .syn-cols2    { grid-template-columns: 1fr; }
+    }
+
+    /* ── SYNTHÈSE ──────────────────────────────────────────────── */
+    .syn-page { padding: 16px 20px; }
+    .syn-kpi-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 12px; margin-bottom: 20px;
+    }
+    .syn-kpi {
+      background: white; border-radius: 4px; padding: 14px 16px;
+      border-top: 3px solid var(--gris-bord);
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .syn-kpi.k-vert   { border-top-color: var(--vert); }
+    .syn-kpi.k-bleu   { border-top-color: #2980b9; }
+    .syn-kpi.k-orange { border-top-color: #e67e22; }
+    .syn-kpi-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: #888; margin-bottom: 5px; }
+    .syn-kpi-val { font-size: 22px; font-weight: bold; color: var(--noir); line-height: 1; }
+    .syn-kpi-sub { font-size: 11px; color: #aaa; margin-top: 3px; }
+    .syn-cols2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+    .syn-section-titre {
+      font-size: 11px; font-weight: bold; text-transform: uppercase;
+      letter-spacing: .5px; color: #666;
+      border-bottom: 1px solid var(--gris-clair);
+      padding-bottom: 6px; margin-bottom: 10px;
+    }
+    .syn-card {
+      background: white; border-radius: 4px; padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 14px;
+    }
+    .syn-table { width: 100%; border-collapse: collapse; }
+    .syn-table th {
+      text-align: left; padding: 7px 12px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+      color: #777; border-bottom: 1px solid var(--gris-clair); font-weight: bold;
+    }
+    .syn-table th.r { text-align: right; }
+    .syn-table td   { padding: 8px 12px; border-bottom: 1px solid #f4f4f4; }
+    .syn-table td.r { text-align: right; color: #444; font-variant-numeric: tabular-nums; }
+    .syn-table tr:last-child td { border-bottom: none; }
+    .syn-table .syn-total td { font-weight: bold; background: #f9f9f9; border-top: 1px solid var(--gris-clair); }
+    .syn-table .syn-type-row.expanded td { background: #f0f5f0; }
+    .syn-table-title-row th {
+      background: #f7f7f7; padding: 7px 12px;
+      font-size: 12px; font-weight: bold; color: #444;
+      border-bottom: 1px solid #e8e8e8;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .syn-table-title-row th { display: revert; }
+    .syn-scope-btn {
+      float: right; font-size: 11px; font-weight: normal;
+      color: var(--vert); cursor: pointer; padding: 1px 7px;
+      border: 1px solid var(--vert); border-radius: 10px;
+      background: white; transition: background .12s, color .12s;
+      user-select: none;
+    }
+    .syn-scope-btn:hover { background: var(--vert); color: white; }
+    .syn-toggle-icon {
+      display: inline-block; width: 18px; font-size: 10px;
+      color: #aaa; margin-right: 2px; cursor: pointer;
+      padding: 2px 3px; border-radius: 3px; transition: color .15s, background .12s;
+    }
+    .syn-toggle-icon:hover { background: #e0e8e0; color: var(--vert); }
+    .syn-type-chip {
+      display: inline-block; background: var(--noir); color: white;
+      padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: bold;
+      cursor: pointer; transition: background .12s;
+    }
+    .syn-type-chip:hover { background: var(--vert); }
+    .syn-sous-ligne { cursor: pointer; }
+    .syn-sous-ligne td { background: #fafafa; }
+    .syn-sous-ligne:hover td { background: #eef3ee; }
+    .syn-sous-cell { padding-left: 12px !important; font-size: 12px; color: #555; }
+    .syn-sous-indent { color: #ccc; margin-right: 6px; }
+    .syn-sous-val { font-size: 12px; color: #888; }
+    .syn-voir-btn {
+      font-size: 13px; color: #2980b9; cursor: pointer;
+      padding: 2px 5px; border-radius: 3px; white-space: nowrap;
+      transition: background .12s;
+    }
+    .syn-voir-btn:hover { background: #e8f0fb; color: var(--rouge); }
+    .syn-bar      { height: 5px; background: #eee; border-radius: 3px; margin-top: 3px; }
+    .syn-bar-fill { height: 5px; background: var(--vert); border-radius: 3px; }
+    .syn-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .syn-mini-card {
+      background: #f7f7f7; border-radius: 4px; padding: 10px 12px;
+      border-left: 3px solid #2980b9;
+    }
+    .syn-mini-card .v { font-size: 18px; font-weight: bold; color: var(--noir); }
+    .syn-mini-card .l { font-size: 11px; color: #888; margin-bottom: 2px; }
+    .syn-repartition-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid #f4f4f4; gap: 8px;
+    }
+    .syn-repartition-row:last-child { border-bottom: none; }
+    .syn-nb  { font-size: 16px; font-weight: bold; margin-left: auto; }
+    .syn-lien { font-size: 11px; color: #2980b9; cursor: pointer; text-decoration: underline; white-space: nowrap; }
+    .syn-lien:hover { color: var(--rouge); }
+    .syn-sous-nav {
+      display: flex; gap: 4px; margin-bottom: 16px;
+      border-bottom: 2px solid var(--gris-clair); padding-bottom: 0;
+    }
+    .syn-tab {
+      padding: 6px 18px; background: none; border: none;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      font-family: Tahoma; font-size: 13px; color: #888;
+      cursor: pointer; transition: color .15s;
+    }
+    .syn-tab:hover { color: #444; }
+    .syn-tab.actif { color: var(--vert); border-bottom-color: var(--vert); font-weight: bold; }
+    .syn-kpi.k-statuts { border-top-color: #888; justify-content: flex-start; }
+    .syn-statut-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px;
+    }
+    .syn-statut-row:last-child { border-bottom: none; }
+    .syn-statut-row strong { margin-left: 2px; }
+    .syn-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block; flex-shrink: 0;
+    }
+    .syn-dot.s-vert   { background: var(--vert); }
+    .syn-dot.s-rouge  { background: var(--rouge); }
+    .syn-dot.s-orange { background: #e67e22; }
+    .syn-ml-hint { color: #aaa; font-size: 11px; margin-left: auto; }
+    .syn-kpi { display: flex; flex-direction: column; }
+    .syn-attente-badge {
+      background: #e67e22; color: white;
+      border-radius: 10px; padding: 1px 9px;
+      font-size: 12px; font-weight: bold;
+    }
+    .syn-kpi-table { padding: 12px 16px; }
+    .syn-kpi-inner { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .syn-kpi-inner th {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .4px;
+      color: #999; font-weight: normal; text-align: right; padding: 0 8px 6px;
+    }
+    .syn-kpi-inner th:first-child { text-align: left; padding-left: 0; }
+    .syn-kpi-inner td {
+      padding: 4px 8px; border-top: 1px solid #f2f2f2; vertical-align: middle;
+      text-align: right; color: #444; white-space: nowrap;
+    }
+    .syn-kpi-inner td:first-child { text-align: left; padding-left: 0; color: #555; }
+    .syn-kpi-inner tbody tr:first-child td { border-top: none; }
+    .syn-kpi-inner-total td {
+      border-top: 1px solid #ddd; font-weight: bold; color: #222; padding-top: 6px;
     }
   </style>
 </head>
@@ -711,10 +1377,16 @@
     <a class="nav-item" href="bibliotheque.html">
       <span>📚</span> Bibliothèque
     </a>
-    <a class="nav-item nav-item-droite" href="comptes.html" data-require="can_manage_users">
-      <span>⚙</span> Comptes
+    <a class="nav-item" id="nav-admin" href="#" data-require="can_validate">
+      <span>⚙</span> Administration
     </a>
   </nav>
+
+  <!-- Datalist chantiers (partagé par tous les inputs chantier) -->
+  <datalist id="dl-chantiers"></datalist>
+
+  <!-- ══ SECTION STOCK ════════════════════════════════════════════ -->
+  <div id="section-stock">
 
   <!-- Alerte admin : éléments en attente -->
   <div id="stock-alerte-attente" class="alerte-attente" role="alert">
@@ -723,14 +1395,15 @@
 
   <!-- ── SOUS-ONGLETS ─────────────────────────────────────────── -->
   <div class="sous-onglets">
-    <button class="sous-onglet actif" data-onglet="profils">Profilés</button>
+    <button class="sous-onglet actif" data-onglet="synthese">Synthèse</button>
+    <button class="sous-onglet"       data-onglet="profils">Profilés</button>
     <button class="sous-onglet"       data-onglet="toles">Tôles</button>
+    <button class="sous-onglet"       data-onglet="archivees">Archivées</button>
   </div>
 
   <!-- ── TOOLBAR PROFILÉS ─────────────────────────────────────── -->
-  <div class="toolbar" id="toolbar-profils">
+  <div class="toolbar" id="toolbar-profils" style="display:none">
     <button id="btn-ajout-profil" class="btn-action btn-rouge" data-require="can_add">+ Profilé</button>
-    <button id="btn-ajout-tole"   class="btn-action btn-gris"  data-require="can_add">+ Tôle</button>
 
     <span class="toolbar-label" style="margin-left:4px">Filtrer :</span>
 
@@ -740,7 +1413,7 @@
     <select id="p-desig"    class="sel-filtre" title="Désignation">
       <option value="">Toutes désignations</option>
     </select>
-    <select id="p-chantier" class="sel-filtre" title="Chantier d'origine">
+    <select id="p-chantier" class="sel-filtre" title="Chantier affecté">
       <option value="">Tous chantiers</option>
     </select>
     <select id="p-lieu"     class="sel-filtre" title="Lieu de stockage">
@@ -755,6 +1428,14 @@
     <div class="toolbar-sep"></div>
     <button id="btn-reset-profils" class="btn-action btn-gris" title="Réinitialiser les filtres">✕ Réinitialiser</button>
     <input id="p-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
+    <div class="vue-selector" style="margin-left:auto">
+      <button id="btn-vue-essentiel"   class="btn-vue" title="Colonnes essentielles">Essentiel</button>
+      <button id="btn-vue-complet"     class="btn-vue" title="Toutes les colonnes">Complet</button>
+      <div style="position:relative">
+        <button id="btn-vue-personnalise" class="btn-vue" title="Colonnes personnalisées">Personnalisé ⚙</button>
+        <div id="panel-cols-profils"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ── TOOLBAR TÔLES ────────────────────────────────────────── -->
@@ -783,17 +1464,202 @@
     <input id="t-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
   </div>
 
+  <!-- ── TOOLBAR ARCHIVÉES ────────────────────────────────────── -->
+  <div class="toolbar" id="toolbar-archivees" style="display:none">
+    <span class="toolbar-label" style="margin-left:4px">Filtrer :</span>
+
+    <select id="a-type"  class="sel-filtre" title="Type de section">
+      <option value="">Tous types</option>
+    </select>
+    <select id="a-desig" class="sel-filtre" title="Désignation">
+      <option value="">Toutes désignations</option>
+    </select>
+
+    <div class="toolbar-sep"></div>
+    <button id="btn-reset-archivees" class="btn-action btn-gris" title="Réinitialiser">✕ Réinitialiser</button>
+    <input id="a-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
+  </div>
+
   <!-- ── TABLEAU PRINCIPAL ─────────────────────────────────────── -->
   <div class="zone-tableau">
-    <div id="tableau-stock">
+    <div id="tableau-stock" style="display:none">
       <div style="padding:30px; text-align:center; color:#aaa; font-style:italic;">
         Chargement du stock…
       </div>
     </div>
-    <div class="pied-tableau">
+    <div class="pied-tableau" style="display:none">
       <span id="stock-compteur"></span>
     </div>
+    <div id="zone-synthese"></div>
   </div>
+
+  </div><!-- fin #section-stock -->
+
+  <!-- ══ SECTION ADMINISTRATION ══════════════════════════════════ -->
+  <div id="section-admin" style="display:none" data-require="can_validate">
+    <div class="sous-onglets">
+      <button class="sous-onglet actif" data-admin-onglet="stockage">📦 Stockage</button>
+      <button class="sous-onglet"       data-admin-onglet="chantiers">🏗 Chantiers</button>
+      <button class="sous-onglet"       data-admin-onglet="fournisseurs">🏭 Fournisseurs</button>
+      <button class="sous-onglet"       data-admin-onglet="demandeurs">📋 Demandeurs</button>
+      <button class="sous-onglet"       data-admin-onglet="export">⬇ Export</button>
+      <button class="sous-onglet"       data-admin-onglet="import">⬆ Import</button>
+      <button class="sous-onglet"       data-admin-onglet="comptes">👤 Comptes</button>
+    </div>
+    <div class="admin-panel-zone">
+
+      <!-- Stockage -->
+      <div id="admin-panel-stockage" class="admin-panel">
+        <h3 class="admin-panel-titre">Zones de stockage</h3>
+        <div id="admin-racks-liste" class="admin-ref-liste" style="max-height:380px"></div>
+        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter une zone de stock</div>
+        <div class="admin-rack-form">
+          <div>
+            <label for="admin-rack-nom">Nom de la zone</label>
+            <input id="admin-rack-nom" type="text" placeholder="ex. Rack 1" class="admin-ref-inp">
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-end">
+            <div>
+              <label for="admin-rack-allees">Allées <span style="font-weight:normal;color:#999">(0=zone plate)</span></label>
+              <input id="admin-rack-allees" type="number" min="0" placeholder="5" class="admin-ref-inp">
+            </div>
+            <div>
+              <label for="admin-rack-etages">Étages</label>
+              <input id="admin-rack-etages" type="number" min="1" placeholder="4" class="admin-ref-inp">
+            </div>
+          </div>
+          <div>
+            <label style="visibility:hidden">_</label>
+            <button id="admin-btn-rack" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
+        </div>
+        <div id="admin-rack-apercu" class="admin-rack-apercu"></div>
+
+        <!-- Plan de stockage -->
+        <div class="admin-ref-section-titre" style="margin-top:28px">Plan de stockage</div>
+        <div class="admin-plan-actions">
+          <label class="btn-modale btn-modale-vert admin-plan-upload-btn">
+            📂 Charger une image
+            <input type="file" id="admin-plan-input" accept="image/*" style="display:none">
+          </label>
+          <button id="admin-plan-clear" class="btn-modale btn-modale-rouge" style="display:none">✕ Effacer le plan</button>
+        </div>
+        <div id="admin-plan-editor" style="margin-top:12px">
+          <div class="admin-plan-hint">Sélectionnez une zone puis cliquez sur le plan pour placer son marqueur.</div>
+          <div style="margin-bottom:10px; display:flex; align-items:center; gap:10px">
+            <label style="font-size:12px;color:#555;font-weight:bold">Zone à placer sur l'image :</label>
+            <select id="admin-plan-rack-sel" class="admin-ref-inp" style="width:auto;display:inline-block"></select>
+          </div>
+          <div id="admin-plan-canvas-wrap" style="position:relative; display:block; width:100%; cursor:crosshair; border:1px solid var(--gris-bord); border-radius:4px; background:#f7f7f7; line-height:0">
+            <img id="admin-plan-img" style="display:block; width:100%; height:auto; border-radius:4px" alt="">
+            <svg id="admin-plan-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none" overflow="visible"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chantiers -->
+      <div id="admin-panel-chantiers" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Chantiers</h3>
+        <div id="admin-chantiers-liste" class="admin-ref-liste" style="max-height:380px"></div>
+        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un chantier</div>
+        <div class="admin-ch-form">
+          <div>
+            <label for="admin-ch-affaire">N° d'affaire</label>
+            <input id="admin-ch-affaire" type="text" placeholder="ex. 2024-001" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-ch-ville">Ville</label>
+            <input id="admin-ch-ville" type="text" placeholder="ex. Rennes" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-ch-nom">Nom du chantier</label>
+            <input id="admin-ch-nom" type="text" placeholder="ex. École Jean Moulin" class="admin-ref-inp">
+          </div>
+          <div>
+            <label style="visibility:hidden">_</label>
+            <button id="admin-btn-chantier" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fournisseurs -->
+      <div id="admin-panel-fournisseurs" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Fournisseurs</h3>
+        <div id="admin-fournisseurs-liste" class="admin-ref-liste" style="max-height:380px"></div>
+        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un fournisseur</div>
+        <div class="admin-rack-form">
+          <div>
+            <label for="admin-fv-nom">Nom du fournisseur</label>
+            <input id="admin-fv-nom" type="text" placeholder="ex. Acier Pro" class="admin-ref-inp">
+          </div>
+          <div>
+            <label style="visibility:hidden">_</label>
+            <button id="admin-btn-fournisseur" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demandeurs -->
+      <div id="admin-panel-demandeurs" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Demandeurs</h3>
+        <div id="admin-demandeurs-liste" class="admin-ref-liste" style="max-height:380px"></div>
+        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un demandeur</div>
+        <div class="admin-rack-form" style="grid-template-columns:1fr 1fr 1fr auto">
+          <div>
+            <label for="admin-dem-prenom">Prénom</label>
+            <input id="admin-dem-prenom" type="text" placeholder="ex. Jean" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-dem-nom">Nom</label>
+            <input id="admin-dem-nom" type="text" placeholder="ex. Dupont" class="admin-ref-inp">
+          </div>
+          <div>
+            <label for="admin-dem-email">Email</label>
+            <input id="admin-dem-email" type="email" placeholder="ex. j.dupont@lbf.fr" class="admin-ref-inp">
+          </div>
+          <div>
+            <label style="visibility:hidden">_</label>
+            <button id="admin-btn-demandeur" class="btn-modale btn-modale-vert">+ Ajouter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div id="admin-panel-export" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Exporter le stock</h3>
+        <p class="admin-panel-desc">Télécharge l'intégralité du stock au format CSV (compatible Excel).</p>
+        <button id="btn-exporter" class="btn-action btn-rouge">⬇ Télécharger le stock CSV</button>
+      </div>
+
+      <!-- Import -->
+      <div id="admin-panel-import" class="admin-panel" style="display:none">
+        <h3 class="admin-panel-titre">Importer un stock CSV</h3>
+        <p class="admin-panel-desc">Fusionner ou restaurer le stock depuis un fichier CSV exporté précédemment.</p>
+        <button id="btn-importer" class="btn-action btn-rouge">⬆ Ouvrir l'import CSV</button>
+      </div>
+
+      <!-- Comptes -->
+      <div id="admin-panel-comptes" class="admin-panel" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h3 class="admin-panel-titre" style="margin-bottom:0;border-bottom:none;padding-bottom:0">Gestion des comptes</h3>
+          <button class="btn-modale btn-modale-vert" onclick="ouvrirCreation()">+ Ajouter un compte</button>
+        </div>
+        <div class="cpt-table-wrap">
+          <table class="cpt-table">
+            <thead>
+              <tr>
+                <th>Identifiant</th><th>Prénom</th><th>Nom</th><th>Email</th><th>Profil</th><th>Statut</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="comptes-tbody">
+              <tr><td colspan="7" class="vide" style="padding:20px;text-align:center;color:#aaa">Chargement…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- fin #section-admin -->
 
 
   <!-- ══════════════════════════════════════════════════════════════
@@ -803,93 +1669,141 @@
     <div class="modale modale-lg">
       <div class="modale-titre">Ajouter un profilé au stock</div>
 
-      <div class="form-cols2">
-        <div class="fr">
-          <label>Type de section <span style="color:var(--rouge)">*</span></label>
-          <select id="ap-type">
-            <option value="">— Choisir —</option>
-          </select>
-        </div>
-        <div class="fr">
-          <label>Désignation <span style="color:var(--rouge)">*</span></label>
-          <select id="ap-desig">
-            <option value="">— Choisir le type d'abord —</option>
-          </select>
-        </div>
+      <!-- Toggle mode -->
+      <div class="mode-ajout-tabs">
+        <button type="button" class="mode-tab active" data-mode="inventaire">Inventaire</button>
+        <button type="button" class="mode-tab" data-mode="commande">Réception commande</button>
       </div>
 
-      <!-- ID généré — affiché dès la sélection de la désignation -->
-      <div id="ap-zone-id" style="display:none; margin-bottom:10px;">
-        <div style="background:var(--noir); color:white; border-radius:3px;
-                    padding:10px 14px; display:flex; align-items:center; gap:12px;">
-          <span style="font-size:11px; color:#aaa; text-transform:uppercase;
-                       letter-spacing:.5px; white-space:nowrap;">ID barre</span>
-          <span id="ap-id-genere"
-                style="font-family:Impact,sans-serif; font-size:22px;
-                       letter-spacing:2px; color:var(--rouge);">—</span>
-          <span style="font-size:11px; color:#888; margin-left:auto;">
-            📋 Notez cet ID sur l'étiquette de la barre
-          </span>
+      <!-- ── PANEL INVENTAIRE ────────────────────────────────── -->
+      <div id="ap-panel-inventaire" class="ap-panel">
+        <div class="form-cols2">
+          <div class="fr">
+            <label>Type de section <span style="color:var(--rouge)">*</span></label>
+            <select id="ap-type">
+              <option value="">— Choisir —</option>
+            </select>
+          </div>
+          <div class="fr">
+            <label>Désignation <span style="color:var(--rouge)">*</span></label>
+            <select id="ap-desig">
+              <option value="">— Choisir le type d'abord —</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <!-- Schéma SVG + dimensions (affiché après sélection désignation) -->
-      <div id="ap-schema" class="schema-zone" style="display:none">
-        <div class="schema-svg-zone" id="ap-visuel">
+        <!-- Bouton toggle schéma (affiché dès qu'une désignation est choisie) -->
+        <button id="ap-toggle-schema" type="button" style="display:none; width:100%;
+          background:none; border:1px solid var(--gris-bord); border-radius:3px;
+          padding:7px 12px; cursor:pointer; font-size:12px; color:#555; text-align:left;
+          margin-bottom:4px;">
+          ▶ Voir schéma et caractéristiques
+        </button>
+
+        <!-- Schéma SVG + dimensions (masqué par défaut) -->
+        <div id="ap-schema" class="schema-zone" style="display:none; flex-direction:column; gap:10px;">
           <div class="schema-titre" id="ap-schema-label">—</div>
-          <!-- Image réelle — affichée si disponible dans assets/profils/ -->
-          <img id="ap-img" src="" alt=""
-               style="display:none; width:160px; height:160px; object-fit:contain;
-                      border:1px solid var(--gris-clair); border-radius:3px;
-                      background:#f7f7f7; cursor:zoom-in;">
-          <!-- SVG généré — fallback si pas d'image -->
-          <svg id="ap-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
-        </div>
-        <div class="schema-dims">
-          <h4>Caractéristiques</h4>
-          <div id="ap-dims-list">
-            <div style="color:#aaa;font-size:12px">Sélectionnez une désignation</div>
+          <div id="ap-visuel" style="text-align:center;">
+            <img id="ap-img" src="" alt=""
+                 style="display:none; max-width:130px; max-height:130px; object-fit:contain;
+                        border:1px solid var(--gris-clair); border-radius:3px;
+                        background:#f7f7f7; cursor:zoom-in;">
+            <svg id="ap-svg" width="130" height="130" viewBox="0 0 130 130"></svg>
+          </div>
+          <div class="schema-dims" style="border-top:1px solid var(--gris-bord); padding-top:8px;">
+            <h4 style="margin-bottom:6px;">Caractéristiques</h4>
+            <div id="ap-dims-list">
+              <div style="color:#aaa;font-size:12px">Sélectionnez une désignation</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="form-cols2">
-        <div class="fr">
-          <label>Longueur (m) <span style="color:var(--rouge)">*</span></label>
-          <input type="number" id="ap-longueur" placeholder="ex : 6.00" step="0.01" min="0.1">
-          <div class="poids-calc-zone">
-            Poids estimé :&nbsp;<span class="poids-calc-val" id="ap-poids-calc">—</span>
+        <div class="form-cols3">
+          <div class="fr">
+            <label>Longueur (m) <span style="color:var(--rouge)">*</span></label>
+            <input type="number" id="ap-longueur" placeholder="ex : 6.00" step="0.01" min="0.1">
+            <div class="poids-calc-zone">
+              Poids estimé :&nbsp;<span class="poids-calc-val" id="ap-poids-calc">—</span>
+            </div>
+          </div>
+          <div class="fr">
+            <label>Classe acier</label>
+            <select id="ap-classe">
+              <option value="">— Inconnue —</option>
+              <option value="S235">S235</option>
+              <option value="S275">S275</option>
+              <option value="S355">S355</option>
+              <option value="S420">S420</option>
+              <option value="S460">S460</option>
+              <option value="S690">S690</option>
+            </select>
+          </div>
+          <div class="fr">
+            <label>Lieu de stockage</label>
+            <div id="ap-lieu" class="lieu-cascade"></div>
           </div>
         </div>
+
         <div class="fr">
-          <label>Chantier d'origine</label>
-          <input type="text" id="ap-chantier" placeholder="Nom ou référence du chantier">
+          <label>Commentaire</label>
+          <textarea id="ap-commentaire" placeholder="Informations complémentaires (état, provenance…)"></textarea>
         </div>
+
+        <!-- ID généré — affiché juste avant l'enregistrement -->
+        <div id="ap-zone-id" style="display:none; margin-top:10px;">
+          <div style="background:var(--noir); color:white; border-radius:3px;
+                      padding:10px 14px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:11px; color:#aaa; text-transform:uppercase;
+                         letter-spacing:.5px; white-space:nowrap;">ID barre</span>
+            <span id="ap-id-genere"
+                  style="font-family:Impact,sans-serif; font-size:22px;
+                         letter-spacing:2px; color:var(--rouge);">—</span>
+            <span style="font-size:11px; color:#888; margin-left:auto;">
+              📋 Notez cet ID sur l'étiquette de la barre
+            </span>
+          </div>
+        </div>
+
+        <div class="ap-note-statut note-statut note-statut-attente"></div>
       </div>
 
-      <div class="form-cols2">
-        <div class="fr">
-          <label>Lieu de stockage</label>
-          <select id="ap-lieu">
-            <option value="">— Choisir —</option>
-          </select>
+      <!-- ── PANEL RÉCEPTION COMMANDE ────────────────────────── -->
+      <div id="ap-panel-commande" class="ap-panel" style="display:none">
+        <div class="form-cols3">
+          <div class="fr">
+            <label>Chantier destinataire</label>
+            <div id="ap-cmd-chantier-picker"></div>
+          </div>
+          <div class="fr">
+            <label>Réf. commande / BL</label>
+            <input type="text" id="ap-cmd-ref" placeholder="N° bon de commande">
+          </div>
+          <div class="fr">
+            <label>Fournisseur</label>
+            <div id="ap-cmd-fournisseur-picker"></div>
+          </div>
         </div>
-        <div class="fr">
-          <label>Disponibilité</label>
-          <select id="ap-dispo">
-            <option value="disponible">Disponible</option>
-            <option value="affecte">Affecté à un chantier</option>
-          </select>
+
+        <div class="table-lignes-cmd-wrap">
+          <table class="table-lignes-cmd">
+            <thead>
+              <tr>
+                <th class="col-cmd-type">Type</th>
+                <th class="col-cmd-desig">Désignation</th>
+                <th class="col-cmd-classe">Classe acier</th>
+                <th class="col-cmd-long">Longueur (m)</th>
+                <th class="col-cmd-qte">Qté</th>
+                <th class="col-cmd-lieu">Lieu stockage</th>
+                <th class="col-cmd-del"></th>
+              </tr>
+            </thead>
+            <tbody id="ap-cmd-tbody"></tbody>
+          </table>
         </div>
-      </div>
+        <button type="button" id="ap-cmd-ajouter-ligne" class="btn-ajouter-ligne">+ Ajouter une référence</button>
 
-      <div class="fr">
-        <label>Commentaire</label>
-        <textarea id="ap-commentaire" placeholder="Informations complémentaires (état, provenance…)"></textarea>
+        <div class="ap-note-statut ap-note-statut-cmd note-statut note-statut-attente" style="margin-top:10px"></div>
       </div>
-
-      <!-- Note : statut selon profil (injecté par JS) -->
-      <div class="ap-note-statut note-statut note-statut-attente"></div>
 
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-ajout-profil').classList.remove('open')">Annuler</button>
@@ -902,6 +1816,37 @@
   <!-- ══════════════════════════════════════════════════════════════
        MODALE 2 — AJOUT TÔLE
        ══════════════════════════════════════════════════════════════ -->
+  <!-- ── MODAL RÉSUMÉ RÉCEPTION COMMANDE ──────────────────────── -->
+  <div id="m-reception-resume" class="modale-bg" role="dialog" aria-modal="true" aria-label="Résumé réception">
+    <div class="modale modale-lg">
+      <div class="modale-titre">Réception enregistrée</div>
+      <div id="resume-entete" class="resume-entete"></div>
+
+      <div class="table-lignes-cmd-wrap" style="margin-top:12px">
+        <table class="resume-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Désig.</th>
+              <th>Classe</th>
+              <th>Longueur</th>
+              <th style="text-align:center">Qté</th>
+              <th>IDs créés</th>
+            </tr>
+          </thead>
+          <tbody id="resume-tbody"></tbody>
+        </table>
+      </div>
+
+      <p class="resume-hint">📋 Notez ces IDs sur les étiquettes des barres avant de les ranger en stock.</p>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" id="btn-resume-fermer">Fermer</button>
+        <button class="btn-modale btn-modale-rouge" id="btn-resume-filtrer">Voir dans le stock →</button>
+      </div>
+    </div>
+  </div>
+
   <div id="m-ajout-tole" class="modale-bg" role="dialog" aria-modal="true" aria-label="Ajouter une tôle">
     <div class="modale modale-lg">
       <div class="modale-titre">Ajouter une tôle au stock</div>
@@ -962,13 +1907,11 @@
         </div>
         <div class="fr">
           <label>Chantier d'origine</label>
-          <input type="text" id="at-chantier" placeholder="Référence chantier">
+          <div id="at-chantier-picker"></div>
         </div>
         <div class="fr">
           <label>Lieu de stockage</label>
-          <select id="at-lieu">
-            <option value="">— Choisir —</option>
-          </select>
+          <div id="at-lieu" class="lieu-cascade"></div>
         </div>
       </div>
 
@@ -1005,54 +1948,41 @@
 
       <!-- Zone profilé (affichée par défaut) -->
       <div class="mod-zone-profil">
-        <div class="form-cols2">
-          <div class="fr">
-            <label>Type de section <span style="color:var(--rouge)">*</span></label>
-            <select id="mod-type"><option value="">— Choisir —</option></select>
+
+        <!-- En-tête lecture seule ──────────────────────────── -->
+        <div class="mod-barre-info">
+          <div class="mod-barre-info-top">
+            <span class="chip-id" id="mod-display-id">—</span>
+            <span class="mod-display-section">
+              <strong id="mod-display-type">—</strong>
+              <span id="mod-display-desig">—</span>
+            </span>
+            <button class="btn-inline" id="mod-btn-fiche" title="Fiche section">🔍</button>
+            <span class="mod-longueur-ref">
+              <span>Longueur actuelle</span>
+              <strong id="mod-display-longueur">—</strong>
+            </span>
           </div>
-          <div class="fr">
-            <label>Désignation <span style="color:var(--rouge)">*</span></label>
-            <select id="mod-desig"><option value="">— Choisir le type d'abord —</option></select>
-          </div>
+          <div class="mod-barre-meta" id="mod-barre-meta"></div>
         </div>
 
-        <!-- Schéma SVG dynamique -->
-        <div id="mod-schema" class="schema-zone" style="display:none">
-          <div class="schema-svg-zone" id="mod-visuel">
-            <div class="schema-titre" id="mod-schema-label">—</div>
-            <!-- Image réelle — affichée si disponible dans assets/profils/ -->
-            <img id="mod-img" src="" alt=""
-                 style="display:none; width:160px; height:160px; object-fit:contain;
-                        border:1px solid var(--gris-clair); border-radius:3px;
-                        background:#f7f7f7; cursor:zoom-in;">
-            <!-- SVG généré — fallback si pas d'image -->
-            <svg id="mod-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
-          </div>
-          <div class="schema-dims">
-            <h4>Caractéristiques</h4>
-            <div id="mod-dims-list"></div>
-          </div>
-        </div>
-
+        <!-- Modification principale ────────────────────────── -->
         <div class="form-cols2">
           <div class="fr">
-            <label>Longueur (m) <span style="color:var(--rouge)">*</span></label>
-            <input type="number" id="mod-longueur" placeholder="6.00" step="0.01" min="0.1">
+            <label>Nouvelle longueur (m) <span style="color:var(--rouge)">*</span></label>
+            <input type="number" id="mod-longueur" placeholder="6.00" step="0.01" min="0">
             <div class="poids-calc-zone">
               Poids estimé :&nbsp;<span class="poids-calc-val" id="mod-poids-calc">—</span>
             </div>
           </div>
           <div class="fr">
-            <label>Chantier d'origine</label>
-            <input type="text" id="mod-chantier" placeholder="Référence chantier">
+            <label>Lieu de stockage</label>
+            <div id="mod-lieu" class="lieu-cascade"></div>
           </div>
         </div>
 
+        <!-- Affectation ─────────────────────────────────────── -->
         <div class="form-cols2">
-          <div class="fr">
-            <label>Lieu de stockage</label>
-            <select id="mod-lieu"><option value="">— Choisir —</option></select>
-          </div>
           <div class="fr">
             <label>Disponibilité</label>
             <select id="mod-dispo">
@@ -1060,17 +1990,32 @@
               <option value="affecte">Affecté à un chantier</option>
             </select>
           </div>
-        </div>
-
-        <div class="fr">
-          <label>Chantier d'affectation</label>
-          <input type="text" id="mod-affectation" placeholder="Renseignez si la barre est affectée">
+          <div class="fr" id="mod-affectation-wrap">
+            <label>Chantier d'affectation</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="mod-affectation" style="flex:1;min-width:0"></select>
+              <button type="button" id="mod-btn-creer-chantier" class="btn btn-sec" style="white-space:nowrap;padding:4px 8px;font-size:.85em">+ Nouveau</button>
+            </div>
+            <div id="mod-nouveau-chantier-form" style="display:none;margin-top:6px;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd">
+              <div style="display:flex;gap:6px;margin-bottom:5px">
+                <input type="text" id="mod-new-chantier-affaire" placeholder="N° affaire" style="width:110px">
+                <input type="text" id="mod-new-chantier-ville" placeholder="Ville" style="flex:1;min-width:0">
+              </div>
+              <div style="display:flex;gap:6px">
+                <input type="text" id="mod-new-chantier-nom" placeholder="Nom du chantier *" style="flex:1;min-width:0">
+                <button type="button" id="mod-btn-confirmer-chantier" class="btn btn-ok" style="white-space:nowrap;padding:4px 8px;font-size:.85em">✓ Créer</button>
+                <button type="button" id="mod-btn-annuler-chantier" class="btn btn-sec" style="padding:4px 8px;font-size:.85em">✗</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="fr">
           <label>Commentaire</label>
           <textarea id="mod-commentaire" placeholder="Informations complémentaires…"></textarea>
         </div>
+
+        <div class="mod-note-statut note-statut note-statut-attente"></div>
       </div>
 
       <!-- Zone tôle (masquée par défaut, affichée si modification d'une tôle) -->
@@ -1096,11 +2041,11 @@
           </div>
           <div class="fr">
             <label>Chantier d'origine</label>
-            <input type="text" id="mod-t-chantier" placeholder="Référence chantier">
+            <div id="mod-t-chantier-picker"></div>
           </div>
           <div class="fr">
             <label>Lieu de stockage</label>
-            <select id="mod-t-lieu"><option value="">— Choisir —</option></select>
+            <div id="mod-t-lieu" class="lieu-cascade"></div>
           </div>
         </div>
         <div class="form-cols2">
@@ -1150,13 +2095,13 @@
       <div id="dem-info-barre" class="resume-barre">—</div>
 
       <div class="fr">
-        <label>Nom du demandeur <span style="color:var(--rouge)">*</span></label>
-        <input type="text" id="dem-demandeur" placeholder="Prénom Nom">
+        <label>Demandeur <span style="color:var(--rouge)">*</span></label>
+        <div id="dem-demandeur-picker"></div>
       </div>
 
       <div class="fr">
         <label>Chantier concerné <span style="color:var(--rouge)">*</span></label>
-        <input type="text" id="dem-chantier" placeholder="Nom ou référence du chantier">
+        <div id="dem-chantier-picker"></div>
       </div>
 
       <div class="fr">
@@ -1261,23 +2206,15 @@
         <span id="fiche-desc-norme" style="font-size:12px; color:#888">Profilé normalisé</span>
       </div>
 
-    <!-- Schéma SVG + dimensions -->
-      <div class="schema-zone">
-        <div class="schema-svg-zone" id="fiche-visuel">
-          <!-- Libellé schema-titre supprimé (non affiché) -->
-          <!-- Image réelle — affichée si disponible dans assets/profils/ -->
-          <img id="fiche-img" src="" alt=""
-               style="display:none; width:220px; height:220px; object-fit:contain;
-                      border:1px solid var(--gris-clair); border-radius:3px;
-                      background:#f7f7f7; cursor:zoom-in;">
-          <!-- SVG généré — fallback si pas d'image -->
-          <svg id="fiche-svg" width="220" height="220" viewBox="0 0 160 160"></svg>
+    <!-- Image / schéma + dimensions -->
+      <div class="schema-zone" style="flex-wrap:wrap;">
+        <div style="flex:0 0 220px; background:#f7f7f7; border:1px solid var(--gris-bord);
+                    border-radius:4px; padding:12px; text-align:center;">
+          <div class="detail-svg-zone" style="height:220px; display:flex; align-items:center; justify-content:center;"></div>
         </div>
-        <div class="schema-dims">
+        <div class="schema-dims" style="flex:1; min-width:180px;">
           <h4>Dimensions normalisées</h4>
-          <div id="fiche-dims-list">
-            <div style="color:#aaa;font-size:12px">Chargement…</div>
-          </div>
+          <div class="detail-dims-zone"></div>
         </div>
       </div>
 
@@ -1414,52 +2351,20 @@
     <div class="modale modale-lg" onclick="event.stopPropagation()">
       <div class="modale-titre" id="carte-titre">Plan de stockage</div>
 
-      <!-- Plan SVG de l'atelier — à remplacer par votre plan réel -->
-      <div style="background:#f7f7f7; border:1px solid var(--gris-bord); border-radius:3px; padding:16px; margin-bottom:14px;">
-        <svg id="plan-atelier" viewBox="0 0 600 380" style="width:100%; height:auto; display:block;">
+      <!-- Image chargée + marqueurs SVG -->
+      <div id="carte-plan-wrap" style="position:relative; display:block; width:100%; margin-bottom:12px; border:1px solid var(--gris-bord); border-radius:4px; background:#f7f7f7; line-height:0">
+        <img id="carte-plan-img" style="display:block; width:100%; height:auto; border-radius:4px" alt="">
+        <svg id="carte-plan-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none" overflow="visible"></svg>
+      </div>
 
-          <!-- Contour atelier -->
-          <rect x="10" y="10" width="580" height="360" fill="white" stroke="#ccc" stroke-width="2" rx="4"/>
-
-          <!-- Zone Rack 1 -->
-          <rect class="zone-stockage" data-zone="Rack 1"
-            x="40" y="40" width="120" height="80" rx="3"
-            fill="#e6f4ea" stroke="rgb(45,95,50)" stroke-width="2"/>
-          <text x="100" y="76" text-anchor="middle" font-family="Impact" font-size="14" fill="rgb(45,95,50)" pointer-events="none">Rack 1</text>
-
-          <!-- Zone Rack 2 -->
-          <rect class="zone-stockage" data-zone="Rack 2"
-            x="200" y="40" width="120" height="80" rx="3"
-            fill="#e6f4ea" stroke="rgb(45,95,50)" stroke-width="2"/>
-          <text x="260" y="76" text-anchor="middle" font-family="Impact" font-size="14" fill="rgb(45,95,50)" pointer-events="none">Rack 2</text>
-
-          <!-- Zone Rack 3 -->
-          <rect class="zone-stockage" data-zone="Rack 3"
-            x="360" y="40" width="120" height="80" rx="3"
-            fill="#e6f4ea" stroke="rgb(45,95,50)" stroke-width="2"/>
-          <text x="420" y="76" text-anchor="middle" font-family="Impact" font-size="14" fill="rgb(45,95,50)" pointer-events="none">Rack 3</text>
-
-          <!-- Zone Rack 4 -->
-          <rect class="zone-stockage" data-zone="Rack 4"
-            x="40" y="160" width="120" height="80" rx="3"
-            fill="#e6f4ea" stroke="rgb(45,95,50)" stroke-width="2"/>
-          <text x="100" y="196" text-anchor="middle" font-family="Impact" font-size="14" fill="rgb(45,95,50)" pointer-events="none">Rack 4</text>
-
-          <!-- Zone Extérieur -->
-          <rect class="zone-stockage" data-zone="Extérieur"
-            x="40" y="280" width="520" height="60" rx="3"
-            fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
-          <text x="300" y="316" text-anchor="middle" font-family="Impact" font-size="14" fill="#e65100" pointer-events="none">Extérieur</text>
-
-          <!-- Légende -->
-          <text x="300" y="370" text-anchor="middle" font-family="Tahoma" font-size="10" fill="#aaa">
-            Plan provisoire — à remplacer par le plan réel de l'atelier
-          </text>
-        </svg>
+      <!-- Placeholder si aucun plan -->
+      <div id="carte-no-plan" style="display:none; background:#f7f7f7; border:1px solid var(--gris-bord); border-radius:4px; padding:30px; text-align:center; color:#999; font-size:13px; margin-bottom:12px">
+        Aucun plan chargé.<br>
+        <span style="font-size:12px">Allez dans <strong>Administration → Stockage</strong> pour charger un plan.</span>
       </div>
 
       <div id="carte-info" style="font-size:13px; color:#555; padding:6px 10px; background:#f4f4f4; border-radius:3px; border-left:3px solid var(--rouge);">
-        Zone mise en évidence sur le plan.
+        Le rack est mis en évidence sur le plan (cercle rouge).
       </div>
 
       <div class="modale-footer">
@@ -1469,16 +2374,177 @@
   </div>
 
   <style>
-    /* Zones du plan de stockage */
-    .zone-stockage { cursor: default; transition: fill .2s, stroke-width .2s; }
-    .zone-active   { fill: rgb(210,35,42) !important; stroke: rgb(140,20,25) !important; stroke-width: 3 !important; }
-    .zone-active + text { fill: white !important; }
-    .zone-inactive { opacity: 0.35; }
+    .chip-lieu-btn  { cursor: pointer; }
+    .chip-lieu-btn:hover { opacity: .8; }
+    .chip-plan-pin  { font-size: 11px; margin-left: 3px; }
   </style>
 
-  <script src="../js/supabase.js"></script>
-  <script src="../auth/auth.js"></script>
-  <script src="../js/stock.js"></script>
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE — HISTORIQUE BARRE
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-historique-barre" class="modale-bg" role="dialog" aria-modal="true"
+       aria-label="Historique de la barre">
+    <div class="modale modale-lg">
+      <div class="modale-titre" id="hist-titre">Historique — …</div>
+
+      <div id="hist-contenu" style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+        <div style="padding:24px; text-align:center; color:#aaa; font-style:italic">
+          Chargement…
+        </div>
+      </div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris btn-fermer-hist">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE IMPORT CSV (admin)
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-import" class="modale-bg" role="dialog" aria-modal="true" aria-label="Import CSV">
+    <div class="modale">
+      <div class="modale-titre">Importer une sauvegarde CSV</div>
+
+      <!-- Zone dépôt fichier -->
+      <div class="import-dropzone" id="import-dropzone">
+        <input type="file" id="import-fichier" accept=".csv" style="display:none;">
+        <div style="font-size:28px;margin-bottom:8px;">📄</div>
+        <label for="import-fichier">Choisir un fichier CSV</label>
+        <div style="margin-top:6px;font-size:12px;color:#888;">ou glisser-déposer ici</div>
+        <div id="import-nom-fichier" style="margin-top:10px;font-size:12px;color:#555;font-weight:600;min-height:16px;"></div>
+      </div>
+
+      <!-- Résumé après analyse -->
+      <div id="import-resume" class="import-resume" style="display:none;"></div>
+
+      <!-- Avertissement fusion -->
+      <div id="import-avertissement" class="note-statut note-statut-attente" style="display:none;">
+        ⚠ Les éléments du fichier CSV seront fusionnés avec le stock actuel
+        (même ID = écrasement, ID absent = ajout). Les éléments non présents dans le CSV
+        sont conservés.
+      </div>
+
+      <!-- Erreur parsing -->
+      <div id="import-erreur" class="import-erreur" style="display:none;"></div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" id="import-btn-annuler">Annuler</button>
+        <button id="import-btn-analyser" class="btn-modale btn-modale-rouge" disabled>
+          Analyser le fichier
+        </button>
+        <button id="import-btn-confirmer" class="btn-modale btn-modale-rouge" style="display:none;">
+          ✔ Importer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modales gestion des comptes ──────────────────────────── -->
+  <div id="m-compte" class="modale-bg" onclick="bgClose(event,'m-compte')">
+    <div class="modale" onclick="event.stopPropagation()">
+      <div class="modale-titre" id="m-compte-titre">Nouveau compte</div>
+      <div class="note-info" id="m-compte-info" style="display:none"></div>
+      <div class="champ">
+        <label for="mc-identifiant">Identifiant *</label>
+        <input type="text" id="mc-identifiant" placeholder="ex : p.dupont" autocapitalize="none" spellcheck="false">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="champ">
+          <label for="mc-prenom">Prénom</label>
+          <input type="text" id="mc-prenom" placeholder="ex : Pierre">
+        </div>
+        <div class="champ">
+          <label for="mc-nom">Nom *</label>
+          <input type="text" id="mc-nom" placeholder="ex : Dupont">
+        </div>
+      </div>
+      <div class="champ">
+        <label for="mc-email">Email</label>
+        <input type="email" id="mc-email" placeholder="ex : p.dupont@entreprise.fr">
+      </div>
+      <div class="champ">
+        <label for="mc-profil">Profil *</label>
+        <select id="mc-profil">
+          <option value="consultation">Consultation — lecture seule</option>
+          <option value="gestion">Gestion — ajouts soumis à validation</option>
+          <option value="administration">Administration — accès complet</option>
+        </select>
+      </div>
+      <div class="champ" id="mc-mdp-zone">
+        <label for="mc-mdp">Mot de passe *</label>
+        <div class="champ-mdp-wrap">
+          <input type="password" id="mc-mdp" placeholder="Mot de passe">
+          <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp','mc-oeil')" id="mc-oeil">👁</button>
+        </div>
+      </div>
+      <div class="champ" id="mc-mdp2-zone">
+        <label for="mc-mdp2">Confirmer le mot de passe *</label>
+        <div class="champ-mdp-wrap">
+          <input type="password" id="mc-mdp2" placeholder="Confirmation">
+          <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp2','mc-oeil2')" id="mc-oeil2">👁</button>
+        </div>
+      </div>
+      <div class="champ">
+        <label for="mc-actif">Statut</label>
+        <select id="mc-actif">
+          <option value="true">Actif</option>
+          <option value="false">Désactivé</option>
+        </select>
+      </div>
+      <div class="msg-erreur-modale" id="mc-erreur"></div>
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="fermerM('m-compte')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge" onclick="sauvegarderCompte()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="m-mdp" class="modale-bg" onclick="bgClose(event,'m-mdp')">
+    <div class="modale" onclick="event.stopPropagation()">
+      <div class="modale-titre">Changer le mot de passe</div>
+      <p style="font-size:13px;color:#555;margin-bottom:14px">Compte : <strong id="mdp-nom-compte"></strong></p>
+      <div class="champ">
+        <label for="mdp-nouveau">Nouveau mot de passe *</label>
+        <div class="champ-mdp-wrap">
+          <input type="password" id="mdp-nouveau" placeholder="Nouveau mot de passe">
+          <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-nouveau','mdp-oeil1')" id="mdp-oeil1">👁</button>
+        </div>
+      </div>
+      <div class="champ">
+        <label for="mdp-confirme">Confirmer *</label>
+        <div class="champ-mdp-wrap">
+          <input type="password" id="mdp-confirme" placeholder="Confirmation">
+          <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-confirme','mdp-oeil2')" id="mdp-oeil2">👁</button>
+        </div>
+      </div>
+      <div class="msg-erreur-modale" id="mdp-erreur"></div>
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="fermerM('m-mdp')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge" onclick="sauvegarderMdp()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="m-supprimer" class="modale-bg" onclick="bgClose(event,'m-supprimer')">
+    <div class="modale" onclick="event.stopPropagation()">
+      <div class="modale-titre">Supprimer le compte</div>
+      <div class="note-danger">⚠ Cette action est irréversible.</div>
+      <p style="font-size:13px;color:#555;margin-bottom:16px">Supprimer le compte <strong id="sup-nom-compte"></strong> ?</p>
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="fermerM('m-supprimer')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge" onclick="confirmerSuppression()">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/supabase.js?v=20260422"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="../auth/auth.js?v=20260422"></script>
+  <script src="../js/profils-utils.js?v=20260422"></script>
+  <script src="../js/comptes.js?v=20260505"></script>
+  <script src="../js/stock.js?v=20260522"></script>
 
 </body>
 </html>
